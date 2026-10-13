@@ -2,10 +2,32 @@ import '../app/globals.css';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 
+const BASE_URL = 'https://v3-rho-weld.vercel.app';
+
 export const metadata = {
-  title: 'V3 — Análisis bursátil automatizado',
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: 'V3 — Análisis bursátil automatizado',
+    template: '%s'
+  },
   description:
-    'Análisis estadístico automatizado de empresas cotizadas. No es recomendación de inversión.'
+    'Análisis estadístico automatizado de empresas cotizadas. No es recomendación de inversión.',
+  alternates: {
+    canonical: '/'
+  },
+  openGraph: {
+    title: 'V3 — Análisis bursátil automatizado',
+    description:
+      'Análisis estadístico automatizado de empresas cotizadas. No es recomendación de inversión.',
+    url: BASE_URL,
+    siteName: 'V3',
+    locale: 'es_ES',
+    type: 'website'
+  },
+  robots: {
+    index: true,
+    follow: true
+  }
 };
 
 export default function RootLayout({ children }) {
