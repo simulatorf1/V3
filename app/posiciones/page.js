@@ -12,7 +12,10 @@ function slugEmpresa(e) {
     .replace(/^-+|-+$/g, '');
   return `${e.ticker.toLowerCase()}__${nombreLimpio}`;
 }
-
+export const metadata = {
+  title: 'Posiciones de referencia — V3',
+  description: 'Backtesting público de las posiciones abiertas por el algoritmo.'
+};
 export default async function Posiciones() {
   // Empresas cuya última señal histórica sigue abierta
   const { data: paginas } = await supabase
