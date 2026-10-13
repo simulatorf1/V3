@@ -6,7 +6,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function PaginaEmpresa({ params }) {
   const slug = params.slug;
-  const ticker = slug.split('-')[0].toUpperCase();
+
+  // El slug tiene formato "ticker__nombre". Extraemos el ticker antes del doble guion bajo.
+  let ticker;
+  if (slug.includes('__')) {
+    ticker = slug.split('__')[0].toUpperCase();
+  } else {
+    // Compatibilidad con slugs antiguos (ticker-nombre): cortamos por el primer guion
+    ticker = slug.split('-')[0].toUpperCase();
+  }
 
   // 1. Obtener o crear la empresa
   const empresa = await obtenerOCrearEmpresa(ticker);
