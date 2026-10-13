@@ -1,28 +1,25 @@
 import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar';
 import { notFound } from 'next/navigation';
 import Grafico from '../../../components/Grafico';
+import ResumenVistazo from '../../../components/ResumenVistazo';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaEmpresa({ params }) {
   const slug = params.slug;
 
-  // El slug tiene formato "ticker__nombre". Extraemos el ticker antes del doble guion bajo.
   let ticker;
   if (slug.includes('__')) {
     ticker = slug.split('__')[0].toUpperCase();
   } else {
-    // Compatibilidad con slugs antiguos (ticker-nombre): cortamos por el primer guion
     ticker = slug.split('-')[0].toUpperCase();
   }
 
-  // 1. Obtener o crear la empresa
   const empresa = await obtenerOCrearEmpresa(ticker);
   if (!empresa) {
     notFound();
   }
 
-  // 2. Obtener el análisis (desde caché o regenerando)
   let analisis = null;
   let desdeCache = false;
   let errorAnalisis = null;
@@ -84,6 +81,8 @@ export default async function PaginaEmpresa({ params }) {
 
       {analisis && (
         <>
+          <ResumenVistazo analisis={analisis} empresa={empresa} />
+
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
           <h2 style={{ marginTop: '30px' }}>Registro histórico de señales</h2>
