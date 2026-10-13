@@ -1,56 +1,83 @@
-import Buscador from '../components/Buscador';
-import UltimaConsulta from '../components/UltimaConsulta';
-import TopEmpresas from '../components/TopEmpresas';
-import CambiosRecientes from '../components/CambiosRecientes';
-import SectoresPrincipales from '../components/SectoresPrincipales';
-import NoticiasRecientes from '../components/NoticiasRecientes';
+import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
-async function cargarDatosHome() {
+export async function GET(request) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://v3-rho-weld.vercel.app';
-    const res = await fetch(`${baseUrl}/api/home`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Error cargando datos');
-    return await res.json();
-  } catch (e) {
-    return { top: [], cambios: [], sectores: [], noticias: [] };
+    const { searchParams } = new URL(request.url);
+    const ticker = searchParams.get('ticker');
+
+    if (!ticker) {
+      return Response.json({ relacionados: [], top: [], noticias: [] });
+    }
+
+    const tickerUpper = ticker.toUpperCase();
+
+    // 1. Empresa actual para sacar su sector
+    const { data: empresa } = await supabaseAdmin
+      .from('empresas')
+      .select('ticker, sector')
+      .eq('ticker', tickerUpper)
+      .maybeSingle();
+
+    // 2. Empresas relacionadas del mismo sector
+    let relacionados = [];
+    if (empresa?.sector) {
+      const { data } = await supabaseAdmin
+        .from('empresas')
+        .select('ticker, nombre, sector')
+        .eq('sector', empresa.sector)
+        .neq('ticker', tickerUpper)
+        .limit(4);
+      relacionados = data || [];
+    }
+
+    // 3. Valores más consultados de la semana
+    const hace7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: visitas } = await supabaseAdmin
+      .from('visitas')
+      .select('ticker')
+      .gte('created_at', hace7dias)
+      .not('ticker', 'is', null);
+
+    const conteo = {};
+    for (const v of visitas || []) {
+      if (!v.ticker) continue;
+      conteo[v.ticker] = (conteo[v.ticker] || 0) + 1;
+    }
+    const topTickers = Object.entries(conteo)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([t, visitas]) => ({ ticker: t, visitas }));
+
+    const top = [];
+    for (const t of topTickers) {
+      const { data: emp } = await supabaseAdmin
+        .from('empresas')
+        .select('ticker, nombre, sector')
+        .eq('ticker', t.ticker)
+        .maybeSingle();
+      if (emp) top.push({ ...emp, visitas: t.visitas });
+    }
+
+    // 4. Noticias de la empresa
+    const { data: noticias } = await supabaseAdmin
+      .from('noticias')
+      .select('titulo, fuente, url, fecha_publicacion')
+      .eq('ticker', tickerUpper)
+      .order('fecha_publicacion', { ascending: false })
+      .limit(5);
+
+    return Response.json({
+      relacionados,
+      top,
+      noticias: noticias || []
+    });
+  } catch (err) {
+    console.error('Error en /api/sidebar:', err);
+    return Response.json(
+      { relacionados: [], top: [], noticias: [] },
+      { status: 200 }
+    );
   }
-}
-
-export default async function Home() {
-  const datos = await cargarDatosHome();
-
-  return (
-    <main
-      style={{
-        padding: '40px 24px',
-        fontFamily: 'Arial, sans-serif',
-        maxWidth: '900px',
-        margin: '0 auto'
-      }}
-    >
-      <h1 style={{ marginBottom: '6px' }}>V3 — Análisis bursátil automatizado</h1>
-      <p style={{ color: '#666', marginTop: 0 }}>
-        Busca cualquier empresa del mundo por nombre o ticker para ver su análisis.
-      </p>
-
-      <Buscador />
-
-      <UltimaConsulta />
-
-      <TopEmpresas empresas={datos.top} />
-
-      <CambiosRecientes cambios={datos.cambios} />
-
-      <SectoresPrincipales sectores={datos.sectores} />
-
-      <NoticiasRecientes noticias={datos.noticias} />
-
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '60px' }}>
-        Este contenido es un análisis estadístico generado automáticamente por un algoritmo.
-        No es una recomendación de inversión.
-      </p>
-    </main>
-  );
 }
