@@ -7,6 +7,7 @@ import ContextoReciente from '../../../components/ContextoReciente';
 import ComparadorSector from '../../../components/ComparadorSector';
 import TablaSenales from '../../../components/TablaSenales';
 import BloqueSEO from '../../../components/BloqueSEO';
+import ConsensoComunidad from '../../../components/ConsensoComunidad';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +100,8 @@ export default async function PaginaEmpresa({ params }) {
           <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
 
           <BloqueSEO empresa={empresa} analisis={analisis} />
+
+          <ConsensoComunidad ticker={empresa.ticker} />
 
           <EstadisticaHistorica analisis={analisis} />
 
