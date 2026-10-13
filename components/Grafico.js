@@ -31,31 +31,6 @@ export default function Grafico({ velas, smis }) {
         });
       }
 
-      // Datos para la zona alta (>40): solo pintamos cuando el SMI está por encima
-      const zonaAltaData = [];
-      for (let i = 0; i < smis.length; i++) {
-        if (!velas[i]) continue;
-        const v = smis[i];
-        if (v !== null && v !== undefined && v > 40) {
-          zonaAltaData.push({ time: velas[i].date, value: v });
-        } else {
-          // Punto "hueco" para que no conecte líneas entre zonas
-          zonaAltaData.push({ time: velas[i].date });
-        }
-      }
-
-      // Datos para la zona baja (<-40): solo pintamos cuando el SMI está por debajo
-      const zonaBajaData = [];
-      for (let i = 0; i < smis.length; i++) {
-        if (!velas[i]) continue;
-        const v = smis[i];
-        if (v !== null && v !== undefined && v < -40) {
-          zonaBajaData.push({ time: velas[i].date, value: v });
-        } else {
-          zonaBajaData.push({ time: velas[i].date });
-        }
-      }
-
       // --- Gráfico único con dos ejes ---
       chart = createChart(contenedorRef.current, {
         width: contenedorRef.current.clientWidth,
@@ -91,7 +66,41 @@ export default function Grafico({ velas, smis }) {
       });
       precioLine.setData(precioData);
 
-      // Serie del SMI (eje izquierdo)
+      // --- Relleno de zona alta (solo lo que sobresale de +40) ---
+      const zonaAltaBaseline = chart.addBaselineSeries({
+        baseValue: { type: 'price', price: 40 },
+        topFillColor1: 'rgba(198, 40, 40, 0.25)',
+        topFillColor2: 'rgba(198, 40, 40, 0.05)',
+        bottomFillColor1: 'rgba(198, 40, 40, 0)',
+        bottomFillColor2: 'rgba(198, 40, 40, 0)',
+        topLineColor: 'rgba(198, 40, 40, 0.4)',
+        bottomLineColor: 'rgba(198, 40, 40, 0)',
+        lineWidth: 1,
+        priceScaleId: 'left',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+      });
+      zonaAltaBaseline.setData(smiData);
+
+      // --- Relleno de zona baja (solo lo que cae por debajo de -40) ---
+      const zonaBajaBaseline = chart.addBaselineSeries({
+        baseValue: { type: 'price', price: -40 },
+        topFillColor1: 'rgba(46, 125, 50, 0)',
+        topFillColor2: 'rgba(46, 125, 50, 0)',
+        bottomFillColor1: 'rgba(46, 125, 50, 0.25)',
+        bottomFillColor2: 'rgba(46, 125, 50, 0.05)',
+        topLineColor: 'rgba(46, 125, 50, 0)',
+        bottomLineColor: 'rgba(46, 125, 50, 0.4)',
+        lineWidth: 1,
+        priceScaleId: 'left',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+      });
+      zonaBajaBaseline.setData(smiData);
+
+      // Serie del SMI (eje izquierdo), encima del relleno
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
@@ -99,32 +108,6 @@ export default function Grafico({ velas, smis }) {
         priceScaleId: 'left'
       });
       smiLine.setData(smiData);
-
-      // Zona alta sombreada (rojo claro)
-      const zonaAltaArea = chart.addAreaSeries({
-        topColor: 'rgba(198, 40, 40, 0.25)',
-        bottomColor: 'rgba(198, 40, 40, 0.05)',
-        lineColor: 'rgba(198, 40, 40, 0.4)',
-        lineWidth: 1,
-        priceScaleId: 'left',
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
-      });
-      zonaAltaArea.setData(zonaAltaData);
-
-      // Zona baja sombreada (verde claro)
-      const zonaBajaArea = chart.addAreaSeries({
-        topColor: 'rgba(46, 125, 50, 0.25)',
-        bottomColor: 'rgba(46, 125, 50, 0.05)',
-        lineColor: 'rgba(46, 125, 50, 0.4)',
-        lineWidth: 1,
-        priceScaleId: 'left',
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
-      });
-      zonaBajaArea.setData(zonaBajaData);
 
       // Bandas del SMI (zona alta / baja) en el eje izquierdo
       smiLine.createPriceLine({
@@ -191,9 +174,8 @@ export default function Grafico({ velas, smis }) {
       <div ref={contenedorRef} style={{ width: '100%' }} />
       <p style={{ color: '#666', fontSize: '13px', marginTop: '10px' }}>
         El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador propietario
-        (línea morada). Las zonas roja y verde sombreadas marcan los tramos en los que el indicador
-        se sitúa por encima de +40 (zona alta) o por debajo de -40 (zona baja). No es una
-        recomendación de inversión.
+        (línea morada). El área roja aparece solo cuando el indicador sobresale por encima de +40;
+        el área verde, solo cuando cae por debajo de -40. No es una recomendación de inversión.
       </p>
     </div>
   );
