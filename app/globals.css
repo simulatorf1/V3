@@ -1,0 +1,43 @@
+.v3-grid-analisis {
+  display: block;
+}
+
+.v3-sidebar {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .v3-grid-analisis {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 40px;
+    align-items: start;
+  }
+  .v3-sidebar {
+    display: block;
+  }
+}
+
+.v3-menu-desktop {
+  display: none !important;
+}
+
+.v3-menu-boton {
+  display: block;
+}
+
+.v3-menu-movil {
+  display: flex;
+}
+
+@media (min-width: 800px) {
+  .v3-menu-desktop {
+    display: flex !important;
+  }
+  .v3-menu-boton {
+    display: none !important;
+  }
+  .v3-menu-movil {
+    display: none !important;
+  }
+}
