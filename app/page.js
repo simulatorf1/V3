@@ -5,7 +5,7 @@ export default function Home() {
       <p>Web en construcción.</p>
       <p style={{ color: '#666', fontSize: '14px', marginTop: '40px' }}>
         Este contenido es un análisis estadístico generado automáticamente por un algoritmo.
-        No es una recomendación de inversión.
+        No es una recomendación de inversión. 
       </p>
     </main>
   );
