@@ -100,30 +100,7 @@ export default async function PaginaEmpresa({ params }) {
 
           <BloqueSEO empresa={empresa} analisis={analisis} />
 
-          <h2 style={{ marginTop: '30px' }}>Estadística histórica (10 días siguientes)</h2>
-          <p style={{ color: '#666', fontSize: '13px' }}>
-            Basado en {analisis.estadisticas.compras.muestra} señales de compra y {analisis.estadisticas.ventas.muestra} señales de venta en el último año.
-          </p>
-
-          {analisis.estadisticas.compras.muestra < 10 && (
-            <p style={{ color: '#c62828', fontSize: '13px', marginTop: '6px' }}>
-              Muestra limitada. Interpretar con cautela.
-            </p>
-          )}
-
-          <h3 style={{ marginTop: '20px' }}>Después de señales de compra</h3>
-          <ul>
-            <li>Veces que subió: {analisis.estadisticas.compras.porcentajeSubidas?.toFixed(1) || 0}%</li>
-            <li>Veces que bajó: {analisis.estadisticas.compras.porcentajeBajadas?.toFixed(1) || 0}%</li>
-            <li>Variación media: {analisis.estadisticas.compras.variacionMedia?.toFixed(2) || 0}%</li>
-          </ul>
-
-          <h3 style={{ marginTop: '20px' }}>Después de señales de venta</h3>
-          <ul>
-            <li>Veces que subió: {analisis.estadisticas.ventas.porcentajeSubidas?.toFixed(1) || 0}%</li>
-            <li>Veces que bajó: {analisis.estadisticas.ventas.porcentajeBajadas?.toFixed(1) || 0}%</li>
-            <li>Variación media: {analisis.estadisticas.ventas.variacionMedia?.toFixed(2) || 0}%</li>
-          </ul>
+          <EstadisticaHistorica analisis={analisis} />
 
           <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
             Esta estadística se basa exclusivamente en datos históricos y no garantiza ningún resultado futuro.
@@ -137,5 +114,76 @@ export default async function PaginaEmpresa({ params }) {
         No constituye asesoramiento financiero personalizado.
       </p>
     </main>
+  );
+}
+
+function EstadisticaHistorica({ analisis }) {
+  const stats = analisis.estadisticas;
+  if (!stats) return null;
+
+  const { compras, ventas, ultimaSenalTipo, porcentajeUltimaSenal } = stats;
+
+  const colorCompra = compras.muestra > 0 ? '#2e7d32' : '#666';
+  const colorVenta = ventas.muestra > 0 ? '#2e7d32' : '#666';
+
+  return (
+    <div style={{ marginTop: '40px' }}>
+      <h2>Estadística histórica</h2>
+
+      <p style={{ color: '#666', fontSize: '13px' }}>
+        Calculada sobre los ciclos cerrados del registro histórico de señales (compra → siguiente señal, venta → siguiente señal).
+      </p>
+
+      <h3 style={{ marginTop: '20px' }}>Señales de compra</h3>
+      <ul style={{ listStyle: 'none', padding: 0 }}>
+        <li>
+          <strong>Total de compras registradas:</strong> {compras.muestra}
+        </li>
+        <li>
+          <strong>Aciertos</strong> (precio subió hasta la siguiente señal): {compras.aciertos}
+        </li>
+        <li>
+          <strong>Fallos</strong> (precio bajó hasta la siguiente señal): {compras.fallos}
+        </li>
+        <li style={{ marginTop: '6px' }}>
+          <strong style={{ color: colorCompra }}>Porcentaje de acierto:</strong>{' '}
+          {compras.muestra > 0 ? `${compras.porcentajeAcierto.toFixed(1)}%` : '—'}
+        </li>
+      </ul>
+
+      <h3 style={{ marginTop: '20px' }}>Señales de venta</h3>
+      <ul style={{ listStyle: 'none', padding: 0 }}>
+        <li>
+          <strong>Total de ventas registradas:</strong> {ventas.muestra}
+        </li>
+        <li>
+          <strong>Aciertos</strong> (precio bajó hasta la siguiente señal): {ventas.aciertos}
+        </li>
+        <li>
+          <strong>Fallos</strong> (precio subió hasta la siguiente señal): {ventas.fallos}
+        </li>
+        <li style={{ marginTop: '6px' }}>
+          <strong style={{ color: colorVenta }}>Porcentaje de acierto:</strong>{' '}
+          {ventas.muestra > 0 ? `${ventas.porcentajeAcierto.toFixed(1)}%` : '—'}
+        </li>
+      </ul>
+
+      {ultimaSenalTipo && porcentajeUltimaSenal !== null && (
+        <div
+          style={{
+            marginTop: '20px',
+            padding: '12px',
+            background: '#f5f5f5',
+            borderRadius: '6px',
+            border: '1px solid #e0e0e0'
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            <strong>Última señal registrada:</strong> {ultimaSenalTipo} — porcentaje de acierto histórico de este tipo de señal:{' '}
+            <strong>{porcentajeUltimaSenal.toFixed(1)}%</strong>
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
