@@ -11,7 +11,10 @@ function slugSector(s) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
-
+export const metadata = {
+  title: 'Sectores — V3',
+  description: 'Sectores con empresas analizadas en V3.'
+};
 export default async function Sectores() {
   const { data } = await supabase.from('empresas').select('sector').not('sector', 'is', null);
 
