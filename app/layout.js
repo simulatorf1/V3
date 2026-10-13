@@ -1,3 +1,4 @@
+import '../app/globals.css';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 
