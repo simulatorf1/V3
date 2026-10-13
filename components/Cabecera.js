@@ -140,19 +140,7 @@ export default function Cabecera() {
         </nav>
       )}
 
-      <style jsx global>{`
-        @media (min-width: 800px) {
-          .v3-menu-desktop {
-            display: flex !important;
-          }
-          .v3-menu-boton {
-            display: none !important;
-          }
-          .v3-menu-movil {
-            display: none !important;
-          }
-        }
-      `}</style>
+
     </header>
   );
 }
