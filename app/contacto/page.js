@@ -13,7 +13,7 @@ export default function Contacto() {
       </p>
 
       <p style={{ fontSize: '18px', fontWeight: 'bold' }}>
-        info@ibexia.es
+        info@xxx.es
       </p>
 
       <p style={{ color: '#666', fontSize: '13px', marginTop: '40px' }}>
