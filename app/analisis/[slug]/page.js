@@ -8,6 +8,7 @@ import ComparadorSector from '../../../components/ComparadorSector';
 import TablaSenales from '../../../components/TablaSenales';
 import BloqueSEO from '../../../components/BloqueSEO';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
+import RegistrarVisita from '../../../components/RegistrarVisita';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,8 @@ export default async function PaginaEmpresa({ params }) {
 
   return (
     <main style={{ padding: '40px', fontFamily: 'Arial, sans-serif', maxWidth: '900px', margin: '0 auto' }}>
+      <RegistrarVisita ticker={empresa.ticker} ruta={`/analisis/${slug}`} />
+
       <p style={{ color: '#666', fontSize: '13px' }}>
         Inicio &gt; {empresa.sector || 'Sector'} &gt; {empresa.nombre}
       </p>
