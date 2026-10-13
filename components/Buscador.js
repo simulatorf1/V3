@@ -33,8 +33,7 @@ export default function Buscador() {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    const tickerLimpio = empresa.ticker.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return `${tickerLimpio}-${nombreLimpio}`;
+    return `${empresa.ticker.toLowerCase()}__${nombreLimpio}`;
   }
 
   return (
