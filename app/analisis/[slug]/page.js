@@ -1,5 +1,6 @@
 import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar';
 import { notFound } from 'next/navigation';
+import Grafico from '../../../components/Grafico';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,8 @@ export default async function PaginaEmpresa({ params }) {
 
       {analisis && (
         <>
+          <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+
           <h2 style={{ marginTop: '30px' }}>Registro histórico de señales</h2>
           {analisis.senales.length === 0 ? (
             <p style={{ color: '#666' }}>Sin señales registradas en el último año.</p>
