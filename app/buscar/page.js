@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-
-export const dynamic = 'force-dynamic';
 
 function construirSlug(empresa) {
   const nombreLimpio = empresa.nombre
@@ -123,7 +121,9 @@ export default function PaginaBuscar() {
   return (
     <main style={{ padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
       <h1>Buscar empresa</h1>
-      <BuscadorClient />
+      <Suspense fallback={<p>Cargando buscador…</p>}>
+        <BuscadorClient />
+      </Suspense>
     </main>
   );
 }
