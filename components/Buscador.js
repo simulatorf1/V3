@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 
 export default function Buscador() {
@@ -16,17 +15,13 @@ export default function Buscador() {
     setCargando(true);
     setBuscado(true);
 
-    const { data, error } = await supabase
-      .from('empresas')
-      .select('ticker, nombre, sector, mercado')
-      .or(`ticker.ilike.%${query}%,nombre.ilike.%${query}%`)
-      .limit(10);
-
-    if (error) {
-      console.error(error);
+    try {
+      const res = await fetch(`/api/buscar?q=${encodeURIComponent(query)}`);
+      const json = await res.json();
+      setResultados(json.resultados || []);
+    } catch (err) {
+      console.error(err);
       setResultados([]);
-    } else {
-      setResultados(data || []);
     }
     setCargando(false);
   }
@@ -38,7 +33,8 @@ export default function Buscador() {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    return `${empresa.ticker.toLowerCase()}-${nombreLimpio}`;
+    const tickerLimpio = empresa.ticker.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return `${tickerLimpio}-${nombreLimpio}`;
   }
 
   return (
@@ -48,7 +44,7 @@ export default function Buscador() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Busca por nombre o ticker (ej. Microsoft, MSTF)"
+          placeholder="Busca por nombre o ticker (ej. Microsoft, Apple, Audax)"
           style={{
             flex: 1,
             padding: '10px',
@@ -97,8 +93,8 @@ export default function Buscador() {
                 }}
               >
                 <strong>{r.nombre}</strong> ({r.ticker})
-                {r.sector && <span style={{ color: '#666' }}> — {r.sector}</span>}
                 {r.mercado && <span style={{ color: '#666' }}> · {r.mercado}</span>}
+                {r.tipo && <span style={{ color: '#999', fontSize: '12px' }}> · {r.tipo}</span>}
               </Link>
             </li>
           ))}
