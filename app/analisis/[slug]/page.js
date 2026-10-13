@@ -1,4 +1,4 @@
-import { obtenerOCrearEmpresa, generarAnalisis } from '../../../lib/autogenerar';
+import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -13,11 +13,14 @@ export default async function PaginaEmpresa({ params }) {
     notFound();
   }
 
-  // 2. Generar el análisis (siempre se regenera)
+  // 2. Obtener el análisis (desde caché o regenerando)
   let analisis = null;
+  let desdeCache = false;
   let errorAnalisis = null;
   try {
-    analisis = await generarAnalisis(ticker);
+    const resultado = await obtenerAnalisis(ticker, empresa);
+    analisis = resultado.analisis;
+    desdeCache = resultado.desdeCache;
   } catch (e) {
     errorAnalisis = e.message;
   }
@@ -34,6 +37,7 @@ export default async function PaginaEmpresa({ params }) {
 
       <p style={{ color: '#666', fontSize: '13px' }}>
         Última actualización: {new Date().toLocaleString('es-ES')}
+        {desdeCache && ' · desde caché'}
       </p>
 
       <div
@@ -56,7 +60,7 @@ export default async function PaginaEmpresa({ params }) {
         <li><strong>Sector:</strong> {empresa.sector || 'N/A'}</li>
         <li><strong>Mercado:</strong> {empresa.mercado || 'N/A'}</li>
         {analisis && (
-          <li><strong>Precio actual:</strong> {analisis.precioActual.toFixed(2)}</li>
+          <li><strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}</li>
         )}
         {analisis && (
           <li><strong>Indicador propietario:</strong> {analisis.smiActual?.toFixed(2)} (zona {analisis.zona})</li>
