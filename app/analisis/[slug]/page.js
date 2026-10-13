@@ -4,6 +4,7 @@ import Grafico from '../../../components/Grafico';
 import ResumenVistazo from '../../../components/ResumenVistazo';
 import QueEstaPasando from '../../../components/QueEstaPasando';
 import ContextoReciente from '../../../components/ContextoReciente';
+import ComparadorSector from '../../../components/ComparadorSector';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,8 @@ export default async function PaginaEmpresa({ params }) {
           <QueEstaPasando analisis={analisis} />
 
           <ContextoReciente noticias={analisis.noticias} />
+
+          <ComparadorSector empresa={empresa} analisis={analisis} />
 
           <h2 style={{ marginTop: '30px' }}>Registro histórico de señales</h2>
           {analisis.senales.length === 0 ? (
