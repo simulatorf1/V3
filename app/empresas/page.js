@@ -12,7 +12,10 @@ function slugEmpresa(e) {
     .replace(/^-+|-+$/g, '');
   return `${e.ticker.toLowerCase()}__${nombreLimpio}`;
 }
-
+export const metadata = {
+  title: 'Empresas — V3',
+  description: 'Listado de empresas con análisis estadístico en V3.'
+};
 export default async function Empresas() {
   const { data } = await supabase
     .from('empresas')
