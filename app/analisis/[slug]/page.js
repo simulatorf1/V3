@@ -135,25 +135,7 @@ export default async function PaginaEmpresa({ params }) {
         <BarraLateral ticker={empresa.ticker} />
       </div>
 
-      <style jsx global>{`
-        .v3-grid-analisis {
-          display: block;
-        }
-        .v3-sidebar {
-          display: none;
-        }
-        @media (min-width: 1000px) {
-          .v3-grid-analisis {
-            display: grid;
-            grid-template-columns: 1fr 280px;
-            gap: 40px;
-            align-items: start;
-          }
-          .v3-sidebar {
-            display: block;
-          }
-        }
-      `}</style>
+
     </div>
   );
 }
