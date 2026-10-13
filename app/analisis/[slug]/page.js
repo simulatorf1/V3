@@ -5,6 +5,7 @@ import ResumenVistazo from '../../../components/ResumenVistazo';
 import QueEstaPasando from '../../../components/QueEstaPasando';
 import ContextoReciente from '../../../components/ContextoReciente';
 import ComparadorSector from '../../../components/ComparadorSector';
+import TablaSenales from '../../../components/TablaSenales';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,35 +95,7 @@ export default async function PaginaEmpresa({ params }) {
 
           <ComparadorSector empresa={empresa} analisis={analisis} />
 
-          <h2 style={{ marginTop: '30px' }}>Registro histórico de señales</h2>
-          {analisis.senales.length === 0 ? (
-            <p style={{ color: '#666' }}>Sin señales registradas en el último año.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-              <thead>
-                <tr style={{ background: '#f5f5f5' }}>
-                  <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
-                  <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Tipo</th>
-                  <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Precio referencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analisis.senales.slice(-20).map((s, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{s.fecha}</td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{s.tipo}</td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{s.precio.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
-            Las señales son registros automáticos que genera el algoritmo según sus reglas predefinidas.
-            No representan operaciones reales realizadas por esta web ni constituyen una sugerencia de compra o venta.
-            El rendimiento pasado no garantiza resultados futuros.
-          </p>
+          <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
 
           <h2 style={{ marginTop: '30px' }}>Estadística histórica (10 días siguientes)</h2>
           <p style={{ color: '#666', fontSize: '13px' }}>
