@@ -119,7 +119,7 @@ export default async function PaginaEmpresa({ params }) {
 
 function EstadisticaHistorica({ analisis }) {
   const stats = analisis.estadisticas;
-  if (!stats) return null;
+  if (!stats || !stats.compras || !stats.ventas) return null;
 
   const { compras, ventas, ultimaSenalTipo, porcentajeUltimaSenal } = stats;
 
@@ -137,38 +137,42 @@ function EstadisticaHistorica({ analisis }) {
       <h3 style={{ marginTop: '20px' }}>Señales de compra</h3>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         <li>
-          <strong>Total de compras registradas:</strong> {compras.muestra}
+          <strong>Total de compras registradas:</strong> {compras.muestra ?? 0}
         </li>
         <li>
-          <strong>Aciertos</strong> (precio subió hasta la siguiente señal): {compras.aciertos}
+          <strong>Aciertos</strong> (precio subió hasta la siguiente señal): {compras.aciertos ?? 0}
         </li>
         <li>
-          <strong>Fallos</strong> (precio bajó hasta la siguiente señal): {compras.fallos}
+          <strong>Fallos</strong> (precio bajó hasta la siguiente señal): {compras.fallos ?? 0}
         </li>
         <li style={{ marginTop: '6px' }}>
           <strong style={{ color: colorCompra }}>Porcentaje de acierto:</strong>{' '}
-          {compras.muestra > 0 ? `${compras.porcentajeAcierto.toFixed(1)}%` : '—'}
+          {compras.muestra > 0 && typeof compras.porcentajeAcierto === 'number'
+            ? `${compras.porcentajeAcierto.toFixed(1)}%`
+            : '—'}
         </li>
       </ul>
 
       <h3 style={{ marginTop: '20px' }}>Señales de venta</h3>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         <li>
-          <strong>Total de ventas registradas:</strong> {ventas.muestra}
+          <strong>Total de ventas registradas:</strong> {ventas.muestra ?? 0}
         </li>
         <li>
-          <strong>Aciertos</strong> (precio bajó hasta la siguiente señal): {ventas.aciertos}
+          <strong>Aciertos</strong> (precio bajó hasta la siguiente señal): {ventas.aciertos ?? 0}
         </li>
         <li>
-          <strong>Fallos</strong> (precio subió hasta la siguiente señal): {ventas.fallos}
+          <strong>Fallos</strong> (precio subió hasta la siguiente señal): {ventas.fallos ?? 0}
         </li>
         <li style={{ marginTop: '6px' }}>
           <strong style={{ color: colorVenta }}>Porcentaje de acierto:</strong>{' '}
-          {ventas.muestra > 0 ? `${ventas.porcentajeAcierto.toFixed(1)}%` : '—'}
+          {ventas.muestra > 0 && typeof ventas.porcentajeAcierto === 'number'
+            ? `${ventas.porcentajeAcierto.toFixed(1)}%`
+            : '—'}
         </li>
       </ul>
 
-      {ultimaSenalTipo && porcentajeUltimaSenal !== null && (
+      {ultimaSenalTipo && typeof porcentajeUltimaSenal === 'number' && (
         <div
           style={{
             marginTop: '20px',
