@@ -1,7 +1,10 @@
 import { supabase } from '../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
-
+export const metadata = {
+  title: 'Noticias — V3',
+  description: 'Últimos titulares recopilados por el sistema.'
+};
 export default async function Noticias() {
   const { data } = await supabase
     .from('noticias')
