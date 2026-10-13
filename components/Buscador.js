@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import Link from 'next/link';
 
 export default function Buscador() {
   const [query, setQuery] = useState('');
@@ -28,6 +29,16 @@ export default function Buscador() {
       setResultados(data || []);
     }
     setCargando(false);
+  }
+
+  function construirSlug(empresa) {
+    const nombreLimpio = empresa.nombre
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return `${empresa.ticker.toLowerCase()}-${nombreLimpio}`;
   }
 
   return (
@@ -73,18 +84,22 @@ export default function Buscador() {
       {resultados.length > 0 && (
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '16px' }}>
           {resultados.map((r) => (
-            <li
-              key={r.ticker}
-              style={{
-                padding: '12px',
-                border: '1px solid #eee',
-                borderRadius: '6px',
-                marginBottom: '8px'
-              }}
-            >
-              <strong>{r.nombre}</strong> ({r.ticker})
-              {r.sector && <span style={{ color: '#666' }}> — {r.sector}</span>}
-              {r.mercado && <span style={{ color: '#666' }}> · {r.mercado}</span>}
+            <li key={r.ticker} style={{ marginBottom: '8px' }}>
+              <Link
+                href={`/analisis/${construirSlug(r)}`}
+                style={{
+                  display: 'block',
+                  padding: '12px',
+                  border: '1px solid #eee',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  color: '#111'
+                }}
+              >
+                <strong>{r.nombre}</strong> ({r.ticker})
+                {r.sector && <span style={{ color: '#666' }}> — {r.sector}</span>}
+                {r.mercado && <span style={{ color: '#666' }}> · {r.mercado}</span>}
+              </Link>
             </li>
           ))}
         </ul>
