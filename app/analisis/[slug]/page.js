@@ -6,6 +6,7 @@ import QueEstaPasando from '../../../components/QueEstaPasando';
 import ContextoReciente from '../../../components/ContextoReciente';
 import ComparadorSector from '../../../components/ComparadorSector';
 import TablaSenales from '../../../components/TablaSenales';
+import BloqueSEO from '../../../components/BloqueSEO';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,8 @@ export default async function PaginaEmpresa({ params }) {
           <ComparadorSector empresa={empresa} analisis={analisis} />
 
           <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
+
+          <BloqueSEO empresa={empresa} analisis={analisis} />
 
           <h2 style={{ marginTop: '30px' }}>Estadística histórica (10 días siguientes)</h2>
           <p style={{ color: '#666', fontSize: '13px' }}>
