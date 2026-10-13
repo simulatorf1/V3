@@ -2,6 +2,7 @@ import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar'
 import { notFound } from 'next/navigation';
 import Grafico from '../../../components/Grafico';
 import ResumenVistazo from '../../../components/ResumenVistazo';
+import QueEstaPasando from '../../../components/QueEstaPasando';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,8 @@ export default async function PaginaEmpresa({ params }) {
           <ResumenVistazo analisis={analisis} empresa={empresa} />
 
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+
+          <QueEstaPasando analisis={analisis} />
 
           <h2 style={{ marginTop: '30px' }}>Registro histórico de señales</h2>
           {analisis.senales.length === 0 ? (
