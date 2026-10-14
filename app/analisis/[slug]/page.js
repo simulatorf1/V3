@@ -132,16 +132,7 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        <div
-          style={{
-            background: '#fff8e1',
-            border: '1px solid #ffe082',
-            padding: '12px',
-            borderRadius: '6px',
-            marginTop: '20px',
-            fontSize: '14px'
-          }}
-        >
+        <div className="v3-aviso">
           Este contenido es un análisis estadístico generado automáticamente por un algoritmo.
           No es una recomendación de inversión.
         </div>
@@ -183,7 +174,7 @@ export default async function PaginaEmpresa({ params }) {
           </>
         )}
 
-        <p style={{ color: '#666', fontSize: '13px', marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
+        <p className="v3-aviso-mute" style={{ marginTop: '40px' }}>
           Este análisis se elabora de forma independiente a las circunstancias personales de cada lector.
           No constituye asesoramiento financiero personalizado.
         </p>
