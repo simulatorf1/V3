@@ -19,7 +19,8 @@ export default function TablaSenales({ senales, precioActual }) {
     return { ...s, precioCierre, variacion, acierto, cierreEsActual: !siguiente };
   });
 
-  const mostrar = filas.slice(-20).reverse();
+  // Mostramos hasta 100, de más reciente a más antigua
+  const mostrar = filas.slice(-100).reverse();
 
   return (
     <section className="v3-seccion">
@@ -30,9 +31,24 @@ export default function TablaSenales({ senales, precioActual }) {
           Sin señales registradas en el último año.
         </p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="v3-table">
-            <thead>
+        <div
+          style={{
+            border: '1px solid var(--v3-border)',
+            borderRadius: 'var(--v3-radius-sm)',
+            maxHeight: '420px',
+            overflowY: 'auto',
+            overflowX: 'auto'
+          }}
+        >
+          <table className="v3-table" style={{ margin: 0 }}>
+            <thead
+              style={{
+                position: 'sticky',
+                top: 0,
+                background: 'var(--v3-bg-soft)',
+                zIndex: 1
+              }}
+            >
               <tr>
                 <th>Fecha</th>
                 <th>Tipo</th>
