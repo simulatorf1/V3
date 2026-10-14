@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const BASE_URL = 'https://v3-rho-weld.vercel.app';
+const BASE_URL = 'https://equaty.es';
 
 function slugEmpresa(e) {
   const nombreLimpio = (e.nombre || e.ticker)
