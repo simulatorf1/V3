@@ -5,12 +5,12 @@ export const metadata = {
 
 export default function Privacidad() {
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '800px', margin: '0 auto' }}>
+    <main className="v3-container" style={{ maxWidth: '820px' }}>
       <h1>Política de Privacidad</h1>
 
       <p>
-        V3 no requiere registro ni creación de cuentas. No se recopilan datos personales para el uso
-        general del sitio.
+        V3 no requiere registro ni creación de cuentas. No se recopilan datos personales para el
+        uso general del sitio.
       </p>
 
       <h2>Datos que tratamos</h2>
