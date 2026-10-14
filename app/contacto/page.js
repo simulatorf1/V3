@@ -5,18 +5,16 @@ export const metadata = {
 
 export default function Contacto() {
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '800px', margin: '0 auto' }}>
+    <main className="v3-container" style={{ maxWidth: '820px' }}>
       <h1>Contacto</h1>
 
       <p>
         Para cualquier consulta, sugerencia o solicitud relacionada con el sitio, puede escribir a:
       </p>
 
-      <p style={{ fontSize: '18px', fontWeight: 'bold' }}>
-        info@xxx.es
-      </p>
+      <p style={{ fontSize: '18px', fontWeight: 700 }}>info@ibexia.es</p>
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '40px' }}>
+      <p className="v3-aviso-mute" style={{ marginTop: '40px' }}>
         No atendemos consultas sobre empresas concretas ni ofrecemos asesoramiento financiero.
       </p>
     </main>
