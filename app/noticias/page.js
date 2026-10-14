@@ -1,10 +1,12 @@
 import { supabase } from '../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Noticias — V3',
   description: 'Últimos titulares recopilados por el sistema.'
 };
+
 export default async function Noticias() {
   const { data } = await supabase
     .from('noticias')
@@ -15,15 +17,17 @@ export default async function Noticias() {
   const noticias = data || [];
 
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
+    <main className="v3-container">
       <h1>Noticias</h1>
-      <p style={{ color: '#666' }}>
+      <p style={{ color: 'var(--v3-text-soft)' }}>
         Últimos titulares recopilados por el sistema.
       </p>
 
       {noticias.length === 0 ? (
-        <p>No hay noticias recopiladas todavía. Consulta alguna empresa para que el sistema
-        empiece a agregar titulares.</p>
+        <p>
+          No hay noticias recopiladas todavía. Consulta alguna empresa para que el sistema empiece a
+          agregar titulares.
+        </p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
           {noticias.map((n, i) => {
@@ -35,17 +39,24 @@ export default async function Noticias() {
                 })
               : '';
             return (
-              <li key={i} style={{ borderBottom: '1px solid #eee', padding: '12px 0' }}>
+              <li
+                key={i}
+                style={{ borderBottom: '1px solid var(--v3-border)', padding: '12px 0' }}
+              >
                 <a
                   href={n.url}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
-                  style={{ color: '#0070f3', textDecoration: 'none', fontWeight: 600 }}
+                  style={{ color: 'var(--v3-text)', fontWeight: 600 }}
                 >
                   {n.titulo}
                 </a>
-                <div style={{ color: '#666', fontSize: '13px', marginTop: '4px' }}>
-                  {n.ticker && <span style={{ textTransform: 'uppercase', fontWeight: 600 }}>{n.ticker}</span>}
+                <div style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '4px' }}>
+                  {n.ticker && (
+                    <span style={{ textTransform: 'uppercase', fontWeight: 600 }}>
+                      {n.ticker}
+                    </span>
+                  )}
                   {n.fuente && <span> · {n.fuente}</span>}
                   {fecha && <span> · {fecha}</span>}
                 </div>
@@ -55,10 +66,10 @@ export default async function Noticias() {
         </ul>
       )}
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
-        Los titulares mostrados proceden de fuentes externas y se enlazan a su origen.
-        Esta web no elabora ni interpreta su contenido. Su inclusión no implica valoración
-        alguna sobre la empresa.
+      <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
+        Los titulares mostrados proceden de fuentes externas y se enlazan a su origen. Esta web no
+        elabora ni interpreta su contenido. Su inclusión no implica valoración alguna sobre la
+        empresa.
       </p>
     </main>
   );
