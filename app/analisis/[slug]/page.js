@@ -1,5 +1,6 @@
 import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
 import ResumenVistazo from '../../../components/ResumenVistazo';
 import QueEstaPasando from '../../../components/QueEstaPasando';
@@ -15,6 +16,26 @@ export const dynamic = 'force-dynamic';
 
 const BASE_URL = 'https://v3-rho-weld.vercel.app';
 
+function slugSector(s) {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function fechaMadrid(fecha = new Date()) {
+  return new Date(fecha).toLocaleString('es-ES', {
+    timeZone: 'Europe/Madrid',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 export async function generateMetadata({ params }) {
   const slug = params.slug;
   let ticker;
@@ -26,7 +47,8 @@ export async function generateMetadata({ params }) {
     return { title: 'Empresa no encontrada — V3' };
   }
 
-  const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${new Date().toLocaleDateString('es-ES')}`;
+  const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+  const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
   const descripcion = `Análisis estadístico automatizado de ${empresa.nombre} (${empresa.ticker}): indicador propietario, zonas, señales históricas y estadística. No es recomendación de inversión.`;
   const canonical = `${BASE_URL}/analisis/${slug}`;
 
@@ -78,7 +100,6 @@ export default async function PaginaEmpresa({ params }) {
 
   const canonical = `${BASE_URL}/analisis/${slug}`;
 
-  // Schema.org JSON-LD
   const schema = analisis
     ? {
         '@context': 'https://schema.org',
@@ -99,15 +120,7 @@ export default async function PaginaEmpresa({ params }) {
     : null;
 
   return (
-    <div
-      className="v3-grid-analisis"
-      style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '40px 24px',
-        fontFamily: 'Arial, sans-serif'
-      }}
-    >
+    <div className="v3-grid-analisis">
       <main>
         <link rel="canonical" href={canonical} />
         {schema && (
@@ -119,16 +132,38 @@ export default async function PaginaEmpresa({ params }) {
 
         <RegistrarVisita ticker={empresa.ticker} ruta={`/analisis/${slug}`} />
 
-        <p style={{ color: '#666', fontSize: '13px' }}>
-          Inicio &gt; {empresa.sector || 'Sector'} &gt; {empresa.nombre}
-        </p>
+        <nav
+          aria-label="Migas de pan"
+          style={{
+            color: 'var(--v3-text-soft)',
+            fontSize: '13px',
+            marginBottom: '16px'
+          }}
+        >
+          <Link href="/" style={{ color: 'var(--v3-text-soft)' }}>
+            Inicio
+          </Link>
+          {' > '}
+          <Link
+            href={
+              empresa.sector
+                ? `/sectores/${slugSector(empresa.sector)}`
+                : '/sectores'
+            }
+            style={{ color: 'var(--v3-text-soft)' }}
+          >
+            {empresa.sector || 'Sector'}
+          </Link>
+          {' > '}
+          <span style={{ color: 'var(--v3-text)' }}>{empresa.nombre}</span>
+        </nav>
 
         <h1>
           Análisis técnico y estadístico de {empresa.nombre} ({empresa.ticker})
         </h1>
 
-        <p style={{ color: '#666', fontSize: '13px' }}>
-          Última actualización: {new Date().toLocaleString('es-ES')}
+        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+          Última actualización: {fechaMadrid()}
           {desdeCache && ' · desde caché'}
         </p>
 
@@ -142,17 +177,26 @@ export default async function PaginaEmpresa({ params }) {
           <li><strong>Ticker:</strong> {empresa.ticker}</li>
           <li><strong>Sector:</strong> {empresa.sector || 'N/A'}</li>
           <li><strong>Mercado:</strong> {empresa.mercado || 'N/A'}</li>
-          {analisis && <li><strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}</li>}
+          {analisis && (
+            <li><strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}</li>
+          )}
           {analisis && (
             <li>
-              <strong>Indicador propietario:</strong> {analisis.smiActual?.toFixed(2)} (zona {analisis.zona})
+              <strong>Indicador propietario:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
+              {analisis.zona})
             </li>
           )}
         </ul>
 
+        <p className="v3-aviso-mute">
+          Este análisis se elabora de forma independiente a las circunstancias personales de cada
+          lector. No constituye asesoramiento financiero personalizado.
+        </p>
+
         {errorAnalisis && (
-          <p style={{ color: '#c62828', marginTop: '20px' }}>
-            No se han encontrado datos suficientes para esta empresa. Prueba con otro nombre o ticker.
+          <p style={{ color: 'var(--v3-negative)', marginTop: '20px' }}>
+            No se han encontrado datos suficientes para esta empresa. Prueba con otro nombre o
+            ticker.
           </p>
         )}
 
@@ -167,17 +211,12 @@ export default async function PaginaEmpresa({ params }) {
             <BloqueSEO empresa={empresa} analisis={analisis} />
             <ConsensoComunidad ticker={empresa.ticker} />
             <EstadisticaHistorica analisis={analisis} />
-            <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
-              Esta estadística se basa exclusivamente en datos históricos y no garantiza ningún resultado futuro.
-              El usuario debe tomar sus propias decisiones de inversión.
+            <p className="v3-aviso-mute">
+              Esta estadística se basa exclusivamente en datos históricos y no garantiza ningún
+              resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
             </p>
           </>
         )}
-
-        <p className="v3-aviso-mute" style={{ marginTop: '40px' }}>
-          Este análisis se elabora de forma independiente a las circunstancias personales de cada lector.
-          No constituye asesoramiento financiero personalizado.
-        </p>
       </main>
 
       <div className="v3-sidebar">
@@ -188,18 +227,60 @@ export default async function PaginaEmpresa({ params }) {
 }
 
 function EstadisticaHistorica({ analisis }) {
-  const stats = analisis.estadisticas;
-  if (!stats || !stats.compras || !stats.ventas) return null;
+  const senales = analisis.senales || [];
 
-  const { compras, ventas, ultimaSenalTipo, porcentajeUltimaSenal } = stats;
+  // Agrupamos por ciclos: cada señal se cierra con la siguiente
+  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const ciclos = [];
+  for (let i = 0; i < lista.length; i++) {
+    const s = lista[i];
+    const siguiente = lista[i + 1];
+    const precioCierre = siguiente ? siguiente.precio : analisis.precioActual;
+    const variacion = precioCierre
+      ? ((precioCierre - s.precio) / s.precio) * 100
+      : 0;
+    ciclos.push({ tipo: s.tipo, variacion });
+  }
+
+  const compras = ciclos.filter((c) => c.tipo === 'compra');
+  const ventas = ciclos.filter((c) => c.tipo === 'venta');
+
+  function analizar(listaCiclos) {
+    let aciertos = 0;
+    let total = 0;
+    for (const c of listaCiclos) {
+      if (c.variacion === 0) continue;
+      total++;
+      if (c.tipo === 'compra' && c.variacion > 0) aciertos++;
+      if (c.tipo === 'venta' && c.variacion < 0) aciertos++;
+    }
+    const porcentaje = total > 0 ? (aciertos / total) * 100 : 0;
+    return {
+      muestra: listaCiclos.length,
+      aciertos,
+      fallos: total - aciertos,
+      porcentajeAcierto: porcentaje
+    };
+  }
+
+  const statsCompras = analizar(compras);
+  const statsVentas = analizar(ventas);
+  const ultima = lista.length > 0 ? lista[lista.length - 1] : null;
+  const ultimaSenalTipo = ultima ? ultima.tipo : null;
+  const porcentajeUltimaSenal =
+    ultimaSenalTipo === 'compra'
+      ? statsCompras.porcentajeAcierto
+      : ultimaSenalTipo === 'venta'
+      ? statsVentas.porcentajeAcierto
+      : null;
 
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Estadística histórica</h2>
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-        Calculada sobre los ciclos cerrados del registro histórico de señales (compra → siguiente
-        señal, venta → siguiente señal).
+        Calculada sobre los ciclos cerrados del registro histórico de señales visible en la tabla
+        (compra → siguiente señal, venta → siguiente señal).
       </p>
 
       <div
@@ -213,19 +294,13 @@ function EstadisticaHistorica({ analisis }) {
         <div className="v3-card">
           <h3 style={{ marginTop: 0 }}>Señales de compra</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-            <li>
-              <strong>Total:</strong> {compras.muestra ?? 0}
-            </li>
-            <li>
-              <strong>Aciertos:</strong> {compras.aciertos ?? 0}
-            </li>
-            <li>
-              <strong>Fallos:</strong> {compras.fallos ?? 0}
-            </li>
+            <li><strong>Total:</strong> {statsCompras.muestra}</li>
+            <li><strong>Aciertos:</strong> {statsCompras.aciertos}</li>
+            <li><strong>Fallos:</strong> {statsCompras.fallos}</li>
             <li>
               <strong>% acierto:</strong>{' '}
-              {compras.muestra > 0 && typeof compras.porcentajeAcierto === 'number' ? (
-                <span className="v3-pos">{compras.porcentajeAcierto.toFixed(1)}%</span>
+              {statsCompras.muestra > 0 ? (
+                <span className="v3-pos">{statsCompras.porcentajeAcierto.toFixed(1)}%</span>
               ) : (
                 '—'
               )}
@@ -236,19 +311,13 @@ function EstadisticaHistorica({ analisis }) {
         <div className="v3-card">
           <h3 style={{ marginTop: 0 }}>Señales de venta</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-            <li>
-              <strong>Total:</strong> {ventas.muestra ?? 0}
-            </li>
-            <li>
-              <strong>Aciertos:</strong> {ventas.aciertos ?? 0}
-            </li>
-            <li>
-              <strong>Fallos:</strong> {ventas.fallos ?? 0}
-            </li>
+            <li><strong>Total:</strong> {statsVentas.muestra}</li>
+            <li><strong>Aciertos:</strong> {statsVentas.aciertos}</li>
+            <li><strong>Fallos:</strong> {statsVentas.fallos}</li>
             <li>
               <strong>% acierto:</strong>{' '}
-              {ventas.muestra > 0 && typeof ventas.porcentajeAcierto === 'number' ? (
-                <span className="v3-pos">{ventas.porcentajeAcierto.toFixed(1)}%</span>
+              {statsVentas.muestra > 0 ? (
+                <span className="v3-pos">{statsVentas.porcentajeAcierto.toFixed(1)}%</span>
               ) : (
                 '—'
               )}
@@ -260,7 +329,13 @@ function EstadisticaHistorica({ analisis }) {
       {ultimaSenalTipo && typeof porcentajeUltimaSenal === 'number' && (
         <div
           className="v3-card-soft"
-          style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}
+          style={{
+            marginTop: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap'
+          }}
         >
           <span style={{ color: 'var(--v3-text-soft)' }}>
             <strong>Última señal registrada:</strong>
