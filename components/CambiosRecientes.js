@@ -11,61 +11,40 @@ function construirSlug(cambio) {
 }
 
 function colorZona(zona) {
-  if (zona === 'alta') return '#c62828';
-  if (zona === 'baja') return '#2e7d32';
-  return '#616161';
+  if (zona === 'alta') return 'var(--v3-negative)';
+  if (zona === 'baja') return 'var(--v3-positive)';
+  return 'var(--v3-text-soft)';
 }
 
 export default function CambiosRecientes({ cambios }) {
-  if (!cambios || cambios.length === 0) {
-    return (
-      <div style={{ marginTop: '40px' }}>
-        <h2>Cambios recientes detectados</h2>
-        <p style={{ color: '#666' }}>
-          Aún no hay cambios registrados en las últimas 48 horas.
-        </p>
-      </div>
-    );
-  }
-
-  // Mostramos hasta 10
-  const lista = cambios.slice(0, 10);
-
   return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>Cambios recientes detectados</h2>
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '-8px' }}>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Cambios recientes detectados</h2>
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
         Análisis actualizados en las últimas 48 horas.
       </p>
-      <ul style={{ listStyle: 'none', padding: 0, marginTop: '12px', display: 'grid', gap: '8px' }}>
-        {lista.map((c) => (
-          <li key={c.ticker}>
-            <Link
-              href={`/analisis/${construirSlug(c)}`}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 16px',
-                border: '1px solid #eee',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                color: '#111',
-                gap: '12px',
-                flexWrap: 'wrap'
-              }}
-            >
-              <span>
-                <strong>{c.nombre}</strong>{' '}
-                <span style={{ color: '#666' }}>({c.ticker})</span>
-              </span>
-              <span style={{ color: colorZona(c.zona), fontWeight: 'bold', fontSize: '13px' }}>
-                zona {c.zona}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+
+      {!cambios || cambios.length === 0 ? (
+        <p style={{ color: 'var(--v3-text-soft)' }}>
+          Aún no hay cambios registrados en las últimas 48 horas.
+        </p>
+      ) : (
+        <ul className="v3-lista">
+          {cambios.slice(0, 10).map((c) => (
+            <li key={c.ticker}>
+              <Link href={`/analisis/${construirSlug(c)}`}>
+                <span>
+                  <strong>{c.nombre}</strong>{' '}
+                  <span style={{ color: 'var(--v3-text-soft)' }}>({c.ticker})</span>
+                </span>
+                <span style={{ color: colorZona(c.zona), fontWeight: 700, fontSize: '13px' }}>
+                  zona {c.zona}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
