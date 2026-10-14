@@ -18,7 +18,7 @@ export default function Cabecera() {
     <header className="v3-header">
       <div className="v3-header-inner">
         <Link href="/" className="v3-logo">
-          V3
+          Equaty
         </Link>
 
         <form action="/buscar" method="GET" className="v3-header-buscar">
