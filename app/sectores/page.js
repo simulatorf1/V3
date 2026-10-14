@@ -3,6 +3,11 @@ import { supabase } from '../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Sectores — V3',
+  description: 'Sectores con empresas analizadas en V3.'
+};
+
 function slugSector(s) {
   return s
     .toLowerCase()
@@ -11,12 +16,12 @@ function slugSector(s) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
-export const metadata = {
-  title: 'Sectores — V3',
-  description: 'Sectores con empresas analizadas en V3.'
-};
+
 export default async function Sectores() {
-  const { data } = await supabase.from('empresas').select('sector').not('sector', 'is', null);
+  const { data } = await supabase
+    .from('empresas')
+    .select('sector')
+    .not('sector', 'is', null);
 
   const conteo = {};
   for (const e of data || []) {
@@ -28,31 +33,34 @@ export default async function Sectores() {
     .map(([sector, n]) => ({ sector, n }));
 
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
+    <main className="v3-container">
       <h1>Sectores</h1>
+
       {sectores.length === 0 ? (
         <p>No hay sectores disponibles todavía.</p>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: '10px',
+            marginTop: '20px'
+          }}
+        >
           {sectores.map((s) => (
-            <li key={s.sector} style={{ marginBottom: '8px' }}>
-              <Link
-                href={`/sectores/${slugSector(s.sector)}`}
-                style={{
-                  display: 'block',
-                  padding: '12px 16px',
-                  border: '1px solid #eee',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  color: '#111'
-                }}
-              >
-                <strong>{s.sector}</strong>{' '}
-                <span style={{ color: '#666' }}>({s.n} empresas)</span>
-              </Link>
-            </li>
+            <Link
+              key={s.sector}
+              href={`/sectores/${slugSector(s.sector)}`}
+              className="v3-card"
+              style={{ color: 'var(--v3-text)' }}
+            >
+              <div style={{ fontWeight: 700 }}>{s.sector}</div>
+              <div style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '4px' }}>
+                {s.n} {s.n === 1 ? 'empresa' : 'empresas'}
+              </div>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );
