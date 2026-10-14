@@ -10,46 +10,41 @@ function slugSector(sector) {
 }
 
 export default function SectoresPrincipales({ sectores }) {
-  if (!sectores || sectores.length === 0) {
-    return (
-      <div style={{ marginTop: '40px' }}>
-        <h2>Sectores</h2>
-        <p style={{ color: '#666' }}>Aún no hay sectores disponibles.</p>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>Sectores</h2>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '10px',
-          marginTop: '12px'
-        }}
-      >
-        {sectores.map((s) => (
-          <Link
-            key={s.sector}
-            href={`/sectores/${slugSector(s.sector)}`}
-            style={{
-              display: 'block',
-              padding: '12px 16px',
-              border: '1px solid #eee',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              color: '#111'
-            }}
-          >
-            <div style={{ fontWeight: 'bold' }}>{s.sector}</div>
-            <div style={{ color: '#666', fontSize: '13px' }}>
-              {s.empresas} {s.empresas === 1 ? 'empresa' : 'empresas'}
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Sectores</h2>
+
+      {!sectores || sectores.length === 0 ? (
+        <p style={{ color: 'var(--v3-text-soft)' }}>Aún no hay sectores disponibles.</p>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '10px'
+          }}
+        >
+          {sectores.map((s) => (
+            <Link
+              key={s.sector}
+              href={`/sectores/${slugSector(s.sector)}`}
+              style={{
+                display: 'block',
+                padding: '14px 16px',
+                border: '1px solid var(--v3-border)',
+                borderRadius: 'var(--v3-radius-sm)',
+                color: 'var(--v3-text)',
+                textDecoration: 'none'
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{s.sector}</div>
+              <div style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+                {s.empresas} {s.empresas === 1 ? 'empresa' : 'empresas'}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
