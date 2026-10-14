@@ -10,96 +10,90 @@ export default function TablaSenales({ senales, precioActual }) {
       ? ((precioCierre - s.precio) / s.precio) * 100
       : null;
 
-    // Evaluación del acierto según el tipo de señal
-    let acierto = null; // true, false, o null
+    let acierto = null;
     if (variacion !== null && variacion !== 0) {
       if (s.tipo === 'compra') acierto = variacion > 0;
       else if (s.tipo === 'venta') acierto = variacion < 0;
     }
 
-    return {
-      ...s,
-      precioCierre,
-      variacion,
-      acierto,
-      cierreEsActual: !siguiente
-    };
+    return { ...s, precioCierre, variacion, acierto, cierreEsActual: !siguiente };
   });
 
   const mostrar = filas.slice(-20).reverse();
 
   return (
-    <div style={{ marginTop: '30px' }}>
-      <h2>Registro histórico de señales</h2>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Registro histórico de señales</h2>
 
       {mostrar.length === 0 ? (
-        <p style={{ color: '#666' }}>Sin señales registradas en el último año.</p>
+        <p style={{ color: 'var(--v3-text-soft)' }}>
+          Sin señales registradas en el último año.
+        </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', fontSize: '14px' }}>
-          <thead>
-            <tr style={{ background: '#f5f5f5' }}>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Tipo</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Precio señal</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>SMI en la señal</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Precio cierre</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Variación del ciclo</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Resultado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mostrar.map((s, i) => {
-              const colorVariacion = s.variacion === null
-                ? '#666'
-                : s.variacion >= 0 ? '#2e7d32' : '#c62828';
-
-              let celdaResultado;
-              if (s.acierto === true) {
-                celdaResultado = <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>✓ Acierto</span>;
-              } else if (s.acierto === false) {
-                celdaResultado = <span style={{ color: '#c62828', fontWeight: 'bold' }}>✗ Fallo</span>;
-              } else {
-                celdaResultado = <span style={{ color: '#999' }}>—</span>;
-              }
-
-              return (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="v3-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Precio señal</th>
+                <th>SMI en la señal</th>
+                <th>Precio cierre</th>
+                <th>Variación del ciclo</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mostrar.map((s, i) => (
                 <tr key={i}>
-                  <td style={{ padding: '8px', border: '1px solid #ddd' }}>{s.fecha}</td>
-                  <td style={{ padding: '8px', border: '1px solid #ddd' }}>{s.tipo}</td>
-                  <td style={{ padding: '8px', border: '1px solid #ddd' }}>{s.precio.toFixed(2)}</td>
-                  <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                    {s.smiEnSenal !== undefined ? s.smiEnSenal.toFixed(2) : '—'}
-                  </td>
-                  <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                  <td>{s.fecha}</td>
+                  <td>{s.tipo}</td>
+                  <td>{s.precio.toFixed(2)}</td>
+                  <td>{s.smiEnSenal !== undefined ? s.smiEnSenal.toFixed(2) : '—'}</td>
+                  <td>
                     {s.precioCierre ? s.precioCierre.toFixed(2) : '—'}
                     {s.cierreEsActual && (
-                      <span style={{ color: '#999', fontSize: '11px' }}> (abierta)</span>
+                      <span
+                        style={{
+                          color: 'var(--v3-text-mute)',
+                          fontSize: '11px',
+                          marginLeft: '4px'
+                        }}
+                      >
+                        (abierta)
+                      </span>
                     )}
                   </td>
-                  <td style={{ padding: '8px', border: '1px solid #ddd', color: colorVariacion }}>
+                  <td className={s.variacion >= 0 ? 'v3-pos' : 'v3-neg'}>
                     {s.variacion !== null
                       ? `${s.variacion >= 0 ? '+' : ''}${s.variacion.toFixed(2)}%`
                       : '—'}
                   </td>
-                  <td style={{ padding: '8px', border: '1px solid #ddd' }}>{celdaResultado}</td>
+                  <td>
+                    {s.acierto === true && <span className="v3-pos">✓ Acierto</span>}
+                    {s.acierto === false && <span className="v3-neg">✗ Fallo</span>}
+                    {s.acierto === null && (
+                      <span style={{ color: 'var(--v3-text-mute)' }}>—</span>
+                    )}
+                  </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '12px' }}>
-        <strong>Criterio de acierto:</strong> una señal de compra se considera acertada si el precio sube hasta la
-        siguiente señal o hasta el día actual. Una señal de venta se considera acertada si el precio baja en el
-        mismo intervalo.
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '12px' }}>
+        <strong>Criterio de acierto:</strong> una señal de compra se considera acertada si el
+        precio sube hasta la siguiente señal o hasta el día actual. Una señal de venta se considera
+        acertada si el precio baja en el mismo intervalo.
       </p>
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
         Las señales son registros automáticos que genera el algoritmo según sus reglas predefinidas.
-        No representan operaciones reales realizadas por esta web ni constituyen una sugerencia de compra o venta.
-        El rendimiento pasado no garantiza resultados futuros.
+        No representan operaciones reales realizadas por esta web ni constituyen una sugerencia de
+        compra o venta. El rendimiento pasado no garantiza resultados futuros.
       </p>
-    </div>
+    </section>
   );
 }
