@@ -14,7 +14,7 @@ import BarraLateral from '../../../components/BarraLateral';
 
 export const dynamic = 'force-dynamic';
 
-const BASE_URL = 'https://v3-rho-weld.vercel.app';
+const BASE_URL = 'https://equaty.es';
 const MAX_SENALES_TABLA = 100;
 
 function slugSector(s) {
@@ -66,7 +66,7 @@ export async function generateMetadata({ params }) {
 
   const empresa = await obtenerOCrearEmpresa(ticker);
   if (!empresa) {
-    return { title: 'Empresa no encontrada — V3' };
+    return { title: 'Empresa no encontrada — Equaty' };
   }
 
   const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
@@ -82,7 +82,7 @@ export async function generateMetadata({ params }) {
       title: titulo,
       description: descripcion,
       url: canonical,
-      siteName: 'V3',
+      siteName: 'Equaty',
       type: 'article',
       locale: 'es_ES'
     },
@@ -131,8 +131,8 @@ export default async function PaginaEmpresa({ params }) {
         url: canonical,
         datePublished: analisis.generado_at,
         dateModified: analisis.generado_at,
-        author: { '@type': 'Organization', name: 'V3' },
-        publisher: { '@type': 'Organization', name: 'V3' },
+        author: { '@type': 'Organization', name: 'Equaty' },
+        publisher: { '@type': 'Organization', name: 'Equaty' },
         about: {
           '@type': 'FinancialProduct',
           name: empresa.nombre,
@@ -190,7 +190,7 @@ export default async function PaginaEmpresa({ params }) {
         </p>
 
         <div className="v3-aviso">
-          Este contenido es un registro estadístico elaborado por el equipo de V3.
+          Este contenido es un registro estadístico elaborado por el equipo de Equaty.
           No es una recomendación de inversión.
         </div>
 
