@@ -15,6 +15,7 @@ import BarraLateral from '../../../components/BarraLateral';
 export const dynamic = 'force-dynamic';
 
 const BASE_URL = 'https://v3-rho-weld.vercel.app';
+const MAX_SENALES_TABLA = 100;
 
 function slugSector(s) {
   return s
@@ -33,6 +34,28 @@ function fechaMadrid(fecha = new Date()) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
+  });
+}
+
+// Calcula ciclos de una lista de señales. Mismo formato que TablaSenales.
+function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
+  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const limitada = lista.slice(-limite);
+
+  return limitada.map((s, i) => {
+    const siguiente = limitada[i + 1];
+    const precioCierre = siguiente ? siguiente.precio : precioActual;
+    const variacion = precioCierre
+      ? ((precioCierre - s.precio) / s.precio) * 100
+      : 0;
+
+    let acierto = null;
+    if (variacion !== 0) {
+      if (s.tipo === 'compra') acierto = variacion > 0;
+      else if (s.tipo === 'venta') acierto = variacion < 0;
+    }
+
+    return { tipo: s.tipo, variacion, acierto };
   });
 }
 
@@ -210,7 +233,10 @@ export default async function PaginaEmpresa({ params }) {
             <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
             <BloqueSEO empresa={empresa} analisis={analisis} />
             <ConsensoComunidad ticker={empresa.ticker} />
-            <EstadisticaHistorica analisis={analisis} />
+            <EstadisticaHistorica
+              senales={analisis.senales}
+              precioActual={analisis.precioActual}
+            />
             <p className="v3-aviso-mute">
               Esta estadística se basa exclusivamente en datos históricos y no garantiza ningún
               resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
@@ -226,37 +252,24 @@ export default async function PaginaEmpresa({ params }) {
   );
 }
 
-function EstadisticaHistorica({ analisis }) {
-  const senales = analisis.senales || [];
+function EstadisticaHistorica({ senales, precioActual }) {
+  if (!senales || senales.length === 0) return null;
 
-  // Agrupamos por ciclos: cada señal se cierra con la siguiente
-  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const ciclos = [];
-  for (let i = 0; i < lista.length; i++) {
-    const s = lista[i];
-    const siguiente = lista[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : analisis.precioActual;
-    const variacion = precioCierre
-      ? ((precioCierre - s.precio) / s.precio) * 100
-      : 0;
-    ciclos.push({ tipo: s.tipo, variacion });
-  }
-
+  const ciclos = calcularCiclos(senales, precioActual, MAX_SENALES_TABLA);
   const compras = ciclos.filter((c) => c.tipo === 'compra');
   const ventas = ciclos.filter((c) => c.tipo === 'venta');
 
-  function analizar(listaCiclos) {
+  function analizar(lista) {
     let aciertos = 0;
     let total = 0;
-    for (const c of listaCiclos) {
-      if (c.variacion === 0) continue;
+    for (const c of lista) {
+      if (c.acierto === null) continue;
       total++;
-      if (c.tipo === 'compra' && c.variacion > 0) aciertos++;
-      if (c.tipo === 'venta' && c.variacion < 0) aciertos++;
+      if (c.acierto) aciertos++;
     }
     const porcentaje = total > 0 ? (aciertos / total) * 100 : 0;
     return {
-      muestra: listaCiclos.length,
+      muestra: lista.length,
       aciertos,
       fallos: total - aciertos,
       porcentajeAcierto: porcentaje
@@ -265,7 +278,9 @@ function EstadisticaHistorica({ analisis }) {
 
   const statsCompras = analizar(compras);
   const statsVentas = analizar(ventas);
-  const ultima = lista.length > 0 ? lista[lista.length - 1] : null;
+
+  const listaOrdenada = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const ultima = listaOrdenada.length > 0 ? listaOrdenada[listaOrdenada.length - 1] : null;
   const ultimaSenalTipo = ultima ? ultima.tipo : null;
   const porcentajeUltimaSenal =
     ultimaSenalTipo === 'compra'
@@ -279,8 +294,7 @@ function EstadisticaHistorica({ analisis }) {
       <h2 className="v3-seccion-titulo">Estadística histórica</h2>
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-        Calculada sobre los ciclos cerrados del registro histórico de señales visible en la tabla
-        (compra → siguiente señal, venta → siguiente señal).
+        Calculada sobre los mismos ciclos que aparecen en el registro histórico de señales.
       </p>
 
       <div
