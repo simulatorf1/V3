@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function Metodologia() {
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '800px', margin: '0 auto' }}>
+    <main className="v3-container" style={{ maxWidth: '820px' }}>
       <h1>Metodología</h1>
 
       <p>
@@ -39,22 +39,22 @@ export default function Metodologia() {
 
       <h2>Definición de señales</h2>
       <p>
-        Se registra una <strong>señal de compra</strong> cuando el indicador gira de bajista a alcista
-        estando por debajo de +40. Se registra una <strong>señal de venta</strong> cuando el indicador
-        gira de alcista a bajista. La ejecución se realiza al cierre de la sesión anterior a la
-        confirmación.
+        Se registra una <strong>señal de compra</strong> cuando el indicador gira de bajista a
+        alcista estando por debajo de +40. Se registra una <strong>señal de venta</strong> cuando
+        el indicador gira de alcista a bajista. La ejecución se realiza al cierre de la sesión
+        anterior a la confirmación.
       </p>
 
       <h2>Estadística histórica</h2>
       <p>
-        El porcentaje de acierto se calcula sobre los ciclos cerrados del registro histórico de señales:
-        una compra se cierra con la siguiente venta registrada; una venta se cierra con la siguiente
-        compra registrada. Si la última señal no ha sido seguida por una señal contraria, se evalúa
-        hasta el precio actual.
+        El porcentaje de acierto se calcula sobre los ciclos cerrados del registro histórico de
+        señales: una compra se cierra con la siguiente venta registrada; una venta se cierra con la
+        siguiente compra registrada. Si la última señal no ha sido seguida por una señal contraria,
+        se evalúa hasta el precio actual.
       </p>
       <p>
-        Si el tamaño de muestra es inferior a 10 observaciones, se añade el aviso
-        <em> "Muestra limitada. Interpretar con cautela."</em>
+        Si el tamaño de muestra es inferior a 10 observaciones, se añade el aviso{' '}
+        <em>"Muestra limitada. Interpretar con cautela."</em>
       </p>
 
       <h2>Limitaciones estadísticas</h2>
@@ -71,7 +71,7 @@ export default function Metodologia() {
         <li><strong>Ciclo:</strong> intervalo entre una señal y la siguiente de tipo contrario.</li>
       </ul>
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '40px' }}>
+      <p className="v3-aviso-mute" style={{ marginTop: '40px' }}>
         La ficha metodológica describe cómo se generan los análisis. No constituye asesoramiento
         financiero ni recomendación de inversión.
       </p>
