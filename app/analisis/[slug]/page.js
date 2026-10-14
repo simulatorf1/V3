@@ -11,6 +11,7 @@ import BloqueSEO from '../../../components/BloqueSEO';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import RegistrarVisita from '../../../components/RegistrarVisita';
 import BarraLateral from '../../../components/BarraLateral';
+import BotonesCompartir from '../../../components/BotonesCompartir';
 
 export const dynamic = 'force-dynamic';
 
@@ -244,6 +245,12 @@ export default async function PaginaEmpresa({ params }) {
             <BloqueSEO empresa={empresa} analisis={analisis} />
 
             <ConsensoComunidad ticker={empresa.ticker} />
+
+            <BotonesCompartir
+              empresa={empresa}
+              analisis={analisis}
+              url={canonical}
+            />
 
             <p className="v3-aviso-mute">
               Este registro se basa exclusivamente en datos históricos y no garantiza ningún
