@@ -50,8 +50,8 @@ export default function Grafico({ velas, smis }) {
 
       const zonaAltaBaseline = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
-        topFillColor1: 'rgba(198, 40, 40, 0.25)',
-        topFillColor2: 'rgba(198, 40, 40, 0.05)',
+        topFillColor1: 'rgba(198, 40, 40, 0.55)',
+        topFillColor2: 'rgba(198, 40, 40, 0.15)',
         bottomFillColor1: 'rgba(198, 40, 40, 0)',
         bottomFillColor2: 'rgba(198, 40, 40, 0)',
         topLineColor: 'rgba(198, 40, 40, 0.4)',
@@ -68,8 +68,8 @@ export default function Grafico({ velas, smis }) {
         baseValue: { type: 'price', price: -40 },
         topFillColor1: 'rgba(46, 125, 50, 0)',
         topFillColor2: 'rgba(46, 125, 50, 0)',
-        bottomFillColor1: 'rgba(46, 125, 50, 0.25)',
-        bottomFillColor2: 'rgba(46, 125, 50, 0.05)',
+        bottomFillColor1: 'rgba(46, 125, 50, 0.55)',
+        bottomFillColor2: 'rgba(46, 125, 50, 0.15)',
         topLineColor: 'rgba(46, 125, 50, 0)',
         bottomLineColor: 'rgba(46, 125, 50, 0.4)',
         lineWidth: 1,
