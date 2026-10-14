@@ -11,50 +11,34 @@ function construirSlug(empresa) {
 }
 
 export default function TopEmpresas({ empresas }) {
-  if (!empresas || empresas.length === 0) {
-    return (
-      <div style={{ marginTop: '40px' }}>
-        <h2>Empresas más consultadas de la semana</h2>
-        <p style={{ color: '#666' }}>
+  return (
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Empresas más consultadas de la semana</h2>
+
+      {!empresas || empresas.length === 0 ? (
+        <p style={{ color: 'var(--v3-text-soft)' }}>
           Aún no hay datos suficientes. Vuelve dentro de unos días.
         </p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>Empresas más consultadas de la semana</h2>
-      <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '8px' }}>
-        {empresas.map((e) => (
-          <li key={e.ticker}>
-            <Link
-              href={`/analisis/${construirSlug(e)}`}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 16px',
-                border: '1px solid #eee',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                color: '#111'
-              }}
-            >
-              <span>
-                <strong>{e.nombre}</strong>{' '}
-                <span style={{ color: '#666' }}>({e.ticker})</span>
-                {e.sector && (
-                  <span style={{ color: '#999', fontSize: '13px' }}> · {e.sector}</span>
-                )}
-              </span>
-              <span style={{ color: '#666', fontSize: '13px' }}>
-                {e.visitas} {e.visitas === 1 ? 'visita' : 'visitas'}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+      ) : (
+        <ul className="v3-lista">
+          {empresas.map((e) => (
+            <li key={e.ticker}>
+              <Link href={`/analisis/${construirSlug(e)}`}>
+                <span>
+                  <strong>{e.nombre}</strong>{' '}
+                  <span style={{ color: 'var(--v3-text-soft)' }}>({e.ticker})</span>
+                  {e.sector && (
+                    <span style={{ color: 'var(--v3-text-mute)' }}> · {e.sector}</span>
+                  )}
+                </span>
+                <span style={{ color: 'var(--v3-text-mute)', fontSize: '13px' }}>
+                  {e.visitas} {e.visitas === 1 ? 'visita' : 'visitas'}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
