@@ -87,7 +87,7 @@ export async function generateMetadata({ params }) {
       locale: 'es_ES'
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: titulo,
       description: descripcion
     }
