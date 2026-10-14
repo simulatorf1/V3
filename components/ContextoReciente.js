@@ -1,12 +1,14 @@
 export default function ContextoReciente({ noticias }) {
   return (
-    <div style={{ marginTop: '30px' }}>
-      <h2>Contexto reciente</h2>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Contexto reciente</h2>
 
       {!noticias || noticias.length === 0 ? (
-        <p style={{ color: '#666' }}>Sin noticias relevantes en los últimos 7 días.</p>
+        <p style={{ color: 'var(--v3-text-soft)' }}>
+          Sin noticias relevantes en los últimos 7 días.
+        </p>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {noticias.map((n, i) => {
             const fecha = n.fecha_publicacion
               ? new Date(n.fecha_publicacion).toLocaleDateString('es-ES', {
@@ -19,7 +21,7 @@ export default function ContextoReciente({ noticias }) {
               <li
                 key={i}
                 style={{
-                  borderBottom: '1px solid #eee',
+                  borderBottom: '1px solid var(--v3-border)',
                   padding: '12px 0'
                 }}
               >
@@ -27,11 +29,11 @@ export default function ContextoReciente({ noticias }) {
                   href={n.url}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
-                  style={{ color: '#0070f3', textDecoration: 'none', fontWeight: 600 }}
+                  style={{ color: 'var(--v3-text)', fontWeight: 600 }}
                 >
                   {n.titulo}
                 </a>
-                <div style={{ color: '#666', fontSize: '13px', marginTop: '4px' }}>
+                <div style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '4px' }}>
                   {n.fuente && <span>{n.fuente}</span>}
                   {fecha && <span> · {fecha}</span>}
                 </div>
@@ -41,11 +43,11 @@ export default function ContextoReciente({ noticias }) {
         </ul>
       )}
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
-        Los titulares mostrados proceden de fuentes externas y se enlazan a su origen.
-        Esta web no elabora ni interpreta su contenido.
-        Su inclusión no implica valoración alguna sobre la empresa.
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
+        Los titulares mostrados proceden de fuentes externas y se enlazan a su origen. Esta web no
+        elabora ni interpreta su contenido. Su inclusión no implica valoración alguna sobre la
+        empresa.
       </p>
-    </div>
+    </section>
   );
 }
