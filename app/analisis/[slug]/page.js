@@ -2,6 +2,7 @@ import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar'
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
+import ExplicacionGrafico from '../../../components/ExplicacionGrafico';
 import ResumenVistazo from '../../../components/ResumenVistazo';
 import QueEstaPasando from '../../../components/QueEstaPasando';
 import ContextoReciente from '../../../components/ContextoReciente';
@@ -106,13 +107,11 @@ export default async function PaginaEmpresa({ params }) {
     ticker = slug.split('-')[0].toUpperCase();
   }
 
-  // Paso 1: obtener o crear la empresa (sin análisis, es rápido)
   const empresa = await obtenerOCrearEmpresa(ticker);
   if (!empresa) {
     notFound();
   }
 
-  // Paso 2: intentar obtener el análisis. Si falla, mostrar mensaje de espera.
   let analisis = null;
   let desdeCache = false;
   let errorAnalisis = null;
@@ -145,11 +144,15 @@ export default async function PaginaEmpresa({ params }) {
       }
     : null;
 
-  // Si el análisis aún no está listo, mostramos página de carga con enlace de refresco
   if (!analisis) {
     return (
-      <div className="v3-container" style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '60px' }}>
-        <h1>{empresa.nombre} ({empresa.ticker})</h1>
+      <div
+        className="v3-container"
+        style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '60px' }}
+      >
+        <h1>
+          {empresa.nombre} ({empresa.ticker})
+        </h1>
         <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px' }}>
           Estamos preparando el análisis de esta empresa. Suele tardar unos segundos.
         </p>
@@ -193,9 +196,7 @@ export default async function PaginaEmpresa({ params }) {
           {' > '}
           <Link
             href={
-              empresa.sector
-                ? `/sectores/${slugSector(empresa.sector)}`
-                : '/sectores'
+              empresa.sector ? `/sectores/${slugSector(empresa.sector)}` : '/sectores'
             }
             style={{ color: 'var(--v3-text-soft)' }}
           >
@@ -215,16 +216,24 @@ export default async function PaginaEmpresa({ params }) {
         </p>
 
         <div className="v3-aviso">
-          Este contenido es un registro estadístico elaborado por el equipo de Equaty.
-          No es una recomendación de inversión.
+          Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
+          recomendación de inversión.
         </div>
 
         <h2 style={{ marginTop: '30px' }}>Datos rápidos</h2>
         <ul>
-          <li><strong>Ticker:</strong> {empresa.ticker}</li>
-          <li><strong>Sector:</strong> {empresa.sector || 'N/A'}</li>
-          <li><strong>Mercado:</strong> {empresa.mercado || 'N/A'}</li>
-          <li><strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}</li>
+          <li>
+            <strong>Ticker:</strong> {empresa.ticker}
+          </li>
+          <li>
+            <strong>Sector:</strong> {empresa.sector || 'N/A'}
+          </li>
+          <li>
+            <strong>Mercado:</strong> {empresa.mercado || 'N/A'}
+          </li>
+          <li>
+            <strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}
+          </li>
           <li>
             <strong>Indicador propio:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
             {analisis.zona})
@@ -236,6 +245,13 @@ export default async function PaginaEmpresa({ params }) {
           lector. No constituye asesoramiento financiero personalizado.
         </p>
 
+        {errorAnalisis && (
+          <p style={{ color: 'var(--v3-negative)', marginTop: '20px' }}>
+            No se han encontrado datos suficientes para esta empresa. Prueba con otro nombre o
+            ticker.
+          </p>
+        )}
+
         <ResumenVistazo analisis={analisis} empresa={empresa} />
 
         <EstadisticaHistorica
@@ -244,6 +260,8 @@ export default async function PaginaEmpresa({ params }) {
         />
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+
+        <ExplicacionGrafico analisis={analisis} />
 
         <QueEstaPasando analisis={analisis} />
 
@@ -260,8 +278,8 @@ export default async function PaginaEmpresa({ params }) {
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
         <p className="v3-aviso-mute">
-          Este registro se basa exclusivamente en datos históricos y no garantiza ningún
-          resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
+          Este registro se basa exclusivamente en datos históricos y no garantiza ningún resultado
+          futuro. El usuario debe tomar sus propias decisiones de inversión.
         </p>
       </main>
 
@@ -300,7 +318,8 @@ function EstadisticaHistorica({ senales, precioActual }) {
   const statsVentas = analizar(ventas);
 
   const listaOrdenada = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const ultima = listaOrdenada.length > 0 ? listaOrdenada[listaOrdenada.length - 1] : null;
+  const ultima =
+    listaOrdenada.length > 0 ? listaOrdenada[listaOrdenada.length - 1] : null;
   const ultimaSenalTipo = ultima ? ultima.tipo : null;
   const porcentajeUltimaSenal =
     ultimaSenalTipo === 'compra'
@@ -328,9 +347,15 @@ function EstadisticaHistorica({ senales, precioActual }) {
         <div className="v3-card">
           <h3 style={{ marginTop: 0 }}>Movimientos de compra</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-            <li><strong>Total:</strong> {statsCompras.muestra}</li>
-            <li><strong>Aciertos:</strong> {statsCompras.aciertos}</li>
-            <li><strong>Fallos:</strong> {statsCompras.fallos}</li>
+            <li>
+              <strong>Total:</strong> {statsCompras.muestra}
+            </li>
+            <li>
+              <strong>Aciertos:</strong> {statsCompras.aciertos}
+            </li>
+            <li>
+              <strong>Fallos:</strong> {statsCompras.fallos}
+            </li>
             <li>
               <strong>% acierto:</strong>{' '}
               {statsCompras.muestra > 0 ? (
@@ -345,9 +370,15 @@ function EstadisticaHistorica({ senales, precioActual }) {
         <div className="v3-card">
           <h3 style={{ marginTop: 0 }}>Movimientos de venta</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-            <li><strong>Total:</strong> {statsVentas.muestra}</li>
-            <li><strong>Aciertos:</strong> {statsVentas.aciertos}</li>
-            <li><strong>Fallos:</strong> {statsVentas.fallos}</li>
+            <li>
+              <strong>Total:</strong> {statsVentas.muestra}
+            </li>
+            <li>
+              <strong>Aciertos:</strong> {statsVentas.aciertos}
+            </li>
+            <li>
+              <strong>Fallos:</strong> {statsVentas.fallos}
+            </li>
             <li>
               <strong>% acierto:</strong>{' '}
               {statsVentas.muestra > 0 ? (
