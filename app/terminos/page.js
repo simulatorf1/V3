@@ -5,12 +5,10 @@ export const metadata = {
 
 export default function Terminos() {
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '800px', margin: '0 auto' }}>
+    <main className="v3-container" style={{ maxWidth: '820px' }}>
       <h1>Términos y Condiciones</h1>
 
-      <p>
-        El acceso y uso de este sitio implican la aceptación de los presentes términos.
-      </p>
+      <p>El acceso y uso de este sitio implican la aceptación de los presentes términos.</p>
 
       <h2>Uso permitido</h2>
       <ul>
