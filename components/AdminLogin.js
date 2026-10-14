@@ -33,13 +33,15 @@ export default function AdminLogin() {
   }
 
   return (
-    <main style={{ padding: '60px 24px', maxWidth: '400px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '24px' }}>Panel de administración</h1>
-      <p style={{ color: '#666', fontSize: '14px' }}>
-        Introduce la contraseña para acceder.
-      </p>
+    <main className="v3-container" style={{ maxWidth: '420px' }}>
+      <h1>Panel de administración</h1>
+      <p style={{ color: 'var(--v3-text-soft)' }}>Introduce la contraseña para acceder.</p>
 
-      <form onSubmit={enviar} style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <form
+        onSubmit={enviar}
+        className="v3-card"
+        style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}
+      >
         <input
           type="password"
           value={password}
@@ -47,32 +49,20 @@ export default function AdminLogin() {
           placeholder="Contraseña"
           autoFocus
           style={{
-            padding: '10px',
-            fontSize: '16px',
-            border: '1px solid #ccc',
-            borderRadius: '6px'
+            padding: '10px 12px',
+            fontSize: '15px',
+            border: '1px solid var(--v3-border-strong)',
+            borderRadius: 'var(--v3-radius-sm)',
+            outline: 'none'
           }}
         />
-        <button
-          type="submit"
-          disabled={cargando}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-            background: '#0070f3',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: cargando ? 'wait' : 'pointer'
-          }}
-        >
+        <button type="submit" className="v3-btn" disabled={cargando}>
           {cargando ? 'Entrando…' : 'Entrar'}
         </button>
+        {error && (
+          <p style={{ color: 'var(--v3-negative)', margin: 0, fontSize: '14px' }}>{error}</p>
+        )}
       </form>
-
-      {error && (
-        <p style={{ color: '#c62828', marginTop: '12px', fontSize: '14px' }}>{error}</p>
-      )}
     </main>
   );
 }
