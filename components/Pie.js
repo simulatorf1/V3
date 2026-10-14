@@ -23,7 +23,7 @@ export default function Pie() {
         </div>
 
         <p style={{ textAlign: 'center', lineHeight: '1.6', marginBottom: '12px' }}>
-          Este contenido es un registro estadístico elaborado por el equipo de V3 a partir de
+          Este contenido es un registro estadístico elaborado por el equipo de Equaty a partir de
           datos históricos de mercado. Tiene finalidad exclusivamente informativa y estadística,
           no constituye asesoramiento financiero personalizado, recomendación de inversión,
           oferta, solicitud o invitación para comprar o vender instrumentos financieros. La
