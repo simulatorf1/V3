@@ -52,7 +52,11 @@ function BuscadorClient() {
 
   return (
     <div>
-      <form onSubmit={onSubmit} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      <form
+        onSubmit={onSubmit}
+        className="v3-card"
+        style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}
+      >
         <input
           type="text"
           value={query}
@@ -60,24 +64,15 @@ function BuscadorClient() {
           placeholder="Busca una empresa o ticker…"
           style={{
             flex: 1,
-            padding: '10px',
-            fontSize: '16px',
-            border: '1px solid #ccc',
-            borderRadius: '6px'
+            minWidth: '220px',
+            padding: '10px 12px',
+            fontSize: '15px',
+            border: '1px solid var(--v3-border-strong)',
+            borderRadius: 'var(--v3-radius-sm)',
+            outline: 'none'
           }}
         />
-        <button
-          type="submit"
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-            background: '#0070f3',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
-        >
+        <button type="submit" className="v3-btn">
           Buscar
         </button>
       </form>
@@ -85,29 +80,24 @@ function BuscadorClient() {
       {cargando && <p>Buscando…</p>}
 
       {buscado && !cargando && resultados.length === 0 && (
-        <p style={{ color: '#666' }}>
+        <p style={{ color: 'var(--v3-text-soft)' }}>
           No se han encontrado datos suficientes para esta empresa. Prueba con otro nombre o ticker.
         </p>
       )}
 
       {resultados.length > 0 && (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
+        <ul className="v3-lista">
           {resultados.map((r) => (
-            <li key={r.ticker} style={{ marginBottom: '8px' }}>
-              <Link
-                href={`/analisis/${construirSlug(r)}`}
-                style={{
-                  display: 'block',
-                  padding: '12px',
-                  border: '1px solid #eee',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  color: '#111'
-                }}
-              >
-                <strong>{r.nombre}</strong> ({r.ticker})
-                {r.mercado && <span style={{ color: '#666' }}> · {r.mercado}</span>}
-                {r.tipo && <span style={{ color: '#999', fontSize: '12px' }}> · {r.tipo}</span>}
+            <li key={r.ticker}>
+              <Link href={`/analisis/${construirSlug(r)}`}>
+                <span>
+                  <strong>{r.nombre}</strong>{' '}
+                  <span style={{ color: 'var(--v3-text-soft)' }}>({r.ticker})</span>
+                  {r.mercado && (
+                    <span style={{ color: 'var(--v3-text-mute)' }}> · {r.mercado}</span>
+                  )}
+                </span>
+                {r.tipo && <span className="v3-tag">{r.tipo}</span>}
               </Link>
             </li>
           ))}
@@ -119,7 +109,7 @@ function BuscadorClient() {
 
 export default function PaginaBuscar() {
   return (
-    <main style={{ padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
+    <main className="v3-container">
       <h1>Buscar empresa</h1>
       <Suspense fallback={<p>Cargando buscador…</p>}>
         <BuscadorClient />
