@@ -5,14 +5,14 @@ export default function BloqueSEO({ empresa, analisis }) {
   if (!seo || seo.parrafos.length === 0) return null;
 
   return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>Sobre {empresa.nombre}</h2>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
 
       {seo.parrafos.map((p, i) => (
-        <p key={i} style={{ lineHeight: '1.7', color: '#333' }}>
+        <p key={i} style={{ color: 'var(--v3-text)', lineHeight: 1.7 }}>
           {p}
         </p>
       ))}
-    </div>
+    </section>
   );
 }
