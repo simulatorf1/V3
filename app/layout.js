@@ -7,18 +7,18 @@ const BASE_URL = 'https://v3-rho-weld.vercel.app';
 export const metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: 'V3 — Análisis bursátil automatizado',
+    default: 'V3 — Análisis bursátil estadístico',
     template: '%s'
   },
   description:
-    'Análisis estadístico automatizado de empresas cotizadas. No es recomendación de inversión.',
+    'Análisis estadístico de empresas cotizadas elaborado por el equipo de V3. No es recomendación de inversión.',
   alternates: {
     canonical: '/'
   },
   openGraph: {
-    title: 'V3 — Análisis bursátil automatizado',
+    title: 'V3 — Análisis bursátil estadístico',
     description:
-      'Análisis estadístico automatizado de empresas cotizadas. No es recomendación de inversión.',
+      'Análisis estadístico de empresas cotizadas elaborado por el equipo de V3. No es recomendación de inversión.',
     url: BASE_URL,
     siteName: 'V3',
     locale: 'es_ES',
