@@ -24,9 +24,9 @@ export default async function Home() {
   return (
     <main className="v3-container">
       <section className="v3-hero">
-        <h1>V3 — Análisis bursátil automatizado</h1>
+        <h1>V3 — Análisis bursátil estadístico</h1>
         <p>
-          Busca cualquier empresa del mundo por nombre o ticker para ver su análisis estadístico.
+          Informes estadísticos sobre empresas cotizadas. Busca cualquier valor por nombre o ticker.
         </p>
       </section>
 
@@ -43,7 +43,7 @@ export default async function Home() {
       <NoticiasRecientes noticias={datos.noticias} />
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
-        Este contenido es un análisis estadístico generado automáticamente por un algoritmo.
+        Este contenido es un registro estadístico elaborado por el equipo de V3.
         No es una recomendación de inversión.
       </p>
     </main>
