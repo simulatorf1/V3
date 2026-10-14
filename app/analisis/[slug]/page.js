@@ -201,58 +201,86 @@ function EstadisticaHistorica({ analisis }) {
   if (!stats || !stats.compras || !stats.ventas) return null;
 
   const { compras, ventas, ultimaSenalTipo, porcentajeUltimaSenal } = stats;
-  const colorCompra = compras.muestra > 0 ? '#2e7d32' : '#666';
-  const colorVenta = ventas.muestra > 0 ? '#2e7d32' : '#666';
 
   return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>Estadística histórica</h2>
-      <p style={{ color: '#666', fontSize: '13px' }}>
-        Calculada sobre los ciclos cerrados del registro histórico de señales (compra → siguiente señal, venta → siguiente señal).
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Estadística histórica</h2>
+
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+        Calculada sobre los ciclos cerrados del registro histórico de señales (compra → siguiente
+        señal, venta → siguiente señal).
       </p>
 
-      <h3 style={{ marginTop: '20px' }}>Señales de compra</h3>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        <li><strong>Total de compras registradas:</strong> {compras.muestra ?? 0}</li>
-        <li><strong>Aciertos</strong> (precio subió hasta la siguiente señal): {compras.aciertos ?? 0}</li>
-        <li><strong>Fallos</strong> (precio bajó hasta la siguiente señal): {compras.fallos ?? 0}</li>
-        <li style={{ marginTop: '6px' }}>
-          <strong style={{ color: colorCompra }}>Porcentaje de acierto:</strong>{' '}
-          {compras.muestra > 0 && typeof compras.porcentajeAcierto === 'number'
-            ? `${compras.porcentajeAcierto.toFixed(1)}%`
-            : '—'}
-        </li>
-      </ul>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: '16px',
+          marginTop: '16px'
+        }}
+      >
+        <div className="v3-card">
+          <h3 style={{ marginTop: 0 }}>Señales de compra</h3>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
+            <li>
+              <strong>Total:</strong> {compras.muestra ?? 0}
+            </li>
+            <li>
+              <strong>Aciertos:</strong> {compras.aciertos ?? 0}
+            </li>
+            <li>
+              <strong>Fallos:</strong> {compras.fallos ?? 0}
+            </li>
+            <li>
+              <strong>% acierto:</strong>{' '}
+              {compras.muestra > 0 && typeof compras.porcentajeAcierto === 'number' ? (
+                <span className="v3-pos">{compras.porcentajeAcierto.toFixed(1)}%</span>
+              ) : (
+                '—'
+              )}
+            </li>
+          </ul>
+        </div>
 
-      <h3 style={{ marginTop: '20px' }}>Señales de venta</h3>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        <li><strong>Total de ventas registradas:</strong> {ventas.muestra ?? 0}</li>
-        <li><strong>Aciertos</strong> (precio bajó hasta la siguiente señal): {ventas.aciertos ?? 0}</li>
-        <li><strong>Fallos</strong> (precio subió hasta la siguiente señal): {ventas.fallos ?? 0}</li>
-        <li style={{ marginTop: '6px' }}>
-          <strong style={{ color: colorVenta }}>Porcentaje de acierto:</strong>{' '}
-          {ventas.muestra > 0 && typeof ventas.porcentajeAcierto === 'number'
-            ? `${ventas.porcentajeAcierto.toFixed(1)}%`
-            : '—'}
-        </li>
-      </ul>
+        <div className="v3-card">
+          <h3 style={{ marginTop: 0 }}>Señales de venta</h3>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
+            <li>
+              <strong>Total:</strong> {ventas.muestra ?? 0}
+            </li>
+            <li>
+              <strong>Aciertos:</strong> {ventas.aciertos ?? 0}
+            </li>
+            <li>
+              <strong>Fallos:</strong> {ventas.fallos ?? 0}
+            </li>
+            <li>
+              <strong>% acierto:</strong>{' '}
+              {ventas.muestra > 0 && typeof ventas.porcentajeAcierto === 'number' ? (
+                <span className="v3-pos">{ventas.porcentajeAcierto.toFixed(1)}%</span>
+              ) : (
+                '—'
+              )}
+            </li>
+          </ul>
+        </div>
+      </div>
 
       {ultimaSenalTipo && typeof porcentajeUltimaSenal === 'number' && (
         <div
-          style={{
-            marginTop: '20px',
-            padding: '12px',
-            background: '#f5f5f5',
-            borderRadius: '6px',
-            border: '1px solid #e0e0e0'
-          }}
+          className="v3-card-soft"
+          style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}
         >
-          <p style={{ margin: 0 }}>
-            <strong>Última señal registrada:</strong> {ultimaSenalTipo} — porcentaje de acierto histórico de este tipo de señal:{' '}
+          <span style={{ color: 'var(--v3-text-soft)' }}>
+            <strong>Última señal registrada:</strong>
+          </span>
+          <span className="v3-tag">{ultimaSenalTipo}</span>
+          <span>
+            acierto histórico de este tipo de señal:{' '}
             <strong>{porcentajeUltimaSenal.toFixed(1)}%</strong>
-          </p>
+          </span>
         </div>
       )}
-    </div>
+    </section>
   );
 }
