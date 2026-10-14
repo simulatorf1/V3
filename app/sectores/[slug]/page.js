@@ -23,6 +23,14 @@ function normalizar(s) {
     .replace(/^-+|-+$/g, '');
 }
 
+export async function generateMetadata({ params }) {
+  const slug = params.slug;
+  return {
+    title: `Sector ${slug} — V3`,
+    description: `Empresas del sector ${slug} con análisis estadístico en V3.`
+  };
+}
+
 export default async function SectorDetalle({ params }) {
   const slug = params.slug;
 
@@ -39,30 +47,24 @@ export default async function SectorDetalle({ params }) {
   const sector = empresas[0].sector;
 
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
-      <p style={{ color: '#666', fontSize: '13px' }}>
+    <main className="v3-container">
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
         Inicio &gt; Sectores &gt; {sector}
       </p>
       <h1>Sector {sector}</h1>
-      <p style={{ color: '#666' }}>
+      <p style={{ color: 'var(--v3-text-soft)' }}>
         {empresas.length} {empresas.length === 1 ? 'empresa' : 'empresas'} en este sector.
       </p>
 
-      <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
+      <ul className="v3-lista" style={{ marginTop: '20px' }}>
         {empresas.map((e) => (
-          <li key={e.ticker} style={{ marginBottom: '8px' }}>
-            <Link
-              href={`/analisis/${slugEmpresa(e)}`}
-              style={{
-                display: 'block',
-                padding: '12px 16px',
-                border: '1px solid #eee',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                color: '#111'
-              }}
-            >
-              <strong>{e.nombre}</strong> <span style={{ color: '#666' }}>({e.ticker})</span>
+          <li key={e.ticker}>
+            <Link href={`/analisis/${slugEmpresa(e)}`}>
+              <span>
+                <strong>{e.nombre}</strong>{' '}
+                <span style={{ color: 'var(--v3-text-soft)' }}>({e.ticker})</span>
+              </span>
+              {e.mercado && <span className="v3-tag">{e.mercado}</span>}
             </Link>
           </li>
         ))}
