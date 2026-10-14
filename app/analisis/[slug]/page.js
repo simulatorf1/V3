@@ -71,7 +71,7 @@ export async function generateMetadata({ params }) {
 
   const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
   const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-  const descripcion = `Análisis estadístico automatizado de ${empresa.nombre} (${empresa.ticker}): indicador propietario, zonas, señales históricas y estadística. No es recomendación de inversión.`;
+  const descripcion = `Informe estadístico de ${empresa.nombre} (${empresa.ticker}): indicador propio, zonas, histórico de movimientos y estadística. No es recomendación de inversión.`;
   const canonical = `${BASE_URL}/analisis/${slug}`;
 
   return {
@@ -127,7 +127,7 @@ export default async function PaginaEmpresa({ params }) {
         '@context': 'https://schema.org',
         '@type': 'Article',
         headline: `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker})`,
-        description: `Análisis estadístico automatizado de ${empresa.nombre}`,
+        description: `Informe estadístico de ${empresa.nombre}`,
         url: canonical,
         datePublished: analisis.generado_at,
         dateModified: analisis.generado_at,
@@ -190,7 +190,7 @@ export default async function PaginaEmpresa({ params }) {
         </p>
 
         <div className="v3-aviso">
-          Este contenido es un análisis estadístico generado automáticamente por un algoritmo.
+          Este contenido es un registro estadístico elaborado por el equipo de V3.
           No es una recomendación de inversión.
         </div>
 
@@ -204,7 +204,7 @@ export default async function PaginaEmpresa({ params }) {
           )}
           {analisis && (
             <li>
-              <strong>Indicador propietario:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
+              <strong>Indicador propio:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
               {analisis.zona})
             </li>
           )}
@@ -246,7 +246,7 @@ export default async function PaginaEmpresa({ params }) {
             <ConsensoComunidad ticker={empresa.ticker} />
 
             <p className="v3-aviso-mute">
-              Esta estadística se basa exclusivamente en datos históricos y no garantiza ningún
+              Este registro se basa exclusivamente en datos históricos y no garantiza ningún
               resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
             </p>
           </>
@@ -302,7 +302,7 @@ function EstadisticaHistorica({ senales, precioActual }) {
       <h2 className="v3-seccion-titulo">Estadística histórica</h2>
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-        Calculada sobre los mismos ciclos que aparecen en el registro histórico de señales.
+        Calculada sobre los mismos ciclos que aparecen en el histórico de movimientos.
       </p>
 
       <div
@@ -314,7 +314,7 @@ function EstadisticaHistorica({ senales, precioActual }) {
         }}
       >
         <div className="v3-card">
-          <h3 style={{ marginTop: 0 }}>Señales de compra</h3>
+          <h3 style={{ marginTop: 0 }}>Movimientos de compra</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
             <li><strong>Total:</strong> {statsCompras.muestra}</li>
             <li><strong>Aciertos:</strong> {statsCompras.aciertos}</li>
@@ -331,7 +331,7 @@ function EstadisticaHistorica({ senales, precioActual }) {
         </div>
 
         <div className="v3-card">
-          <h3 style={{ marginTop: 0 }}>Señales de venta</h3>
+          <h3 style={{ marginTop: 0 }}>Movimientos de venta</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
             <li><strong>Total:</strong> {statsVentas.muestra}</li>
             <li><strong>Aciertos:</strong> {statsVentas.aciertos}</li>
@@ -360,11 +360,11 @@ function EstadisticaHistorica({ senales, precioActual }) {
           }}
         >
           <span style={{ color: 'var(--v3-text-soft)' }}>
-            <strong>Última señal registrada:</strong>
+            <strong>Último movimiento registrado:</strong>
           </span>
           <span className="v3-tag">{ultimaSenalTipo}</span>
           <span>
-            acierto histórico de este tipo de señal:{' '}
+            acierto histórico de este tipo de movimiento:{' '}
             <strong>{porcentajeUltimaSenal.toFixed(1)}%</strong>
           </span>
         </div>
