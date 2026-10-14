@@ -57,9 +57,7 @@ export default function ConsensoComunidad({ ticker }) {
       const unAnio = 60 * 60 * 24 * 365;
       document.cookie = `v3_voto_${ticker}=${encodeURIComponent(opcion)}; max-age=${unAnio}; path=/; SameSite=Lax`;
       setVotoUsuario(opcion);
-    } catch (e) {
-      // silencio
-    }
+    } catch (e) {}
   }
 
   const opciones = [
@@ -69,15 +67,18 @@ export default function ConsensoComunidad({ ticker }) {
   ];
 
   return (
-    <div style={{ marginTop: '40px' }}>
-      <h2>Consenso de la comunidad</h2>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Consenso de la comunidad</h2>
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '-8px' }}>
-        Sin registro. Voto único por navegador. {total > 0 ? `${total} voto${total === 1 ? '' : 's'} registrado${total === 1 ? '' : 's'}.` : 'Aún no hay votos.'}
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+        Sin registro. Voto único por navegador.{' '}
+        {total > 0
+          ? `${total} voto${total === 1 ? '' : 's'} registrado${total === 1 ? '' : 's'}.`
+          : 'Aún no hay votos.'}
       </p>
 
       {sentimiento && (
-        <p style={{ marginTop: '10px' }}>
+        <p>
           <strong>Sentimiento agregado:</strong> {sentimiento}
         </p>
       )}
@@ -90,16 +91,7 @@ export default function ConsensoComunidad({ ticker }) {
               key={op.key}
               onClick={() => votar(op.key)}
               disabled={cargando}
-              style={{
-                padding: '10px 16px',
-                fontSize: '14px',
-                border: activo ? '2px solid #0070f3' : '1px solid #ccc',
-                background: activo ? '#e3f2fd' : '#fff',
-                color: activo ? '#0070f3' : '#333',
-                borderRadius: '6px',
-                cursor: cargando ? 'wait' : 'pointer',
-                fontWeight: activo ? 'bold' : 'normal'
-              }}
+              className={activo ? 'v3-btn' : 'v3-btn v3-btn-secondary'}
             >
               {op.etiqueta} · {conteo[op.key] || 0}
             </button>
@@ -107,10 +99,10 @@ export default function ConsensoComunidad({ ticker }) {
         })}
       </div>
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
         El consenso agregado refleja la opinión de los visitantes que han votado. No constituye una
         recomendación de inversión ni representa la posición de esta web.
       </p>
-    </div>
+    </section>
   );
 }
