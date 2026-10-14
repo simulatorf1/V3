@@ -1,4 +1,18 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
 export default function ResumenVistazo({ analisis, empresa }) {
+  const [consenso, setConsenso] = useState(null);
+
+  useEffect(() => {
+    if (!empresa?.ticker) return;
+    fetch(`/api/votos?ticker=${encodeURIComponent(empresa.ticker)}`)
+      .then((r) => r.json())
+      .then((d) => setConsenso(d))
+      .catch(() => {});
+  }, [empresa?.ticker]);
+
   if (!analisis) return null;
 
   const velas = analisis.velasUltimas60 || [];
@@ -39,9 +53,17 @@ export default function ResumenVistazo({ analisis, empresa }) {
       ? 'var(--v3-positive)'
       : 'var(--v3-text-soft)';
 
-  const celda = {
-    padding: '4px 0'
-  };
+  // Texto de consenso
+  let textoConsenso = 'sin votos';
+  if (consenso && consenso.total > 0) {
+    const conteo = consenso.conteo;
+    const max = Math.max(conteo.seguimiento, conteo.cartera, conteo.fuera);
+    if (conteo.seguimiento === max) textoConsenso = 'en seguimiento';
+    else if (conteo.cartera === max) textoConsenso = 'en cartera';
+    else textoConsenso = 'fuera';
+  }
+
+  const celda = { padding: '4px 0' };
   const etiqueta = {
     color: 'var(--v3-text-mute)',
     fontSize: '12px',
@@ -74,7 +96,12 @@ export default function ResumenVistazo({ analisis, empresa }) {
         <div style={celda}>
           <div style={etiqueta}>Precio actual</div>
           <div style={valor}>{precioActual.toFixed(2)}</div>
-          <div style={{ ...sub, color: variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)' }}>
+          <div
+            style={{
+              ...sub,
+              color: variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'
+            }}
+          >
             {variacion5 >= 0 ? '+' : ''}
             {variacion5.toFixed(2)}% en 5 sesiones
           </div>
@@ -94,8 +121,12 @@ export default function ResumenVistazo({ analisis, empresa }) {
 
         <div style={celda}>
           <div style={etiqueta}>Consenso comunidad</div>
-          <div style={{ ...valor, color: 'var(--v3-text-mute)' }}>—</div>
-          <div style={sub}>disponible en la sección inferior</div>
+          <div style={{ ...valor, color: 'var(--v3-text)' }}>{textoConsenso}</div>
+          <div style={sub}>
+            {consenso && consenso.total > 0
+              ? `${consenso.total} voto${consenso.total === 1 ? '' : 's'}`
+              : 'disponible en la sección inferior'}
+          </div>
         </div>
       </div>
     </section>
