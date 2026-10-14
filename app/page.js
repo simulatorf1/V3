@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 async function cargarDatosHome() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://v3-rho-weld.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://equaty.es';
     const res = await fetch(`${baseUrl}/api/home`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Error cargando datos');
     return await res.json();
@@ -24,7 +24,7 @@ export default async function Home() {
   return (
     <main className="v3-container">
       <section className="v3-hero">
-        <h1>V3 — Análisis bursátil estadístico</h1>
+        <h1>Equaty — Análisis bursátil estadístico</h1>
         <p>
           Informes estadísticos sobre empresas cotizadas. Busca cualquier valor por nombre o ticker.
         </p>
@@ -43,7 +43,7 @@ export default async function Home() {
       <NoticiasRecientes noticias={datos.noticias} />
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
-        Este contenido es un registro estadístico elaborado por el equipo de V3.
+        Este contenido es un registro estadístico elaborado por el equipo de Equaty.
         No es una recomendación de inversión.
       </p>
     </main>
