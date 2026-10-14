@@ -85,9 +85,14 @@ export default function AdminDashboard() {
         }}
       >
         <h1 style={{ margin: 0 }}>Panel de administración</h1>
-        <button onClick={logout} className="v3-btn v3-btn-secondary">
-          Cerrar sesión
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={cargarDatos} className="v3-btn v3-btn-secondary">
+            Refrescar datos
+          </button>
+          <button onClick={logout} className="v3-btn v3-btn-secondary">
+            Cerrar sesión
+          </button>
+        </div>
       </div>
 
       <nav
@@ -127,10 +132,8 @@ export default function AdminDashboard() {
   );
 }
 
-function SeccionEstadisticas({ datos }) {
-  const { stats } = datos;
-
-  const tarjeta = (etiqueta, valor) => (
+function Tarjeta({ etiqueta, valor, sub }) {
+  return (
     <div className="v3-card" style={{ padding: '16px' }}>
       <div
         style={{
@@ -144,60 +147,198 @@ function SeccionEstadisticas({ datos }) {
         {etiqueta}
       </div>
       <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '4px' }}>{valor}</div>
+      {sub && <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>{sub}</div>}
     </div>
   );
+}
+
+function BarraHorizontal({ etiqueta, valor, maximo, color }) {
+  const ancho = maximo > 0 ? (valor / maximo) * 100 : 0;
+  return (
+    <div style={{ marginBottom: '8px' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '13px',
+          marginBottom: '2px'
+        }}
+      >
+        <span>{etiqueta}</span>
+        <span style={{ color: 'var(--v3-text-soft)' }}>{valor}</span>
+      </div>
+      <div
+        style={{
+          background: 'var(--v3-bg-subtle)',
+          height: '8px',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}
+      >
+        <div
+          style={{
+            width: `${ancho}%`,
+            height: '100%',
+            background: color || 'var(--v3-primary)'
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SeccionEstadisticas({ datos }) {
+  const { stats } = datos;
+
+  const maxDia = Math.max(...(stats.visitasPorDia || []).map((d) => d.visitas), 1);
+  const maxHora = Math.max(...(stats.visitasPorHora || []).map((h) => h.visitas), 1);
+  const maxPais = Math.max(...(stats.topPaises || []).map((p) => p.visitas), 1);
+  const maxEmpresa = Math.max(...(stats.topEmpresas || []).map((e) => e.visitas), 1);
+  const maxPagina = Math.max(...(stats.topPaginas || []).map((p) => p.visitas), 1);
+
+  const totalDispositivos =
+    (stats.dispositivos?.movil || 0) +
+    (stats.dispositivos?.escritorio || 0) +
+    (stats.dispositivos?.tablet || 0) +
+    (stats.dispositivos?.desconocido || 0);
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Estadísticas generales</h2>
+      <h2 style={{ marginTop: 0 }}>Resumen general</h2>
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
           gap: '12px'
         }}
       >
-        {tarjeta('Visitas totales', stats.totalVisitas)}
-        {tarjeta('Visitas últimos 7 días', stats.visitas7d)}
-        {tarjeta('Empresas en BD', stats.totalEmpresas)}
-        {tarjeta('Páginas generadas', stats.totalPaginas)}
+        <Tarjeta
+          etiqueta="Visitantes ahora"
+          valor={stats.visitantesAhora}
+          sub="últimos 5 min"
+        />
+        <Tarjeta etiqueta="Visitas hoy" valor={stats.visitasHoy} />
+        <Tarjeta etiqueta="Visitas ayer" valor={stats.visitasAyer} />
+        <Tarjeta etiqueta="Últimos 7 días" valor={stats.visitas7d} />
+        <Tarjeta etiqueta="Últimos 30 días" valor={stats.visitas30d} />
+        <Tarjeta etiqueta="Totales" valor={stats.totalVisitas} />
       </div>
 
-      <h3 style={{ marginTop: '32px' }}>Páginas más visitadas (últimos 7 días)</h3>
-      {stats.topPaginas.length === 0 ? (
-        <p style={{ color: 'var(--v3-text-soft)' }}>Aún no hay visitas registradas.</p>
-      ) : (
-        <table className="v3-table">
-          <thead>
-            <tr>
-              <th>Ruta</th>
-              <th>Visitas</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.topPaginas.map((p, i) => (
-              <tr key={i}>
-                <td>{p.ruta}</td>
-                <td>{p.visitas}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <h3 style={{ marginTop: '32px' }}>Visitantes únicos</h3>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '12px'
+        }}
+      >
+        <Tarjeta etiqueta="Únicos hoy" valor={stats.unicosHoy} />
+        <Tarjeta etiqueta="Únicos 7d" valor={stats.unicos7d} />
+        <Tarjeta etiqueta="Únicos 30d" valor={stats.unicos30d} />
+      </div>
 
-      <h3 style={{ marginTop: '32px' }}>Países</h3>
-      {stats.topPaises.length === 0 ? (
-        <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos de país todavía.</p>
-      ) : (
-        <ul>
-          {stats.topPaises.map((p, i) => (
-            <li key={i}>
-              <strong>{p.pais || 'Desconocido'}:</strong> {p.visitas}
-            </li>
-          ))}
-        </ul>
-      )}
+      <h3 style={{ marginTop: '32px' }}>Visitas por día (últimos 14 días)</h3>
+      <div className="v3-card" style={{ padding: '20px' }}>
+        {stats.visitasPorDia.map((d) => (
+          <BarraHorizontal
+            key={d.fecha}
+            etiqueta={d.fecha}
+            valor={d.visitas}
+            maximo={maxDia}
+          />
+        ))}
+      </div>
+
+      <h3 style={{ marginTop: '32px' }}>Visitas por hora (últimos 30 días)</h3>
+      <div className="v3-card" style={{ padding: '20px' }}>
+        {stats.visitasPorHora.map((h) => (
+          <BarraHorizontal
+            key={h.hora}
+            etiqueta={`${String(h.hora).padStart(2, '0')}:00`}
+            valor={h.visitas}
+            maximo={maxHora}
+          />
+        ))}
+      </div>
+
+      <h3 style={{ marginTop: '32px' }}>Dispositivos (últimos 30 días)</h3>
+      <div className="v3-card" style={{ padding: '20px' }}>
+        {totalDispositivos === 0 ? (
+          <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
+        ) : (
+          <>
+            <BarraHorizontal
+              etiqueta="Móvil"
+              valor={stats.dispositivos.movil}
+              maximo={totalDispositivos}
+            />
+            <BarraHorizontal
+              etiqueta="Escritorio"
+              valor={stats.dispositivos.escritorio}
+              maximo={totalDispositivos}
+            />
+            <BarraHorizontal
+              etiqueta="Tablet"
+              valor={stats.dispositivos.tablet}
+              maximo={totalDispositivos}
+            />
+            <BarraHorizontal
+              etiqueta="Desconocido"
+              valor={stats.dispositivos.desconocido}
+              maximo={totalDispositivos}
+            />
+          </>
+        )}
+      </div>
+
+      <h3 style={{ marginTop: '32px' }}>Empresas más visitadas (30 días)</h3>
+      <div className="v3-card" style={{ padding: '20px' }}>
+        {stats.topEmpresas.length === 0 ? (
+          <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
+        ) : (
+          stats.topEmpresas.map((e) => (
+            <BarraHorizontal
+              key={e.ticker}
+              etiqueta={e.ticker}
+              valor={e.visitas}
+              maximo={maxEmpresa}
+            />
+          ))
+        )}
+      </div>
+
+      <h3 style={{ marginTop: '32px' }}>Países (30 días)</h3>
+      <div className="v3-card" style={{ padding: '20px' }}>
+        {stats.topPaises.length === 0 ? (
+          <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
+        ) : (
+          stats.topPaises.map((p) => (
+            <BarraHorizontal
+              key={p.pais}
+              etiqueta={p.pais}
+              valor={p.visitas}
+              maximo={maxPais}
+            />
+          ))
+        )}
+      </div>
+
+      <h3 style={{ marginTop: '32px' }}>Páginas más visitadas (30 días)</h3>
+      <div className="v3-card" style={{ padding: '20px' }}>
+        {stats.topPaginas.length === 0 ? (
+          <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
+        ) : (
+          stats.topPaginas.map((p) => (
+            <BarraHorizontal
+              key={p.ruta}
+              etiqueta={p.ruta}
+              valor={p.visitas}
+              maximo={maxPagina}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -233,7 +374,9 @@ function SeccionPaginas({ paginas, onRegenerar, regenerando }) {
                 </td>
                 <td style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>{p.slug}</td>
                 <td style={{ fontSize: '12px' }}>
-                  {new Date(p.actualizado_at).toLocaleString('es-ES')}
+                  {new Date(p.actualizado_at).toLocaleString('es-ES', {
+                    timeZone: 'Europe/Madrid'
+                  })}
                 </td>
                 <td>
                   <button
