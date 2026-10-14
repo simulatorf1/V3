@@ -12,6 +12,8 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
     const ticker = empresa.ticker;
     const nombre = empresa.nombre;
     const zona = analisis.zona;
+    const precio = analisis.precioActual?.toFixed(2) || '—';
+
     const smis = (analisis.smisUltimos60 || []).filter(
       (v) => v !== null && v !== undefined
     );
@@ -21,33 +23,72 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
     const percentil =
       ordenados.length > 0 ? Math.round((menores / ordenados.length) * 100) : 0;
 
-    const stats = analisis.estadisticas;
-    let parteEstadistica = '';
-    if (stats && typeof stats.porcentajeUltimaSenal === 'number' && stats.ultimaSenalTipo) {
-      const tipo = stats.ultimaSenalTipo;
-      const muestra =
-        tipo === 'compra' ? stats.compras?.muestra || 0 : stats.ventas?.muestra || 0;
-      parteEstadistica = ` Histórico: ${
-        tipo === 'compra' ? 'subida' : 'bajada'
-      } posterior en el ${stats.porcentajeUltimaSenal.toFixed(0)}% de casos.`;
-      if (muestra < 10) parteEstadistica += ' (muestra limitada)';
+    // Estadística de ciclos
+    const senales = analisis.senales || [];
+    const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+    const ciclos = lista.map((s, i) => {
+      const siguiente = lista[i + 1];
+      const precioCierre = siguiente ? siguiente.precio : analisis.precioActual;
+      const variacion = precioCierre
+        ? ((precioCierre - s.precio) / s.precio) * 100
+        : 0;
+      let acierto = null;
+      if (variacion !== 0) {
+        if (s.tipo === 'compra') acierto = variacion > 0;
+        else if (s.tipo === 'venta') acierto = variacion < 0;
+      }
+      return { tipo: s.tipo, acierto };
+    });
+
+    const compras = ciclos.filter((c) => c.tipo === 'compra');
+    const ventas = ciclos.filter((c) => c.tipo === 'venta');
+
+    function statsCiclo(listaCiclos) {
+      let aciertos = 0;
+      let total = 0;
+      for (const c of listaCiclos) {
+        if (c.acierto === null) continue;
+        total++;
+        if (c.acierto) aciertos++;
+      }
+      return {
+        total: listaCiclos.length,
+        porcentaje: total > 0 ? (aciertos / total) * 100 : 0
+      };
     }
 
-    let base;
-    if (zona === 'alta') {
-      base = `${nombre} (${ticker}) — Indicador en zona alta, percentil ${percentil}.${parteEstadistica}`;
-    } else if (zona === 'baja') {
-      base = `${nombre} (${ticker}) — Indicador en zona baja, percentil ${percentil}.${parteEstadistica}`;
-    } else {
-      base = `${nombre} (${ticker}) — Indicador en zona intermedia, percentil ${percentil}.`;
+    const statsCompras = statsCiclo(compras);
+    const statsVentas = statsCiclo(ventas);
+
+    const ultima = lista.length > 0 ? lista[lista.length - 1] : null;
+    const ultimaTipo = ultima ? ultima.tipo : null;
+    const posicionAbierta = analisis.posicionAbierta;
+
+    // Texto humano y descriptivo
+    let texto = `Nuevo análisis de ${nombre} (${ticker}). `;
+    texto += `Precio ${precio}. `;
+    texto += `Indicador en zona ${zona}, percentil ${percentil}.`;
+
+    // Estadística del último tipo de movimiento
+    if (ultimaTipo === 'compra' && statsCompras.total > 0) {
+      texto += ` Acierto histórico de movimientos de compra: ${statsCompras.porcentaje.toFixed(0)}% (${statsCompras.total} ciclos).`;
+    } else if (ultimaTipo === 'venta' && statsVentas.total > 0) {
+      texto += ` Acierto histórico de movimientos de venta: ${statsVentas.porcentaje.toFixed(0)}% (${statsVentas.total} ciclos).`;
     }
 
-    const enlace = ` Análisis: ${url}`;
-    let texto = base + enlace;
+    // Posición abierta
+    if (posicionAbierta && ultimaTipo) {
+      texto += ` Posición abierta según reglas del registro: ${ultimaTipo}.`;
+    }
 
+    // Enlace
+    const enlace = ` Más en: ${url}`;
+    texto += enlace;
+
+    // Recorte a 280
     if (texto.length > 280) {
       const espacio = 280 - enlace.length - 3;
-      texto = base.slice(0, espacio) + '...' + enlace;
+      texto = texto.slice(0, espacio) + '...' + enlace;
     }
 
     return texto;
@@ -153,7 +194,7 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
             <textarea
               value={textoTuit}
               onChange={(e) => setTextoTuit(e.target.value)}
-              rows={6}
+              rows={7}
               maxLength={280}
               style={{
                 width: '100%',
