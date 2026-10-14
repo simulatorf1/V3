@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Contacto — V3',
-  description: 'Contacto de V3.'
+  title: 'Contacto — Equaty',
+  description: 'Contacto de Equaty.'
 };
 
 export default function Contacto() {
@@ -12,7 +12,7 @@ export default function Contacto() {
         Para cualquier consulta, sugerencia o solicitud relacionada con el sitio, puede escribir a:
       </p>
 
-      <p style={{ fontSize: '18px', fontWeight: 700 }}>info@ibexia.es</p>
+      <p style={{ fontSize: '18px', fontWeight: 700 }}>info@equaty.es</p>
 
       <p className="v3-aviso-mute" style={{ marginTop: '40px' }}>
         No atendemos consultas sobre empresas concretas ni ofrecemos asesoramiento financiero.
