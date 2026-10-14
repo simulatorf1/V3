@@ -11,8 +11,9 @@ export default function ResumenVistazo({ analisis, empresa }) {
   const smiActual = analisis.smiActual;
   const zona = analisis.zona;
 
-  // Percentil del SMI dentro de las últimas 60 sesiones
-  const smisValidos = (analisis.smisUltimos60 || []).filter((v) => v !== null && v !== undefined);
+  const smisValidos = (analisis.smisUltimos60 || []).filter(
+    (v) => v !== null && v !== undefined
+  );
   const smisOrdenados = [...smisValidos].sort((a, b) => a - b);
   let percentil = 0;
   if (smisOrdenados.length > 0) {
@@ -20,75 +21,83 @@ export default function ResumenVistazo({ analisis, empresa }) {
     percentil = Math.round((menores / smisOrdenados.length) * 100);
   }
 
-  // Riesgo: basado en zona del SMI y en señales recientes
   let riesgo = 'bajo';
-  let colorRiesgo = '#2e7d32';
+  let colorRiesgo = 'var(--v3-positive)';
   if (zona === 'alta' || zona === 'baja') {
     riesgo = 'medio';
-    colorRiesgo = '#ef6c00';
+    colorRiesgo = 'var(--v3-warn)';
   }
   if (Math.abs(smiActual) > 70) {
     riesgo = 'alto';
-    colorRiesgo = '#c62828';
+    colorRiesgo = 'var(--v3-negative)';
   }
 
-  const colorZona = {
-    alta: '#c62828',
-    baja: '#2e7d32',
-    intermedia: '#616161'
-  }[zona] || '#616161';
+  const colorZona =
+    zona === 'alta'
+      ? 'var(--v3-negative)'
+      : zona === 'baja'
+      ? 'var(--v3-positive)'
+      : 'var(--v3-text-soft)';
+
+  const celda = {
+    padding: '4px 0'
+  };
+  const etiqueta = {
+    color: 'var(--v3-text-mute)',
+    fontSize: '12px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    fontWeight: 600
+  };
+  const valor = {
+    fontSize: '20px',
+    fontWeight: 700,
+    marginTop: '2px'
+  };
+  const sub = {
+    color: 'var(--v3-text-soft)',
+    fontSize: '13px',
+    marginTop: '2px'
+  };
 
   return (
-    <div
-      style={{
-        background: '#f8f9fa',
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
-        padding: '20px',
-        marginTop: '30px'
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Resumen de un vistazo</h2>
+    <section className="v3-card-soft" style={{ marginTop: '30px' }}>
+      <h2 style={{ marginTop: 0, marginBottom: '16px' }}>Resumen de un vistazo</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        <div>
-          <div style={{ color: '#666', fontSize: '12px', textTransform: 'uppercase' }}>Precio actual</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{precioActual.toFixed(2)}</div>
-          <div style={{ color: variacion5 >= 0 ? '#2e7d32' : '#c62828', fontSize: '13px' }}>
-            {variacion5 >= 0 ? '+' : ''}{variacion5.toFixed(2)}% en 5 sesiones
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '20px'
+        }}
+      >
+        <div style={celda}>
+          <div style={etiqueta}>Precio actual</div>
+          <div style={valor}>{precioActual.toFixed(2)}</div>
+          <div style={{ ...sub, color: variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)' }}>
+            {variacion5 >= 0 ? '+' : ''}
+            {variacion5.toFixed(2)}% en 5 sesiones
           </div>
         </div>
 
-        <div>
-          <div style={{ color: '#666', fontSize: '12px', textTransform: 'uppercase' }}>Zona del indicador</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: colorZona }}>
-            {zona}
-          </div>
-          <div style={{ color: '#666', fontSize: '13px' }}>
-            percentil {percentil} del rango de 60 sesiones
-          </div>
+        <div style={celda}>
+          <div style={etiqueta}>Zona del indicador</div>
+          <div style={{ ...valor, color: colorZona }}>{zona}</div>
+          <div style={sub}>percentil {percentil} del rango de 60 sesiones</div>
         </div>
 
-        <div>
-          <div style={{ color: '#666', fontSize: '12px', textTransform: 'uppercase' }}>Nivel de riesgo</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: colorRiesgo }}>
-            {riesgo}
-          </div>
-          <div style={{ color: '#666', fontSize: '13px' }}>
-            calculado sobre el indicador
-          </div>
+        <div style={celda}>
+          <div style={etiqueta}>Nivel de riesgo</div>
+          <div style={{ ...valor, color: colorRiesgo }}>{riesgo}</div>
+          <div style={sub}>calculado sobre el indicador</div>
         </div>
 
-        <div>
-          <div style={{ color: '#666', fontSize: '12px', textTransform: 'uppercase' }}>Consenso comunidad</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#616161' }}>
-            —
-          </div>
-          <div style={{ color: '#666', fontSize: '13px' }}>
-            disponible próximamente
-          </div>
+        <div style={celda}>
+          <div style={etiqueta}>Consenso comunidad</div>
+          <div style={{ ...valor, color: 'var(--v3-text-mute)' }}>—</div>
+          <div style={sub}>disponible en la sección inferior</div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
