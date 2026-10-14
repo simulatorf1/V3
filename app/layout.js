@@ -2,25 +2,25 @@ import '../app/globals.css';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 
-const BASE_URL = 'https://v3-rho-weld.vercel.app';
+const BASE_URL = 'https://equaty.es';
 
 export const metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: 'V3 — Análisis bursátil estadístico',
+    default: 'Equaty — Análisis bursátil estadístico',
     template: '%s'
   },
   description:
-    'Análisis estadístico de empresas cotizadas elaborado por el equipo de V3. No es recomendación de inversión.',
+    'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
   alternates: {
     canonical: '/'
   },
   openGraph: {
-    title: 'V3 — Análisis bursátil estadístico',
+    title: 'Equaty — Análisis bursátil estadístico',
     description:
-      'Análisis estadístico de empresas cotizadas elaborado por el equipo de V3. No es recomendación de inversión.',
+      'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
     url: BASE_URL,
-    siteName: 'V3',
+    siteName: 'Equaty',
     locale: 'es_ES',
     type: 'website'
   },
