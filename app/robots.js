@@ -1,4 +1,4 @@
-const BASE_URL = 'https://v3-rho-weld.vercel.app';
+const BASE_URL = 'https://equaty.es';
 
 export default function robots() {
   return {
@@ -6,7 +6,7 @@ export default function robots() {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/']
+        disallow: ['/api/', '/admin']
       }
     ],
     sitemap: `${BASE_URL}/sitemap.xml`
