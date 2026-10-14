@@ -52,7 +52,7 @@ export default function TablaSenales({ senales, precioActual }) {
                 <th>Fecha</th>
                 <th>Tipo</th>
                 <th>Precio señal</th>
-                <th>SMI en la señal</th>
+                <th>Indicador en la señal</th>
                 <th>Precio cierre</th>
                 <th>Variación del ciclo</th>
                 <th>Resultado</th>
