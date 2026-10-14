@@ -3,6 +3,11 @@ import { supabase } from '../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Posiciones de referencia — V3',
+  description: 'Backtesting público de las posiciones abiertas por el algoritmo.'
+};
+
 function slugEmpresa(e) {
   const nombreLimpio = (e.nombre || e.ticker)
     .toLowerCase()
@@ -12,12 +17,8 @@ function slugEmpresa(e) {
     .replace(/^-+|-+$/g, '');
   return `${e.ticker.toLowerCase()}__${nombreLimpio}`;
 }
-export const metadata = {
-  title: 'Posiciones de referencia — V3',
-  description: 'Backtesting público de las posiciones abiertas por el algoritmo.'
-};
+
 export default async function Posiciones() {
-  // Empresas cuya última señal histórica sigue abierta
   const { data: paginas } = await supabase
     .from('paginas')
     .select('ticker, datos');
@@ -49,9 +50,9 @@ export default async function Posiciones() {
   }
 
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
+    <main className="v3-container">
       <h1>Posiciones de referencia (backtesting)</h1>
-      <p style={{ color: '#666' }}>
+      <p style={{ color: 'var(--v3-text-soft)' }}>
         Simulación pública de las posiciones abiertas por el algoritmo en su registro histórico.
         No son operaciones reales.
       </p>
@@ -59,44 +60,44 @@ export default async function Posiciones() {
       {posiciones.length === 0 ? (
         <p>Actualmente no hay posiciones abiertas según las reglas del algoritmo.</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', fontSize: '14px' }}>
-          <thead>
-            <tr style={{ background: '#f5f5f5' }}>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Empresa</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha entrada</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Precio entrada</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Precio actual</th>
-              <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ddd' }}>Variación</th>
-            </tr>
-          </thead>
-          <tbody>
-            {posiciones.map((p) => (
-              <tr key={p.ticker}>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                  <Link href={`/analisis/${slugEmpresa(p)}`} style={{ color: '#0070f3', textDecoration: 'none' }}>
-                    {p.nombre} ({p.ticker})
-                  </Link>
-                </td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{p.fecha}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{p.precioEntrada?.toFixed(2)}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{p.precioActual?.toFixed(2)}</td>
-                <td style={{
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  color: p.variacion >= 0 ? '#2e7d32' : '#c62828'
-                }}>
-                  {p.variacion !== null ? `${p.variacion >= 0 ? '+' : ''}${p.variacion.toFixed(2)}%` : '—'}
-                </td>
+        <div style={{ overflowX: 'auto', marginTop: '20px' }}>
+          <table className="v3-table">
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Fecha entrada</th>
+                <th>Precio entrada</th>
+                <th>Precio actual</th>
+                <th>Variación</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {posiciones.map((p) => (
+                <tr key={p.ticker}>
+                  <td>
+                    <Link href={`/analisis/${slugEmpresa(p)}`}>
+                      {p.nombre} ({p.ticker})
+                    </Link>
+                  </td>
+                  <td>{p.fecha}</td>
+                  <td>{p.precioEntrada?.toFixed(2)}</td>
+                  <td>{p.precioActual?.toFixed(2)}</td>
+                  <td className={p.variacion >= 0 ? 'v3-pos' : 'v3-neg'}>
+                    {p.variacion !== null
+                      ? `${p.variacion >= 0 ? '+' : ''}${p.variacion.toFixed(2)}%`
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '20px' }}>
-        Las posiciones son registros automáticos que genera el algoritmo según sus reglas predefinidas.
-        No representan operaciones reales realizadas por esta web ni constituyen una sugerencia de
-        compra o venta. El rendimiento pasado no garantiza resultados futuros.
+      <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
+        Las posiciones son registros automáticos que genera el algoritmo según sus reglas
+        predefinidas. No representan operaciones reales realizadas por esta web ni constituyen una
+        sugerencia de compra o venta. El rendimiento pasado no garantiza resultados futuros.
       </p>
     </main>
   );
