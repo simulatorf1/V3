@@ -19,16 +19,15 @@ export default function TablaSenales({ senales, precioActual }) {
     return { ...s, precioCierre, variacion, acierto, cierreEsActual: !siguiente };
   });
 
-  // Mostramos hasta 100, de más reciente a más antigua
   const mostrar = filas.slice(-100).reverse();
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Registro histórico de señales</h2>
+      <h2 className="v3-seccion-titulo">Histórico de movimientos estadísticos</h2>
 
       {mostrar.length === 0 ? (
         <p style={{ color: 'var(--v3-text-soft)' }}>
-          Sin señales registradas en el último año.
+          Sin movimientos registrados en el último año.
         </p>
       ) : (
         <div
@@ -100,14 +99,14 @@ export default function TablaSenales({ senales, precioActual }) {
       )}
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '12px' }}>
-        <strong>Criterio de acierto:</strong> una señal de compra se considera acertada si el
-        precio sube hasta la siguiente señal o hasta el día actual. Una señal de venta se considera
-        acertada si el precio baja en el mismo intervalo.
+        <strong>Criterio de acierto:</strong> un movimiento de compra se considera acertado si el
+        precio sube hasta el movimiento contrario siguiente o hasta el día actual. Un movimiento
+        de venta se considera acertado si el precio baja en el mismo intervalo.
       </p>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
-        Las señales son registros automáticos que genera el algoritmo según sus reglas predefinidas.
-        No representan operaciones reales realizadas por esta web ni constituyen una sugerencia de
+        Los movimientos son registros estadísticos que se publican con reglas fijas y visibles. No
+        representan operaciones reales realizadas por esta web ni constituyen una sugerencia de
         compra o venta. El rendimiento pasado no garantiza resultados futuros.
       </p>
     </section>
