@@ -37,7 +37,6 @@ function fechaMadrid(fecha = new Date()) {
   });
 }
 
-// Calcula ciclos de una lista de señales. Mismo formato que TablaSenales.
 function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
   const limitada = lista.slice(-limite);
@@ -226,17 +225,26 @@ export default async function PaginaEmpresa({ params }) {
         {analisis && (
           <>
             <ResumenVistazo analisis={analisis} empresa={empresa} />
-            <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
-            <QueEstaPasando analisis={analisis} />
-            <ContextoReciente noticias={analisis.noticias} />
-            <ComparadorSector empresa={empresa} analisis={analisis} />
-            <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
-            <BloqueSEO empresa={empresa} analisis={analisis} />
-            <ConsensoComunidad ticker={empresa.ticker} />
+
             <EstadisticaHistorica
               senales={analisis.senales}
               precioActual={analisis.precioActual}
             />
+
+            <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+
+            <QueEstaPasando analisis={analisis} />
+
+            <ContextoReciente noticias={analisis.noticias} />
+
+            <ComparadorSector empresa={empresa} analisis={analisis} />
+
+            <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
+
+            <BloqueSEO empresa={empresa} analisis={analisis} />
+
+            <ConsensoComunidad ticker={empresa.ticker} />
+
             <p className="v3-aviso-mute">
               Esta estadística se basa exclusivamente en datos históricos y no garantiza ningún
               resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
