@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function Fuentes() {
   return (
-    <main style={{ padding: '40px 24px', maxWidth: '800px', margin: '0 auto' }}>
+    <main className="v3-container" style={{ maxWidth: '820px' }}>
       <h1>Fuentes</h1>
 
       <p>Esta web utiliza exclusivamente fuentes de datos públicas y gratuitas.</p>
@@ -27,7 +27,7 @@ export default function Fuentes() {
         <li>ETFs cotizados en EE. UU. como proxy de cada sector (XLK, XLE, XLF, etc.).</li>
       </ul>
 
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '40px' }}>
+      <p className="v3-aviso-mute" style={{ marginTop: '40px' }}>
         Todas las fuentes se citan por transparencia. No existe relación comercial con ellas.
       </p>
     </main>
