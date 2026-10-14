@@ -14,6 +14,7 @@ import BarraLateral from '../../../components/BarraLateral';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
 const MAX_SENALES_TABLA = 100;
@@ -105,11 +106,13 @@ export default async function PaginaEmpresa({ params }) {
     ticker = slug.split('-')[0].toUpperCase();
   }
 
+  // Paso 1: obtener o crear la empresa (sin análisis, es rápido)
   const empresa = await obtenerOCrearEmpresa(ticker);
   if (!empresa) {
     notFound();
   }
 
+  // Paso 2: intentar obtener el análisis. Si falla, mostrar mensaje de espera.
   let analisis = null;
   let desdeCache = false;
   let errorAnalisis = null;
@@ -141,6 +144,27 @@ export default async function PaginaEmpresa({ params }) {
         }
       }
     : null;
+
+  // Si el análisis aún no está listo, mostramos página de carga con enlace de refresco
+  if (!analisis) {
+    return (
+      <div className="v3-container" style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '60px' }}>
+        <h1>{empresa.nombre} ({empresa.ticker})</h1>
+        <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px' }}>
+          Estamos preparando el análisis de esta empresa. Suele tardar unos segundos.
+        </p>
+        <p style={{ marginTop: '30px' }}>
+          <Link href={`/analisis/${slug}`} className="v3-btn">
+            Recargar página
+          </Link>
+        </p>
+        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '40px' }}>
+          Si tras varios intentos sigue sin cargar, es posible que no haya datos suficientes para
+          esta empresa.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="v3-grid-analisis">
@@ -200,15 +224,11 @@ export default async function PaginaEmpresa({ params }) {
           <li><strong>Ticker:</strong> {empresa.ticker}</li>
           <li><strong>Sector:</strong> {empresa.sector || 'N/A'}</li>
           <li><strong>Mercado:</strong> {empresa.mercado || 'N/A'}</li>
-          {analisis && (
-            <li><strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}</li>
-          )}
-          {analisis && (
-            <li>
-              <strong>Indicador propio:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
-              {analisis.zona})
-            </li>
-          )}
+          <li><strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}</li>
+          <li>
+            <strong>Indicador propio:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
+            {analisis.zona})
+          </li>
         </ul>
 
         <p className="v3-aviso-mute">
@@ -216,48 +236,33 @@ export default async function PaginaEmpresa({ params }) {
           lector. No constituye asesoramiento financiero personalizado.
         </p>
 
-        {errorAnalisis && (
-          <p style={{ color: 'var(--v3-negative)', marginTop: '20px' }}>
-            No se han encontrado datos suficientes para esta empresa. Prueba con otro nombre o
-            ticker.
-          </p>
-        )}
+        <ResumenVistazo analisis={analisis} empresa={empresa} />
 
-        {analisis && (
-          <>
-            <ResumenVistazo analisis={analisis} empresa={empresa} />
+        <EstadisticaHistorica
+          senales={analisis.senales}
+          precioActual={analisis.precioActual}
+        />
 
-            <EstadisticaHistorica
-              senales={analisis.senales}
-              precioActual={analisis.precioActual}
-            />
+        <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
-            <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+        <QueEstaPasando analisis={analisis} />
 
-            <QueEstaPasando analisis={analisis} />
+        <ContextoReciente noticias={analisis.noticias} />
 
-            <ContextoReciente noticias={analisis.noticias} />
+        <ComparadorSector empresa={empresa} analisis={analisis} />
 
-            <ComparadorSector empresa={empresa} analisis={analisis} />
+        <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
 
-            <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
+        <BloqueSEO empresa={empresa} analisis={analisis} />
 
-            <BloqueSEO empresa={empresa} analisis={analisis} />
+        <ConsensoComunidad ticker={empresa.ticker} />
 
-            <ConsensoComunidad ticker={empresa.ticker} />
+        <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
-            <BotonesCompartir
-              empresa={empresa}
-              analisis={analisis}
-              url={canonical}
-            />
-
-            <p className="v3-aviso-mute">
-              Este registro se basa exclusivamente en datos históricos y no garantiza ningún
-              resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
-            </p>
-          </>
-        )}
+        <p className="v3-aviso-mute">
+          Este registro se basa exclusivamente en datos históricos y no garantiza ningún
+          resultado futuro. El usuario debe tomar sus propias decisiones de inversión.
+        </p>
       </main>
 
       <div className="v3-sidebar">
