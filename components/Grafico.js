@@ -14,42 +14,25 @@ export default function Grafico({ velas, smis }) {
     async function init() {
       const { createChart, LineStyle } = await import('lightweight-charts');
 
-      // Datos de precio
-      const precioData = velas.map((v) => ({
-        time: v.date,
-        value: v.close
-      }));
+      const precioData = velas.map((v) => ({ time: v.date, value: v.close }));
 
-      // Datos del SMI alineados con velas
       const smiData = [];
       for (let i = 0; i < smis.length; i++) {
         if (smis[i] === null || smis[i] === undefined) continue;
         if (!velas[i]) continue;
-        smiData.push({
-          time: velas[i].date,
-          value: smis[i]
-        });
+        smiData.push({ time: velas[i].date, value: smis[i] });
       }
 
-      // --- Gráfico único con dos ejes ---
       chart = createChart(contenedorRef.current, {
         width: contenedorRef.current.clientWidth,
         height: 480,
-        layout: {
-          background: { color: '#ffffff' },
-          textColor: '#333'
-        },
+        layout: { background: { color: '#ffffff' }, textColor: '#333' },
         grid: {
           vertLines: { color: '#f0f0f0' },
           horzLines: { color: '#f0f0f0' }
         },
-        timeScale: {
-          borderColor: '#ddd'
-        },
-        rightPriceScale: {
-          borderColor: '#ddd',
-          scaleMargins: { top: 0.1, bottom: 0.1 }
-        },
+        timeScale: { borderColor: '#ddd' },
+        rightPriceScale: { borderColor: '#ddd', scaleMargins: { top: 0.1, bottom: 0.1 } },
         leftPriceScale: {
           borderColor: '#ddd',
           visible: true,
@@ -57,16 +40,14 @@ export default function Grafico({ velas, smis }) {
         }
       });
 
-      // Serie de precio (eje derecho)
       const precioLine = chart.addLineSeries({
-        color: '#0070f3',
+        color: '#0b5fff',
         lineWidth: 2,
         title: 'Precio',
         priceScaleId: 'right'
       });
       precioLine.setData(precioData);
 
-      // --- Relleno de zona alta (solo lo que sobresale de +40) ---
       const zonaAltaBaseline = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
         topFillColor1: 'rgba(198, 40, 40, 0.25)',
@@ -83,7 +64,6 @@ export default function Grafico({ velas, smis }) {
       });
       zonaAltaBaseline.setData(smiData);
 
-      // --- Relleno de zona baja (solo lo que cae por debajo de -40) ---
       const zonaBajaBaseline = chart.addBaselineSeries({
         baseValue: { type: 'price', price: -40 },
         topFillColor1: 'rgba(46, 125, 50, 0)',
@@ -100,7 +80,6 @@ export default function Grafico({ velas, smis }) {
       });
       zonaBajaBaseline.setData(smiData);
 
-      // Serie del SMI (eje izquierdo), encima del relleno
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
@@ -109,10 +88,9 @@ export default function Grafico({ velas, smis }) {
       });
       smiLine.setData(smiData);
 
-      // Bandas del SMI (zona alta / baja) en el eje izquierdo
       smiLine.createPriceLine({
         price: 40,
-        color: '#c62828',
+        color: '#cf222e',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
@@ -121,7 +99,7 @@ export default function Grafico({ velas, smis }) {
       });
       smiLine.createPriceLine({
         price: -40,
-        color: '#2e7d32',
+        color: '#1a7f37',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
@@ -137,7 +115,6 @@ export default function Grafico({ velas, smis }) {
         priceScaleId: 'left'
       });
 
-      // Rango fijo del SMI en el eje izquierdo (-100 a +100)
       chart.priceScale('left').applyOptions({
         autoScale: false,
         scaleMargins: { top: 0.1, bottom: 0.1 }
@@ -169,14 +146,19 @@ export default function Grafico({ velas, smis }) {
   }, [velas, smis]);
 
   return (
-    <div style={{ marginTop: '30px' }}>
-      <h2>Gráfico principal</h2>
-      <div ref={contenedorRef} style={{ width: '100%' }} />
-      <p style={{ color: '#666', fontSize: '13px', marginTop: '10px' }}>
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Gráfico principal</h2>
+      <div
+        className="v3-card"
+        style={{ padding: '12px', background: '#fff' }}
+      >
+        <div ref={contenedorRef} style={{ width: '100%' }} />
+      </div>
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '10px' }}>
         El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador propietario
         (línea morada). El área roja aparece solo cuando el indicador sobresale por encima de +40;
         el área verde, solo cuando cae por debajo de -40. No es una recomendación de inversión.
       </p>
-    </div>
+    </section>
   );
 }
