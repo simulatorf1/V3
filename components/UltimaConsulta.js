@@ -3,10 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-function construirSlug(ticker) {
-  return ticker.toLowerCase();
-}
-
 export default function UltimaConsulta() {
   const [ticker, setTicker] = useState(null);
 
@@ -22,29 +18,23 @@ export default function UltimaConsulta() {
 
   return (
     <div
+      className="v3-card"
       style={{
-        background: '#e3f2fd',
-        border: '1px solid #90caf9',
-        borderRadius: '8px',
-        padding: '16px 20px',
-        marginBottom: '20px',
+        marginTop: '20px',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
+        background: '#eef4ff',
+        borderColor: '#c7d9ff'
       }}
     >
-      <span style={{ color: '#1565c0', fontSize: '14px' }}>
-        <strong>Tu última consulta:</strong>
+      <span style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+        Tu última consulta:
       </span>
       <Link
-        href={`/analisis/${construirSlug(ticker)}`}
-        style={{
-          color: '#1565c0',
-          textDecoration: 'none',
-          fontWeight: 'bold',
-          fontSize: '15px'
-        }}
+        href={`/analisis/${ticker.toLowerCase()}`}
+        style={{ fontWeight: 700, fontSize: '15px' }}
       >
         {ticker} →
       </Link>
