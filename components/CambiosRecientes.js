@@ -30,14 +30,15 @@ function fechaCorta(fecha) {
 export default function CambiosRecientes({ cambios }) {
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Cambios recientes detectados</h2>
+      <h2 className="v3-seccion-titulo">Últimas empresas buscadas</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
         Análisis actualizados en las últimas 48 horas.
       </p>
 
       {!cambios || cambios.length === 0 ? (
         <p style={{ color: 'var(--v3-text-soft)' }}>
-          Aún no hay cambios registrados en las últimas 48 horas.
+          Aún no hay empresas buscadas en las últimas 48 horas. Prueba a buscar cualquier empresa
+          en el buscador de arriba.
         </p>
       ) : (
         <div
@@ -132,12 +133,7 @@ export default function CambiosRecientes({ cambios }) {
                       ? Number(c.precio).toFixed(2)
                       : '—'}
                   </div>
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: 'var(--v3-text-mute)'
-                    }}
-                  >
+                  <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)' }}>
                     {fechaCorta(c.actualizado_at)}
                   </div>
                 </div>
