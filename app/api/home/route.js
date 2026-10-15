@@ -1,21 +1,36 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
-import { descargarVelas } from '../../../lib/yahoo';
-import { calcularSMI, zonaSMI } from '../../../lib/indicador';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // 1. Top empresas más consultadas de la última semana
     const hace7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: visitas } = await supabaseAdmin
-      .from('visitas')
-      .select('ticker')
-      .gte('created_at', hace7dias)
-      .not('ticker', 'is', null);
+    const hace48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
+    // Consultas en paralelo
+    const [visitasResult, paginasResult, empresasResult, noticiasResult] = await Promise.all([
+      supabaseAdmin
+        .from('visitas')
+        .select('ticker')
+        .gte('created_at', hace7dias)
+        .not('ticker', 'is', null),
+      supabaseAdmin
+        .from('paginas')
+        .select('ticker, datos, actualizado_at')
+        .gte('actualizado_at', hace48h)
+        .order('actualizado_at', { ascending: false })
+        .limit(20),
+      supabaseAdmin.from('empresas').select('ticker, nombre, sector'),
+      supabaseAdmin
+        .from('noticias')
+        .select('ticker, titulo, fuente, url, fecha_publicacion')
+        .order('fecha_publicacion', { ascending: false })
+        .limit(10)
+    ]);
+
+    // Top empresas
     const conteoTickers = {};
-    for (const v of visitas || []) {
+    for (const v of visitasResult.data || []) {
       if (!v.ticker) continue;
       conteoTickers[v.ticker] = (conteoTickers[v.ticker] || 0) + 1;
     }
@@ -24,57 +39,33 @@ export async function GET() {
       .slice(0, 8)
       .map(([ticker, visitas]) => ({ ticker, visitas }));
 
-    // Enriquecer con nombre desde la tabla empresas
-    const topEnriquecido = [];
-    for (const t of topTickers) {
-      const { data: emp } = await supabaseAdmin
-        .from('empresas')
-        .select('ticker, nombre, sector')
-        .eq('ticker', t.ticker)
-        .maybeSingle();
-      if (emp) topEnriquecido.push({ ...emp, visitas: t.visitas });
+    const empresasMap = {};
+    for (const e of empresasResult.data || []) {
+      empresasMap[e.ticker] = e;
     }
 
-    // 2. Cambios recientes: páginas actualizadas en las últimas 48h
-    const hace48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    const { data: paginas } = await supabaseAdmin
-      .from('paginas')
-      .select('ticker, datos, actualizado_at')
-      .gte('actualizado_at', hace48h)
-      .order('actualizado_at', { ascending: false })
-      .limit(20);
+    const topEnriquecido = topTickers
+      .filter((t) => empresasMap[t.ticker])
+      .map((t) => ({ ...empresasMap[t.ticker], visitas: t.visitas }));
 
+    // Cambios recientes
     const cambiosRecientes = [];
-    for (const p of paginas || []) {
+    for (const p of paginasResult.data || []) {
       if (!p.datos) continue;
-      const zona = p.datos.zona;
-      const smi = p.datos.smiActual;
-      const precio = p.datos.precioActual;
-      const { data: emp } = await supabaseAdmin
-        .from('empresas')
-        .select('nombre, sector')
-        .eq('ticker', p.ticker)
-        .maybeSingle();
+      const emp = empresasMap[p.ticker];
       if (!emp) continue;
       cambiosRecientes.push({
         ticker: p.ticker,
         nombre: emp.nombre,
         sector: emp.sector,
-        zona,
-        smi,
-        precio,
+        zona: p.datos.zona,
         actualizado_at: p.actualizado_at
       });
     }
 
-    // 3. Sectores principales: agrupar empresas por sector
-    const { data: empresas } = await supabaseAdmin
-      .from('empresas')
-      .select('sector')
-      .not('sector', 'is', null);
-
+    // Sectores
     const conteoSectores = {};
-    for (const e of empresas || []) {
+    for (const e of empresasResult.data || []) {
       if (!e.sector) continue;
       conteoSectores[e.sector] = (conteoSectores[e.sector] || 0) + 1;
     }
@@ -83,24 +74,14 @@ export async function GET() {
       .slice(0, 12)
       .map(([sector, empresas]) => ({ sector, empresas }));
 
-    // 4. Noticias recientes: últimos titulares de la tabla noticias
-    const { data: noticiasData } = await supabaseAdmin
-      .from('noticias')
-      .select('ticker, titulo, fuente, url, fecha_publicacion')
-      .order('fecha_publicacion', { ascending: false })
-      .limit(10);
-
     return Response.json({
       top: topEnriquecido,
       cambios: cambiosRecientes,
       sectores,
-      noticias: noticiasData || []
+      noticias: noticiasResult.data || []
     });
   } catch (err) {
     console.error('Error en /api/home:', err);
-    return Response.json(
-      { top: [], cambios: [], sectores: [], noticias: [] },
-      { status: 200 }
-    );
+    return Response.json({ top: [], cambios: [], sectores: [], noticias: [] }, { status: 200 });
   }
 }
