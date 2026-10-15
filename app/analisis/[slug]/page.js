@@ -121,6 +121,7 @@ export default async function PaginaEmpresa({ params }) {
     desdeCache = resultado.desdeCache;
   } catch (e) {
     errorAnalisis = e.message;
+    console.error('Error generando análisis:', e.message);
   }
 
   const canonical = `${BASE_URL}/analisis/${slug}`;
