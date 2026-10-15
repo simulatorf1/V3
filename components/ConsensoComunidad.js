@@ -55,7 +55,9 @@ export default function ConsensoComunidad({ ticker }) {
       if (typeof data.total === 'number') setTotal(data.total);
 
       const unAnio = 60 * 60 * 24 * 365;
-      document.cookie = `v3_voto_${ticker}=${encodeURIComponent(opcion)}; max-age=${unAnio}; path=/; SameSite=Lax`;
+      document.cookie = `v3_voto_${ticker}=${encodeURIComponent(
+        opcion
+      )}; max-age=${unAnio}; path=/; SameSite=Lax`;
       setVotoUsuario(opcion);
     } catch (e) {}
   }
@@ -70,39 +72,42 @@ export default function ConsensoComunidad({ ticker }) {
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Consenso de la comunidad</h2>
 
-      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-        Sin registro. Voto único por navegador.{' '}
-        {total > 0
-          ? `${total} voto${total === 1 ? '' : 's'} registrado${total === 1 ? '' : 's'}.`
-          : 'Aún no hay votos.'}
-      </p>
-
-      {sentimiento && (
-        <p>
-          <strong>Sentimiento agregado:</strong> {sentimiento}
+      <div className="v3-card" style={{ padding: '20px' }}>
+        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: 0 }}>
+          Sin registro. Voto único por navegador.{' '}
+          {total > 0
+            ? `${total} voto${total === 1 ? '' : 's'} registrado${total === 1 ? '' : 's'}.`
+            : 'Aún no hay votos.'}
         </p>
-      )}
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap' }}>
-        {opciones.map((op) => {
-          const activo = votoUsuario === op.key;
-          return (
-            <button
-              key={op.key}
-              onClick={() => votar(op.key)}
-              disabled={cargando}
-              className={activo ? 'v3-btn' : 'v3-btn v3-btn-secondary'}
-            >
-              {op.etiqueta} · {conteo[op.key] || 0}
-            </button>
-          );
-        })}
+        {sentimiento && (
+          <p style={{ marginTop: '4px' }}>
+            <strong>Sentimiento agregado:</strong> {sentimiento}
+          </p>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap' }}>
+          {opciones.map((op) => {
+            const activo = votoUsuario === op.key;
+            return (
+              <button
+                key={op.key}
+                onClick={() => votar(op.key)}
+                disabled={cargando}
+                className={activo ? 'v3-btn' : 'v3-btn v3-btn-secondary'}
+                style={{ fontSize: '13px', padding: '8px 14px' }}
+              >
+                {op.etiqueta} · {conteo[op.key] || 0}
+              </button>
+            );
+          })}
+        </div>
+
+        <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '14px' }}>
+          El consenso agregado refleja la opinión de los visitantes que han votado. No constituye
+          una recomendación de inversión ni representa la posición de esta web.
+        </p>
       </div>
-
-      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
-        El consenso agregado refleja la opinión de los visitantes que han votado. No constituye una
-        recomendación de inversión ni representa la posición de esta web.
-      </p>
     </section>
   );
 }
