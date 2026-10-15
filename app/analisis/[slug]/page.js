@@ -107,59 +107,65 @@ export default async function PaginaEmpresa({ params }) {
     ticker = slug.split('-')[0].toUpperCase();
   }
 
-  const empresa = await obtenerOCrearEmpresa(ticker);
-  if (!empresa) {
-    notFound();
+  // 1. Obtener o crear la empresa
+  let empresa = null;
+  try {
+    empresa = await obtenerOCrearEmpresa(ticker);
+  } catch (e) {
+    console.error('Error empresa:', e.message);
   }
 
+  if (!empresa) {
+    return (
+      <div
+        className="v3-container"
+        style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '80px' }}
+      >
+        <h1>{ticker}</h1>
+        <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px', fontSize: '17px' }}>
+          Estamos preparando esta empresa por primera vez. Suele tardar unos segundos.
+        </p>
+        <p style={{ marginTop: '30px' }}>
+          <Link href={`/analisis/${slug}`} className="v3-btn">
+            Cargar ahora
+          </Link>
+        </p>
+        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '40px' }}>
+          Si tras varios intentos sigue sin cargar, es posible que no haya datos disponibles para
+          este ticker.
+        </p>
+      </div>
+    );
+  }
+
+  // 2. Comprobar si hay caché antes de esperar
   let analisis = null;
   let desdeCache = false;
-  let errorAnalisis = null;
+
   try {
     const resultado = await obtenerAnalisis(ticker, empresa);
     analisis = resultado.analisis;
     desdeCache = resultado.desdeCache;
   } catch (e) {
-    errorAnalisis = e.message;
-    console.error('Error generando análisis:', e.message);
+    console.error('Error análisis:', e.message);
   }
 
-  const canonical = `${BASE_URL}/analisis/${slug}`;
-
-  const schema = analisis
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker})`,
-        description: `Informe estadístico de ${empresa.nombre}`,
-        url: canonical,
-        datePublished: analisis.generado_at,
-        dateModified: analisis.generado_at,
-        author: { '@type': 'Organization', name: 'Equaty' },
-        publisher: { '@type': 'Organization', name: 'Equaty' },
-        about: {
-          '@type': 'FinancialProduct',
-          name: empresa.nombre,
-          identifier: empresa.ticker
-        }
-      }
-    : null;
-
+  // 3. Si no hay análisis tras el intento, mostrar pantalla de carga
   if (!analisis) {
     return (
       <div
         className="v3-container"
-        style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '60px' }}
+        style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '80px' }}
       >
         <h1>
           {empresa.nombre} ({empresa.ticker})
         </h1>
-        <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px' }}>
+        <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px', fontSize: '17px' }}>
           Estamos preparando el análisis de esta empresa. Suele tardar unos segundos.
         </p>
         <p style={{ marginTop: '30px' }}>
           <Link href={`/analisis/${slug}`} className="v3-btn">
-            Recargar página
+            Cargar ahora
           </Link>
         </p>
         <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '40px' }}>
@@ -170,16 +176,33 @@ export default async function PaginaEmpresa({ params }) {
     );
   }
 
+  const canonical = `${BASE_URL}/analisis/${slug}`;
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker})`,
+    description: `Informe estadístico de ${empresa.nombre}`,
+    url: canonical,
+    datePublished: analisis.generado_at,
+    dateModified: analisis.generado_at,
+    author: { '@type': 'Organization', name: 'Equaty' },
+    publisher: { '@type': 'Organization', name: 'Equaty' },
+    about: {
+      '@type': 'FinancialProduct',
+      name: empresa.nombre,
+      identifier: empresa.ticker
+    }
+  };
+
   return (
     <div className="v3-grid-analisis">
       <main>
         <link rel="canonical" href={canonical} />
-        {schema && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-          />
-        )}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
 
         <RegistrarVisita ticker={empresa.ticker} ruta={`/analisis/${slug}`} />
 
@@ -245,13 +268,6 @@ export default async function PaginaEmpresa({ params }) {
           Este análisis se elabora de forma independiente a las circunstancias personales de cada
           lector. No constituye asesoramiento financiero personalizado.
         </p>
-
-        {errorAnalisis && (
-          <p style={{ color: 'var(--v3-negative)', marginTop: '20px' }}>
-            No se han encontrado datos suficientes para esta empresa. Prueba con otro nombre o
-            ticker.
-          </p>
-        )}
 
         <ResumenVistazo analisis={analisis} empresa={empresa} />
 
