@@ -67,34 +67,38 @@ export async function generateMetadata({ params }) {
   if (slug.includes('__')) ticker = slug.split('__')[0].toUpperCase();
   else ticker = slug.split('-')[0].toUpperCase();
 
-  const empresa = await obtenerOCrearEmpresa(ticker);
-  if (!empresa) {
-    return { title: 'Empresa no encontrada — Equaty' };
-  }
+  try {
+    const empresa = await obtenerOCrearEmpresa(ticker);
+    if (!empresa) {
+      return { title: 'Empresa — Equaty' };
+    }
 
-  const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
-  const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-  const descripcion = `Informe estadístico de ${empresa.nombre} (${empresa.ticker}): indicador propio, zonas, histórico de movimientos y estadística. No es recomendación de inversión.`;
-  const canonical = `${BASE_URL}/analisis/${slug}`;
+    const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+    const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
+    const descripcion = `Informe estadístico de ${empresa.nombre} (${empresa.ticker}): indicador propio, zonas, histórico de movimientos y estadística. No es recomendación de inversión.`;
+    const canonical = `${BASE_URL}/analisis/${slug}`;
 
-  return {
-    title: titulo,
-    description: descripcion,
-    alternates: { canonical },
-    openGraph: {
+    return {
       title: titulo,
       description: descripcion,
-      url: canonical,
-      siteName: 'Equaty',
-      type: 'article',
-      locale: 'es_ES'
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: titulo,
-      description: descripcion
-    }
-  };
+      alternates: { canonical },
+      openGraph: {
+        title: titulo,
+        description: descripcion,
+        url: canonical,
+        siteName: 'Equaty',
+        type: 'article',
+        locale: 'es_ES'
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: titulo,
+        description: descripcion
+      }
+    };
+  } catch (e) {
+    return { title: 'Empresa — Equaty' };
+  }
 }
 
 export default async function PaginaEmpresa({ params }) {
@@ -121,27 +125,21 @@ export default async function PaginaEmpresa({ params }) {
         className="v3-container"
         style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '80px' }}
       >
+        <meta httpEquiv="refresh" content="3" />
         <h1>{ticker}</h1>
         <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px', fontSize: '17px' }}>
-          Estamos preparando esta empresa por primera vez. Suele tardar unos segundos.
+          Cargando empresa por primera vez…
         </p>
-        <p style={{ marginTop: '30px' }}>
-          <Link href={`/analisis/${slug}`} className="v3-btn">
-            Cargar ahora
-          </Link>
-        </p>
-        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '40px' }}>
-          Si tras varios intentos sigue sin cargar, es posible que no haya datos disponibles para
-          este ticker.
+        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
+          Esto solo ocurre la primera vez. Unos segundos.
         </p>
       </div>
     );
   }
 
-  // 2. Comprobar si hay caché antes de esperar
+  // 2. Obtener el análisis (con caché)
   let analisis = null;
   let desdeCache = false;
-
   try {
     const resultado = await obtenerAnalisis(ticker, empresa);
     analisis = resultado.analisis;
@@ -150,27 +148,22 @@ export default async function PaginaEmpresa({ params }) {
     console.error('Error análisis:', e.message);
   }
 
-  // 3. Si no hay análisis tras el intento, mostrar pantalla de carga
+  // 3. Si no hay análisis, mostrar pantalla de auto-refresco
   if (!analisis) {
     return (
       <div
         className="v3-container"
         style={{ maxWidth: '700px', textAlign: 'center', paddingTop: '80px' }}
       >
+        <meta httpEquiv="refresh" content="3" />
         <h1>
           {empresa.nombre} ({empresa.ticker})
         </h1>
         <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px', fontSize: '17px' }}>
-          Estamos preparando el análisis de esta empresa. Suele tardar unos segundos.
+          Cargando análisis por primera vez…
         </p>
-        <p style={{ marginTop: '30px' }}>
-          <Link href={`/analisis/${slug}`} className="v3-btn">
-            Cargar ahora
-          </Link>
-        </p>
-        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '40px' }}>
-          Si tras varios intentos sigue sin cargar, es posible que no haya datos suficientes para
-          esta empresa.
+        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
+          Esto solo ocurre la primera vez. Unos segundos.
         </p>
       </div>
     );
