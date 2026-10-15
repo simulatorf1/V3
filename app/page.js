@@ -77,6 +77,22 @@ export default async function Home() {
 
       <Buscador />
 
+      <div
+        style={{
+          marginTop: '20px',
+          padding: '18px 20px',
+          background: 'var(--v3-bg-soft)',
+          border: '1px solid var(--v3-border)',
+          borderRadius: 'var(--v3-radius-sm)',
+          textAlign: 'center'
+        }}
+      >
+        <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
+          Busca cualquier empresa cotizada del mundo y consulta su histórico de movimientos,
+          zonas, percentiles y estadísticas.
+        </p>
+      </div>
+
       <UltimaConsulta />
 
       <CambiosRecientes cambios={datos.cambios} />
