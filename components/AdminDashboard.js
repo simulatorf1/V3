@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!datos) {
+  if (!datos || !datos.stats) {
     return (
       <main className="v3-container">
         <h1>Panel de administración</h1>
@@ -158,12 +158,14 @@ export default function AdminDashboard() {
 
         {seccion === 'paginas' && (
           <SeccionPaginas
-            paginas={datos.paginas}
+            paginas={datos.paginas || []}
             onRegenerar={regenerar}
             regenerando={regenerando}
           />
         )}
-        {seccion === 'comentarios' && <SeccionComentarios comentarios={datos.comentarios} />}
+        {seccion === 'comentarios' && (
+          <SeccionComentarios comentarios={datos.comentarios || []} />
+        )}
         {seccion === 'adsense' && <SeccionAdSense />}
       </div>
     </main>
@@ -184,7 +186,9 @@ function Tarjeta({ etiqueta, valor, sub }) {
       >
         {etiqueta}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '4px' }}>{valor}</div>
+      <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '4px' }}>
+        {valor ?? 0}
+      </div>
       {sub && <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>{sub}</div>}
     </div>
   );
@@ -237,18 +241,30 @@ function fechaMadrid(fecha) {
 }
 
 function SeccionEstadisticas({ datos, periodo }) {
-  const { stats, listadoHoy } = datos;
+  const stats = datos.stats || {};
+  const listadoHoy = datos.listadoHoy || [];
 
-  const maxDia = Math.max(...(stats.visitasPorDia || []).map((d) => d.visitas), 1);
-  const maxPais = Math.max(...(stats.topPaises || []).map((p) => p.visitas), 1);
-  const maxEmpresa = Math.max(...(stats.topEmpresas || []).map((e) => e.visitas), 1);
-  const maxPagina = Math.max(...(stats.topPaginas || []).map((p) => p.visitas), 1);
+  const visitasPorDia = stats.visitasPorDia || [];
+  const topPaises = stats.topPaises || [];
+  const topEmpresas = stats.topEmpresas || [];
+  const topPaginas = stats.topPaginas || [];
+  const dispositivos = stats.dispositivos || {
+    movil: 0,
+    escritorio: 0,
+    tablet: 0,
+    desconocido: 0
+  };
+
+  const maxDia = Math.max(...visitasPorDia.map((d) => d.visitas), 1);
+  const maxPais = Math.max(...topPaises.map((p) => p.visitas), 1);
+  const maxEmpresa = Math.max(...topEmpresas.map((e) => e.visitas), 1);
+  const maxPagina = Math.max(...topPaginas.map((p) => p.visitas), 1);
 
   const totalDispositivos =
-    (stats.dispositivos?.movil || 0) +
-    (stats.dispositivos?.escritorio || 0) +
-    (stats.dispositivos?.tablet || 0) +
-    (stats.dispositivos?.desconocido || 0);
+    (dispositivos.movil || 0) +
+    (dispositivos.escritorio || 0) +
+    (dispositivos.tablet || 0) +
+    (dispositivos.desconocido || 0);
 
   const etiquetaPeriodo = {
     hoy: 'hoy',
@@ -268,16 +284,29 @@ function SeccionEstadisticas({ datos, periodo }) {
           gap: '12px'
         }}
       >
-        <Tarjeta etiqueta="Visitantes ahora" valor={stats.visitantesAhora} sub="últimos 5 min" />
-        <Tarjeta etiqueta="Visitas en el periodo" valor={stats.totalPeriodo} />
-        <Tarjeta etiqueta="Visitantes únicos" valor={stats.unicosPeriodo} />
-        <Tarjeta etiqueta="Totales históricos" valor={stats.totalVisitas} />
+        <Tarjeta
+          etiqueta="Visitantes ahora"
+          valor={stats.visitantesAhora ?? 0}
+          sub="últimos 5 min"
+        />
+        <Tarjeta
+          etiqueta="Visitas en el periodo"
+          valor={stats.totalPeriodo ?? 0}
+        />
+        <Tarjeta
+          etiqueta="Visitantes únicos"
+          valor={stats.unicosPeriodo ?? 0}
+        />
+        <Tarjeta
+          etiqueta="Totales históricos"
+          valor={stats.totalVisitas ?? 0}
+        />
       </div>
 
       {periodo === 'hoy' && (
         <>
           <h3 style={{ marginTop: '32px' }}>Detalle de visitas de hoy</h3>
-          {!listadoHoy || listadoHoy.length === 0 ? (
+          {listadoHoy.length === 0 ? (
             <p style={{ color: 'var(--v3-text-soft)' }}>
               Aún no hay visitas registradas hoy.
             </p>
@@ -342,14 +371,18 @@ function SeccionEstadisticas({ datos, periodo }) {
             {periodo === 'anio' ? 'Visitas por mes' : 'Visitas por día'}
           </h3>
           <div className="v3-card" style={{ padding: '20px' }}>
-            {stats.visitasPorDia.map((d) => (
-              <BarraHorizontal
-                key={d.fecha}
-                etiqueta={d.fecha}
-                valor={d.visitas}
-                maximo={maxDia}
-              />
-            ))}
+            {visitasPorDia.length === 0 ? (
+              <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
+            ) : (
+              visitasPorDia.map((d) => (
+                <BarraHorizontal
+                  key={d.fecha}
+                  etiqueta={d.fecha}
+                  valor={d.visitas}
+                  maximo={maxDia}
+                />
+              ))
+            )}
           </div>
         </>
       )}
@@ -362,22 +395,22 @@ function SeccionEstadisticas({ datos, periodo }) {
           <>
             <BarraHorizontal
               etiqueta="Móvil"
-              valor={stats.dispositivos.movil}
+              valor={dispositivos.movil}
               maximo={totalDispositivos}
             />
             <BarraHorizontal
               etiqueta="Escritorio"
-              valor={stats.dispositivos.escritorio}
+              valor={dispositivos.escritorio}
               maximo={totalDispositivos}
             />
             <BarraHorizontal
               etiqueta="Tablet"
-              valor={stats.dispositivos.tablet}
+              valor={dispositivos.tablet}
               maximo={totalDispositivos}
             />
             <BarraHorizontal
               etiqueta="Desconocido"
-              valor={stats.dispositivos.desconocido}
+              valor={dispositivos.desconocido}
               maximo={totalDispositivos}
             />
           </>
@@ -386,10 +419,10 @@ function SeccionEstadisticas({ datos, periodo }) {
 
       <h3 style={{ marginTop: '32px' }}>Empresas más visitadas</h3>
       <div className="v3-card" style={{ padding: '20px' }}>
-        {stats.topEmpresas.length === 0 ? (
+        {topEmpresas.length === 0 ? (
           <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
         ) : (
-          stats.topEmpresas.map((e) => (
+          topEmpresas.map((e) => (
             <BarraHorizontal
               key={e.ticker}
               etiqueta={e.ticker}
@@ -402,10 +435,10 @@ function SeccionEstadisticas({ datos, periodo }) {
 
       <h3 style={{ marginTop: '32px' }}>Países</h3>
       <div className="v3-card" style={{ padding: '20px' }}>
-        {stats.topPaises.length === 0 ? (
+        {topPaises.length === 0 ? (
           <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
         ) : (
-          stats.topPaises.map((p) => (
+          topPaises.map((p) => (
             <BarraHorizontal
               key={p.pais}
               etiqueta={p.pais}
@@ -418,10 +451,10 @@ function SeccionEstadisticas({ datos, periodo }) {
 
       <h3 style={{ marginTop: '32px' }}>Páginas más visitadas</h3>
       <div className="v3-card" style={{ padding: '20px' }}>
-        {stats.topPaginas.length === 0 ? (
+        {topPaginas.length === 0 ? (
           <p style={{ color: 'var(--v3-text-soft)' }}>Sin datos todavía.</p>
         ) : (
-          stats.topPaginas.map((p) => (
+          topPaginas.map((p) => (
             <BarraHorizontal
               key={p.ruta}
               etiqueta={p.ruta}
