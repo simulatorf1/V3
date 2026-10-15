@@ -13,14 +13,24 @@ export async function GET(request) {
 
     const tickerUpper = ticker.toUpperCase();
 
-    // 1. Empresa actual para sacar su sector
-    const { data: empresa } = await supabaseAdmin
-      .from('empresas')
-      .select('ticker, sector')
-      .eq('ticker', tickerUpper)
-      .maybeSingle();
+    // Consultas en paralelo
+    const [empresaResult, noticiasResult] = await Promise.all([
+      supabaseAdmin
+        .from('empresas')
+        .select('ticker, sector')
+        .eq('ticker', tickerUpper)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('noticias')
+        .select('titulo, fuente, url, fecha_publicacion')
+        .eq('ticker', tickerUpper)
+        .order('fecha_publicacion', { ascending: false })
+        .limit(5)
+    ]);
 
-    // 2. Empresas relacionadas del mismo sector
+    const empresa = empresaResult.data;
+
+    // Relacionados (si hay sector)
     let relacionados = [];
     if (empresa?.sector) {
       const { data } = await supabaseAdmin
@@ -32,7 +42,7 @@ export async function GET(request) {
       relacionados = data || [];
     }
 
-    // 3. Valores más consultados de la semana
+    // Top empresas (últimos 7 días) - una sola consulta
     const hace7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data: visitas } = await supabaseAdmin
       .from('visitas')
@@ -50,34 +60,29 @@ export async function GET(request) {
       .slice(0, 5)
       .map(([t, visitas]) => ({ ticker: t, visitas }));
 
-    const top = [];
-    for (const t of topTickers) {
-      const { data: emp } = await supabaseAdmin
+    // Consulta única para enriquecer top
+    let top = [];
+    if (topTickers.length > 0) {
+      const tickers = topTickers.map((t) => t.ticker);
+      const { data: empresas } = await supabaseAdmin
         .from('empresas')
         .select('ticker, nombre, sector')
-        .eq('ticker', t.ticker)
-        .maybeSingle();
-      if (emp) top.push({ ...emp, visitas: t.visitas });
-    }
+        .in('ticker', tickers);
 
-    // 4. Noticias de la empresa
-    const { data: noticias } = await supabaseAdmin
-      .from('noticias')
-      .select('titulo, fuente, url, fecha_publicacion')
-      .eq('ticker', tickerUpper)
-      .order('fecha_publicacion', { ascending: false })
-      .limit(5);
+      const mapa = {};
+      for (const e of empresas || []) mapa[e.ticker] = e;
+      top = topTickers
+        .filter((t) => mapa[t.ticker])
+        .map((t) => ({ ...mapa[t.ticker], visitas: t.visitas }));
+    }
 
     return Response.json({
       relacionados,
       top,
-      noticias: noticias || []
+      noticias: noticiasResult.data || []
     });
   } catch (err) {
     console.error('Error en /api/sidebar:', err);
-    return Response.json(
-      { relacionados: [], top: [], noticias: [] },
-      { status: 200 }
-    );
+    return Response.json({ relacionados: [], top: [], noticias: [] }, { status: 200 });
   }
 }
