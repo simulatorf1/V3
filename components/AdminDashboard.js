@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,12 +12,7 @@ export default function AdminDashboard() {
   const [regenerando, setRegenerando] = useState(null);
   const router = useRouter();
 
-  useEffect(() => {
-    cargarDatos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo]);
-
-  async function cargarDatos() {
+  const cargarDatos = useCallback(async () => {
     setCargando(true);
     try {
       const res = await fetch(`/api/admin/datos?periodo=${periodo}`);
@@ -27,7 +22,11 @@ export default function AdminDashboard() {
       console.error(e);
     }
     setCargando(false);
-  }
+  }, [periodo]);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   async function logout() {
     await fetch('/api/admin/logout', { method: 'POST' });
@@ -151,7 +150,11 @@ export default function AdminDashboard() {
             {cargando ? (
               <p>Cargando datos del periodo…</p>
             ) : (
-              <SeccionEstadisticas datos={datos} periodo={periodo} />
+              <SeccionEstadisticas
+                datos={datos}
+                periodo={periodo}
+                onRecargar={cargarDatos}
+              />
             )}
           </>
         )}
@@ -240,7 +243,7 @@ function fechaMadrid(fecha) {
   });
 }
 
-function SeccionEstadisticas({ datos, periodo }) {
+function SeccionEstadisticas({ datos, periodo, onRecargar }) {
   const stats = datos.stats || {};
   const listadoHoy = datos.listadoHoy || [];
 
@@ -334,7 +337,7 @@ function SeccionEstadisticas({ datos, periodo }) {
                     <th>Ruta</th>
                     <th>Ticker</th>
                     <th>País</th>
-                    <th>IP (hash)</th>
+                    <th>Visitante</th>
                     <th>Dispositivo</th>
                   </tr>
                 </thead>
@@ -351,8 +354,13 @@ function SeccionEstadisticas({ datos, periodo }) {
                         <td style={{ fontSize: '12px' }}>{v.ruta}</td>
                         <td style={{ fontSize: '12px' }}>{v.ticker || '—'}</td>
                         <td style={{ fontSize: '12px' }}>{v.pais || '—'}</td>
-                        <td style={{ fontSize: '12px', color: 'var(--v3-text-mute)' }}>
-                          {v.ip_hash || '—'}
+                        <td style={{ fontSize: '12px' }}>
+                          <BotonEtiqueta
+                            ipHash={v.ip_hash}
+                            etiqueta={v.etiqueta}
+                            color={v.color}
+                            onActualizado={onRecargar}
+                          />
                         </td>
                         <td style={{ fontSize: '12px' }}>{disp}</td>
                       </tr>
@@ -544,5 +552,132 @@ function SeccionAdSense() {
         La configuración de Google AdSense estará disponible en el Paso 26.
       </p>
     </div>
+  );
+}
+
+function BotonEtiqueta({ ipHash, etiqueta, color, onActualizado }) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(etiqueta || '');
+
+  if (!ipHash) return <span style={{ color: 'var(--v3-text-mute)' }}>—</span>;
+
+  async function guardar() {
+    if (!texto.trim()) return;
+    await fetch('/api/admin/etiquetas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip_hash: ipHash, etiqueta: texto.trim() })
+    });
+    setEditando(false);
+    if (onActualizado) onActualizado();
+  }
+
+  async function borrar() {
+    if (!confirm('¿Quitar esta etiqueta?')) return;
+    await fetch(`/api/admin/etiquetas?ip_hash=${encodeURIComponent(ipHash)}`, {
+      method: 'DELETE'
+    });
+    if (onActualizado) onActualizado();
+  }
+
+  if (editando) {
+    return (
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+        <input
+          type="text"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder="Ej: Yo, Cliente…"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') guardar();
+            if (e.key === 'Escape') setEditando(false);
+          }}
+          style={{
+            padding: '3px 6px',
+            fontSize: '11px',
+            border: '1px solid var(--v3-border-strong)',
+            borderRadius: '4px',
+            width: '110px'
+          }}
+        />
+        <button
+          onClick={guardar}
+          style={{
+            padding: '2px 6px',
+            fontSize: '11px',
+            background: 'var(--v3-primary)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          ✓
+        </button>
+      </div>
+    );
+  }
+
+  if (etiqueta) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: '999px',
+            fontSize: '11px',
+            fontWeight: 600,
+            background: '#e3f2fd',
+            color: color || 'var(--v3-primary)'
+          }}
+        >
+          {etiqueta}
+        </span>
+        <button
+          onClick={() => setEditando(true)}
+          title="Editar"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '11px',
+            color: 'var(--v3-text-mute)'
+          }}
+        >
+          ✎
+        </button>
+        <button
+          onClick={borrar}
+          title="Quitar"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '11px',
+            color: 'var(--v3-text-mute)'
+          }}
+        >
+          ✕
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditando(true)}
+      style={{
+        padding: '2px 8px',
+        fontSize: '11px',
+        border: '1px dashed var(--v3-border-strong)',
+        borderRadius: '4px',
+        background: 'none',
+        color: 'var(--v3-text-mute)',
+        cursor: 'pointer'
+      }}
+    >
+      + Etiquetar
+    </button>
   );
 }
