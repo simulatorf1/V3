@@ -47,6 +47,7 @@ async function cargarDatos() {
         nombre: emp.nombre,
         sector: emp.sector,
         zona: p.datos.zona,
+        precio: p.datos.precioActual,
         actualizado_at: p.actualizado_at
       });
     }
