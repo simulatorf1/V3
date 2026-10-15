@@ -3,116 +3,81 @@ import { tokenValido } from '../../../../lib/admin';
 
 export const dynamic = 'force-dynamic';
 
-function inicioDeHoy() {
+function rangoDesde(periodo) {
+  const ahora = new Date();
+  if (periodo === 'hoy') {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return { desde: d.toISOString(), hasta: ahora.toISOString() };
+  }
+  if (periodo === 'semana') {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return { desde: d.toISOString(), hasta: ahora.toISOString() };
+  }
+  if (periodo === 'mes') {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return { desde: d.toISOString(), hasta: ahora.toISOString() };
+  }
+  if (periodo === 'anio') {
+    const d = new Date();
+    d.setDate(d.getDate() - 365);
+    return { desde: d.toISOString(), hasta: ahora.toISOString() };
+  }
+  // por defecto, mes
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  d.setDate(d.getDate() - 30);
+  return { desde: d.toISOString(), hasta: ahora.toISOString() };
 }
 
-function inicioDeAyer() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - 1);
-  return d.toISOString();
-}
-
-function haceDias(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString();
-}
-
-export async function GET() {
+export async function GET(request) {
   if (!tokenValido()) {
     return Response.json({ error: 'No autorizado' }, { status: 401 });
   }
 
   try {
-    // ============================================================
-    // Totales globales
-    // ============================================================
-    const { count: totalVisitas } = await supabaseAdmin
-      .from('visitas')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: totalEmpresas } = await supabaseAdmin
-      .from('empresas')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: totalPaginas } = await supabaseAdmin
-      .from('paginas')
-      .select('*', { count: 'exact', head: true });
+    const { searchParams } = new URL(request.url);
+    const periodo = searchParams.get('periodo') || 'mes';
+    const { desde } = rangoDesde(periodo);
 
     // ============================================================
-    // Hoy
+    // Consultas base (independientes del periodo)
     // ============================================================
-    const { count: visitasHoy } = await supabaseAdmin
-      .from('visitas')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicioDeHoy());
+    const [totalVisitasRes, totalEmpresasRes, totalPaginasRes, visitantesAhoraRes] =
+      await Promise.all([
+        supabaseAdmin.from('visitas').select('*', { count: 'exact', head: true }),
+        supabaseAdmin.from('empresas').select('*', { count: 'exact', head: true }),
+        supabaseAdmin.from('paginas').select('*', { count: 'exact', head: true }),
+        supabaseAdmin
+          .from('visitas')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      ]);
 
     // ============================================================
-    // Ayer
+    // Visitas del periodo
     // ============================================================
-    const { count: visitasAyer } = await supabaseAdmin
-      .from('visitas')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicioDeAyer())
-      .lt('created_at', inicioDeHoy());
-
-    // ============================================================
-    // Últimos 7 días
-    // ============================================================
-    const { count: visitas7d } = await supabaseAdmin
-      .from('visitas')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', haceDias(7));
-
-    // ============================================================
-    // Últimos 30 días
-    // ============================================================
-    const { count: visitas30d } = await supabaseAdmin
-      .from('visitas')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', haceDias(30));
-
-    // ============================================================
-    // Únicos (por ip_hash) hoy, 7d, 30d
-    // ============================================================
-    const { data: unicosHoyRaw } = await supabaseAdmin
-      .from('visitas')
-      .select('ip_hash')
-      .gte('created_at', inicioDeHoy())
-      .not('ip_hash', 'is', null);
-    const unicosHoy = new Set((unicosHoyRaw || []).map((v) => v.ip_hash)).size;
-
-    const { data: unicos7dRaw } = await supabaseAdmin
-      .from('visitas')
-      .select('ip_hash')
-      .gte('created_at', haceDias(7))
-      .not('ip_hash', 'is', null);
-    const unicos7d = new Set((unicos7dRaw || []).map((v) => v.ip_hash)).size;
-
-    const { data: unicos30dRaw } = await supabaseAdmin
-      .from('visitas')
-      .select('ip_hash')
-      .gte('created_at', haceDias(30))
-      .not('ip_hash', 'is', null);
-    const unicos30d = new Set((unicos30dRaw || []).map((v) => v.ip_hash)).size;
-
-    // ============================================================
-    // Últimos 30 días de visitas (para análisis)
-    // ============================================================
-    const { data: visitasRecientes } = await supabaseAdmin
+    const { data: visitas } = await supabaseAdmin
       .from('visitas')
       .select('ruta, pais, ticker, created_at, user_agent, ip_hash')
-      .gte('created_at', haceDias(30));
+      .gte('created_at', desde)
+      .order('created_at', { ascending: false });
+
+    const totalPeriodo = (visitas || []).length;
 
     // ============================================================
-    // Páginas más visitadas (30 días)
+    // Únicos del periodo
+    // ============================================================
+    const unicosPeriodo = new Set(
+      (visitas || []).map((v) => v.ip_hash).filter(Boolean)
+    ).size;
+
+    // ============================================================
+    // Top páginas
     // ============================================================
     const conteoRutas = {};
-    for (const v of visitasRecientes || []) {
+    for (const v of visitas || []) {
       if (!v.ruta) continue;
       conteoRutas[v.ruta] = (conteoRutas[v.ruta] || 0) + 1;
     }
@@ -122,10 +87,10 @@ export async function GET() {
       .map(([ruta, visitas]) => ({ ruta, visitas }));
 
     // ============================================================
-    // Países (30 días)
+    // Top países
     // ============================================================
     const conteoPaises = {};
-    for (const v of visitasRecientes || []) {
+    for (const v of visitas || []) {
       const p = v.pais || 'Desconocido';
       conteoPaises[p] = (conteoPaises[p] || 0) + 1;
     }
@@ -135,10 +100,10 @@ export async function GET() {
       .map(([pais, visitas]) => ({ pais, visitas }));
 
     // ============================================================
-    // Empresas más visitadas (30 días)
+    // Top empresas
     // ============================================================
     const conteoTickers = {};
-    for (const v of visitasRecientes || []) {
+    for (const v of visitas || []) {
       if (!v.ticker) continue;
       conteoTickers[v.ticker] = (conteoTickers[v.ticker] || 0) + 1;
     }
@@ -148,19 +113,40 @@ export async function GET() {
       .map(([ticker, visitas]) => ({ ticker, visitas }));
 
     // ============================================================
-    // Visitas por día (últimos 14 días)
+    // Visitas por día (últimos 14 días si periodo mes; 7 si semana; 30 si año)
     // ============================================================
+    let diasGrafico = 14;
+    if (periodo === 'hoy') diasGrafico = 1;
+    if (periodo === 'semana') diasGrafico = 7;
+    if (periodo === 'mes') diasGrafico = 30;
+    if (periodo === 'anio') diasGrafico = 12; // 12 meses
+
     const porDia = {};
-    const hoy = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(hoy);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      porDia[key] = 0;
-    }
-    for (const v of visitasRecientes || []) {
-      const key = v.created_at.slice(0, 10);
-      if (porDia[key] !== undefined) porDia[key]++;
+    if (periodo === 'anio') {
+      // agrupamos por mes
+      const ahora = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(ahora);
+        d.setMonth(d.getMonth() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        porDia[key] = 0;
+      }
+      for (const v of visitas || []) {
+        const key = v.created_at.slice(0, 7); // YYYY-MM
+        if (porDia[key] !== undefined) porDia[key]++;
+      }
+    } else {
+      const ahora = new Date();
+      for (let i = diasGrafico - 1; i >= 0; i--) {
+        const d = new Date(ahora);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        porDia[key] = 0;
+      }
+      for (const v of visitas || []) {
+        const key = v.created_at.slice(0, 10);
+        if (porDia[key] !== undefined) porDia[key]++;
+      }
     }
     const visitasPorDia = Object.entries(porDia).map(([fecha, visitas]) => ({
       fecha,
@@ -168,51 +154,34 @@ export async function GET() {
     }));
 
     // ============================================================
-    // Visitas por hora del día (últimos 30 días, hora Madrid)
-    // ============================================================
-    const porHora = {};
-    for (let i = 0; i < 24; i++) porHora[i] = 0;
-    for (const v of visitasRecientes || []) {
-      const hora = new Date(v.created_at).toLocaleString('es-ES', {
-        timeZone: 'Europe/Madrid',
-        hour: '2-digit',
-        hour12: false
-      });
-      const h = parseInt(hora, 10);
-      if (!isNaN(h)) porHora[h]++;
-    }
-    const visitasPorHora = Object.entries(porHora).map(([hora, visitas]) => ({
-      hora: parseInt(hora, 10),
-      visitas
-    }));
-
-    // ============================================================
-    // Visitantes en tiempo real (últimos 5 minutos)
-    // ============================================================
-    const { count: visitantesAhora } = await supabaseAdmin
-      .from('visitas')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString());
-
-    // ============================================================
-    // Dispositivos (user_agent) - simplificado
+    // Dispositivos
     // ============================================================
     const conteoDispositivos = { movil: 0, escritorio: 0, tablet: 0, desconocido: 0 };
-    for (const v of visitasRecientes || []) {
+    for (const v of visitas || []) {
       const ua = (v.user_agent || '').toLowerCase();
-      if (!ua) {
-        conteoDispositivos.desconocido++;
-      } else if (/ipad|tablet/.test(ua)) {
-        conteoDispositivos.tablet++;
-      } else if (/mobile|android|iphone|ipod/.test(ua)) {
-        conteoDispositivos.movil++;
-      } else {
-        conteoDispositivos.escritorio++;
-      }
+      if (!ua) conteoDispositivos.desconocido++;
+      else if (/ipad|tablet/.test(ua)) conteoDispositivos.tablet++;
+      else if (/mobile|android|iphone|ipod/.test(ua)) conteoDispositivos.movil++;
+      else conteoDispositivos.escritorio++;
     }
 
     // ============================================================
-    // Páginas generadas (para la pestaña de páginas)
+    // Listado detallado solo para "hoy"
+    // ============================================================
+    let listadoHoy = [];
+    if (periodo === 'hoy') {
+      listadoHoy = (visitas || []).map((v) => ({
+        fecha: v.created_at,
+        ruta: v.ruta,
+        ticker: v.ticker,
+        pais: v.pais,
+        ip_hash: v.ip_hash,
+        user_agent: v.user_agent
+      }));
+    }
+
+    // ============================================================
+    // Páginas generadas
     // ============================================================
     const { data: paginas } = await supabaseAdmin
       .from('paginas')
@@ -221,7 +190,7 @@ export async function GET() {
       .limit(200);
 
     // ============================================================
-    // Comentarios pendientes (placeholder)
+    // Comentarios pendientes
     // ============================================================
     const { data: comentarios } = await supabaseAdmin
       .from('comentarios')
@@ -230,25 +199,21 @@ export async function GET() {
       .limit(100);
 
     return Response.json({
+      periodo,
       stats: {
-        totalVisitas: totalVisitas || 0,
-        totalEmpresas: totalEmpresas || 0,
-        totalPaginas: totalPaginas || 0,
-        visitasHoy: visitasHoy || 0,
-        visitasAyer: visitasAyer || 0,
-        visitas7d: visitas7d || 0,
-        visitas30d: visitas30d || 0,
-        unicosHoy,
-        unicos7d,
-        unicos30d,
-        visitantesAhora: visitantesAhora || 0,
+        totalVisitas: totalVisitasRes.count || 0,
+        totalEmpresas: totalEmpresasRes.count || 0,
+        totalPaginas: totalPaginasRes.count || 0,
+        visitantesAhora: visitantesAhoraRes.count || 0,
+        totalPeriodo,
+        unicosPeriodo,
         topPaginas,
         topPaises,
         topEmpresas,
         visitasPorDia,
-        visitasPorHora,
         dispositivos: conteoDispositivos
       },
+      listadoHoy,
       paginas: paginas || [],
       comentarios: comentarios || []
     });
