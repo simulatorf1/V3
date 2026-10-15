@@ -25,7 +25,6 @@ function rangoDesde(periodo) {
     d.setDate(d.getDate() - 365);
     return { desde: d.toISOString(), hasta: ahora.toISOString() };
   }
-  // por defecto, mes
   const d = new Date();
   d.setDate(d.getDate() - 30);
   return { desde: d.toISOString(), hasta: ahora.toISOString() };
@@ -41,9 +40,6 @@ export async function GET(request) {
     const periodo = searchParams.get('periodo') || 'mes';
     const { desde } = rangoDesde(periodo);
 
-    // ============================================================
-    // Consultas base (independientes del periodo)
-    // ============================================================
     const [totalVisitasRes, totalEmpresasRes, totalPaginasRes, visitantesAhoraRes] =
       await Promise.all([
         supabaseAdmin.from('visitas').select('*', { count: 'exact', head: true }),
@@ -55,9 +51,6 @@ export async function GET(request) {
           .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
       ]);
 
-    // ============================================================
-    // Visitas del periodo
-    // ============================================================
     const { data: visitas } = await supabaseAdmin
       .from('visitas')
       .select('ruta, pais, ticker, created_at, user_agent, ip_hash')
@@ -66,16 +59,10 @@ export async function GET(request) {
 
     const totalPeriodo = (visitas || []).length;
 
-    // ============================================================
-    // Únicos del periodo
-    // ============================================================
     const unicosPeriodo = new Set(
       (visitas || []).map((v) => v.ip_hash).filter(Boolean)
     ).size;
 
-    // ============================================================
-    // Top páginas
-    // ============================================================
     const conteoRutas = {};
     for (const v of visitas || []) {
       if (!v.ruta) continue;
@@ -86,9 +73,6 @@ export async function GET(request) {
       .slice(0, 20)
       .map(([ruta, visitas]) => ({ ruta, visitas }));
 
-    // ============================================================
-    // Top países
-    // ============================================================
     const conteoPaises = {};
     for (const v of visitas || []) {
       const p = v.pais || 'Desconocido';
@@ -99,9 +83,6 @@ export async function GET(request) {
       .slice(0, 15)
       .map(([pais, visitas]) => ({ pais, visitas }));
 
-    // ============================================================
-    // Top empresas
-    // ============================================================
     const conteoTickers = {};
     for (const v of visitas || []) {
       if (!v.ticker) continue;
@@ -112,18 +93,14 @@ export async function GET(request) {
       .slice(0, 15)
       .map(([ticker, visitas]) => ({ ticker, visitas }));
 
-    // ============================================================
-    // Visitas por día (últimos 14 días si periodo mes; 7 si semana; 30 si año)
-    // ============================================================
     let diasGrafico = 14;
     if (periodo === 'hoy') diasGrafico = 1;
     if (periodo === 'semana') diasGrafico = 7;
     if (periodo === 'mes') diasGrafico = 30;
-    if (periodo === 'anio') diasGrafico = 12; // 12 meses
+    if (periodo === 'anio') diasGrafico = 12;
 
     const porDia = {};
     if (periodo === 'anio') {
-      // agrupamos por mes
       const ahora = new Date();
       for (let i = 11; i >= 0; i--) {
         const d = new Date(ahora);
@@ -132,7 +109,7 @@ export async function GET(request) {
         porDia[key] = 0;
       }
       for (const v of visitas || []) {
-        const key = v.created_at.slice(0, 7); // YYYY-MM
+        const key = v.created_at.slice(0, 7);
         if (porDia[key] !== undefined) porDia[key]++;
       }
     } else {
@@ -153,9 +130,6 @@ export async function GET(request) {
       visitas
     }));
 
-    // ============================================================
-    // Dispositivos
-    // ============================================================
     const conteoDispositivos = { movil: 0, escritorio: 0, tablet: 0, desconocido: 0 };
     for (const v of visitas || []) {
       const ua = (v.user_agent || '').toLowerCase();
@@ -165,33 +139,38 @@ export async function GET(request) {
       else conteoDispositivos.escritorio++;
     }
 
-    // ============================================================
-    // Listado detallado solo para "hoy"
-    // ============================================================
-    let listadoHoy = [];
-    if (periodo === 'hoy') {
-      listadoHoy = (visitas || []).map((v) => ({
-        fecha: v.created_at,
-        ruta: v.ruta,
-        ticker: v.ticker,
-        pais: v.pais,
-        ip_hash: v.ip_hash,
-        user_agent: v.user_agent
-      }));
+    const { data: etiquetas } = await supabaseAdmin
+      .from('visitantes_etiquetados')
+      .select('ip_hash, etiqueta, color');
+
+    const etiquetasMap = {};
+    for (const e of etiquetas || []) {
+      etiquetasMap[e.ip_hash] = { etiqueta: e.etiqueta, color: e.color };
     }
 
-    // ============================================================
-    // Páginas generadas
-    // ============================================================
+    let listadoHoy = [];
+    if (periodo === 'hoy') {
+      listadoHoy = (visitas || []).map((v) => {
+        const et = etiquetasMap[v.ip_hash];
+        return {
+          fecha: v.created_at,
+          ruta: v.ruta,
+          ticker: v.ticker,
+          pais: v.pais,
+          ip_hash: v.ip_hash,
+          user_agent: v.user_agent,
+          etiqueta: et ? et.etiqueta : null,
+          color: et ? et.color : null
+        };
+      });
+    }
+
     const { data: paginas } = await supabaseAdmin
       .from('paginas')
       .select('ticker, slug, actualizado_at')
       .order('actualizado_at', { ascending: false })
       .limit(200);
 
-    // ============================================================
-    // Comentarios pendientes
-    // ============================================================
     const { data: comentarios } = await supabaseAdmin
       .from('comentarios')
       .select('id, ticker, autor, texto, created_at')
