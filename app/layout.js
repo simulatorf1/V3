@@ -1,6 +1,12 @@
 import '../app/globals.css';
+import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap'
+});
 
 const BASE_URL = 'https://equaty.es';
 
@@ -32,13 +38,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
+    <html lang="es" className={inter.className}>
       <body
         style={{
           margin: 0,
           padding: 0,
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
           color: '#111',
           background: '#fff'
         }}
