@@ -50,6 +50,11 @@ export default async function Home() {
     .map(([ticker, visitas]) => ({ ticker, visitas }));
 
   const empresasMap = {};
+  console.log('[home] visitas:', visitasResult.data?.length);
+  console.log('[home] tickers:', Object.keys(conteoTickers));
+  console.log('[home] topTickers:', topTickers);
+  console.log('[home] empresas:', empresasResult.data?.length);
+  console.log('[home] topEnriquecido:', topEnriquecido.length);
   for (const e of empresasResult.data || []) {
     empresasMap[e.ticker] = e;
   }
