@@ -38,10 +38,33 @@ export default function Cabecera() {
           ))}
         </nav>
 
+        <a
+          href="https://x.com/Equaty_web"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            marginLeft: 'auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: '#000',
+            color: '#fff',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 600,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          𝕏 Síguenos
+        </a>
+
         <button
           onClick={() => setMenuAbierto(!menuAbierto)}
           className="v3-menu-boton"
           aria-label="Abrir menú"
+          style={{ marginLeft: '8px' }}
         >
           ☰
         </button>
@@ -54,6 +77,15 @@ export default function Cabecera() {
               {e.texto}
             </Link>
           ))}
+          <a
+            href="https://x.com/Equaty_web"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMenuAbierto(false)}
+            style={{ color: '#000', fontWeight: 600, textDecoration: 'none' }}
+          >
+            𝕏 Síguenos
+          </a>
         </nav>
       )}
     </header>
