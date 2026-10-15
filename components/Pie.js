@@ -14,6 +14,52 @@ export default function Pie() {
   return (
     <footer className="v3-footer">
       <div className="v3-footer-inner">
+        {/* Bloque X */}
+        <div
+          style={{
+            background: '#f0f4ff',
+            border: '1px solid #c7d9ff',
+            borderRadius: 'var(--v3-radius-sm)',
+            padding: '16px 20px',
+            marginBottom: '28px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '2px' }}>
+              Síguenos en X
+            </div>
+            <div style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+              Análisis, datos y estadísticas en{' '}
+              <strong style={{ color: '#0b5fff' }}>@Equaty_web</strong>
+            </div>
+          </div>
+          <a
+            href="https://x.com/Equaty_web"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              background: '#000',
+              color: '#fff',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            𝕏 Seguir
+          </a>
+        </div>
+
         <div className="v3-footer-links">
           {enlaces.map((e) => (
             <Link key={e.href} href={e.href}>
