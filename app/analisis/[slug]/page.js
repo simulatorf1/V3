@@ -479,8 +479,9 @@ export default async function PaginaEmpresa({ params }) {
             <p style={{ marginBottom: 0, color: 'var(--v3-text-soft)', fontSize: '13.5px' }}>
               Los tramos sombreados en rojo marcan las fases en las que el indicador ha
               sobresalido por encima de +40. Los tramos sombreados en verde, las fases en las que
-              ha caído por debajo de -40. Estas zonas no predicen el siguiente movimiento,
-              describen lo que ya ha pasado.
+              ha caído por debajo de -40. Estas son las zonas en las que, estadísticamente, el
+              precio ha cotizado más caro o más barato de lo habitual dentro de su propio rango
+              reciente.
             </p>
           </div>
         </section>
