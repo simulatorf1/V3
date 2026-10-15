@@ -2,13 +2,13 @@ import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar'
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
-import ResumenVistazo from '../../../components/ResumenVistazo';
 import ContextoReciente from '../../../components/ContextoReciente';
 import ComparadorSector from '../../../components/ComparadorSector';
 import TablaSenales from '../../../components/TablaSenales';
 import RegistrarVisita from '../../../components/RegistrarVisita';
 import BarraLateral from '../../../components/BarraLateral';
 import BotonesCompartir from '../../../components/BotonesCompartir';
+import ConsensoComunidad from '../../../components/ConsensoComunidad';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -174,7 +174,7 @@ export default async function PaginaEmpresa({ params }) {
     }
   };
 
-  // Cálculos de la estadística histórica
+  // Cálculos previos
   const ciclos = calcularCiclos(analisis.senales || [], analisis.precioActual);
   const compras = ciclos.filter((c) => c.tipo === 'compra');
   const ventas = ciclos.filter((c) => c.tipo === 'venta');
@@ -199,9 +199,47 @@ export default async function PaginaEmpresa({ params }) {
   const statsCompras = analizarEstadistica(compras);
   const statsVentas = analizarEstadistica(ventas);
 
-  // Interpretación del gráfico
+  // Variación a 5 sesiones y percentil
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
+
+  const precioActual = analisis.precioActual;
+  const precio5Atras = velas.length >= 6 ? velas[velas.length - 6].close : precioActual;
+  const variacion5 = precio5Atras
+    ? ((precioActual - precio5Atras) / precio5Atras) * 100
+    : 0;
+
+  const smisValidos = smis.filter((v) => v !== null && v !== undefined);
+  const smisOrdenados = [...smisValidos].sort((a, b) => a - b);
+  let percentil = 0;
+  if (smisOrdenados.length > 0) {
+    const menores = smisOrdenados.filter((v) => v < analisis.smiActual).length;
+    percentil = Math.round((menores / smisOrdenados.length) * 100);
+  }
+
+  let riesgo = 'bajo';
+  let colorRiesgo = 'var(--v3-positive)';
+  if (analisis.zona === 'alta' || analisis.zona === 'baja') {
+    riesgo = 'medio';
+    colorRiesgo = 'var(--v3-warn)';
+  }
+  if (Math.abs(analisis.smiActual) > 70) {
+    riesgo = 'alto';
+    colorRiesgo = 'var(--v3-negative)';
+  }
+
+  const colorZona =
+    analisis.zona === 'alta'
+      ? 'var(--v3-negative)'
+      : analisis.zona === 'baja'
+      ? 'var(--v3-positive)'
+      : 'var(--v3-text-soft)';
+
+  const senales = analisis.senales || [];
+  const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
+  const ultimaSenalAbierta = analisis.posicionAbierta;
+
+  // Interpretación del gráfico
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre
@@ -275,77 +313,84 @@ export default async function PaginaEmpresa({ params }) {
           recomendación de inversión.
         </div>
 
-        {/* Bloque 1: datos rápidos */}
-        <h2 style={{ marginTop: '30px' }}>Datos rápidos</h2>
-        <ul>
-          <li>
-            <strong>Ticker:</strong> {empresa.ticker}
-          </li>
-          <li>
-            <strong>Sector:</strong> {empresa.sector || 'N/A'}
-          </li>
-          <li>
-            <strong>Mercado:</strong> {empresa.mercado || 'N/A'}
-          </li>
-          <li>
-            <strong>Precio actual:</strong> {analisis.precioActual?.toFixed(2)}
-          </li>
-          <li>
-            <strong>Indicador propio:</strong> {analisis.smiActual?.toFixed(2)} (zona{' '}
-            {analisis.zona})
-          </li>
-        </ul>
+        {/* ============================================================
+            PANEL DE DATOS EXPLICADOS
+        ============================================================ */}
+        <section className="v3-seccion" style={{ marginTop: '20px' }}>
+          <h2 className="v3-seccion-titulo">Datos de la empresa</h2>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '12px',
+              marginTop: '16px'
+            }}
+          >
+            <Tarjeta
+              etiqueta="Ticker"
+              valor={empresa.ticker}
+            />
+            <Tarjeta
+              etiqueta="Sector"
+              valor={empresa.sector || '—'}
+            />
+            <Tarjeta
+              etiqueta="Mercado"
+              valor={empresa.mercado || '—'}
+            />
+            <Tarjeta
+              etiqueta="Precio actual"
+              valor={precioActual?.toFixed(2) ?? '—'}
+              extra={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}% en 5 sesiones`}
+              colorExtra={variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'}
+            />
+            <Tarjeta
+              etiqueta="Indicador propio"
+              valor={analisis.smiActual?.toFixed(2) ?? '—'}
+              explicacion="Mide en qué punto del rango reciente está el precio. Escala de -100 a +100."
+            />
+            <Tarjeta
+              etiqueta="Zona"
+              valor={analisis.zona}
+              colorValor={colorZona}
+              explicacion="Alta (por encima de +40), intermedia (entre -40 y +40) o baja (por debajo de -40)."
+            />
+            <Tarjeta
+              etiqueta="Percentil"
+              valor={percentil}
+              explicacion="Posición del valor actual dentro del rango de las últimas 60 sesiones. Del 0 al 100."
+            />
+            <Tarjeta
+              etiqueta="Nivel de riesgo"
+              valor={riesgo}
+              colorValor={colorRiesgo}
+              explicacion="Se calcula con la zona del indicador y su distancia a los extremos. No mide el riesgo de la empresa, solo el del momento estadístico."
+            />
+            <Tarjeta
+              etiqueta="Último movimiento"
+              valor={ultimaSenal ? ultimaSenal.tipo : '—'}
+              extra={
+                ultimaSenal
+                  ? `${ultimaSenal.fecha}${ultimaSenalAbierta ? ' · en curso' : ''}`
+                  : 'sin movimientos registrados'
+              }
+              explicacion="Cambio registrado cuando el indicador gira de zona baja hacia arriba (compra) o de zona alta hacia abajo (venta)."
+            />
+          </div>
+        </section>
 
         <p className="v3-aviso-mute">
           Este análisis se elabora de forma independiente a las circunstancias personales de cada
           lector. No constituye asesoramiento financiero personalizado.
         </p>
 
-        {/* Bloque 2: qué significa todo esto */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Qué significa todo esto</h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '12px',
-              marginTop: '12px'
-            }}
-          >
-            <div className="v3-card" style={{ padding: '16px' }}>
-              <div style={{ fontWeight: 700, marginBottom: '6px' }}>Indicador propio</div>
-              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--v3-text-soft)' }}>
-                Mide en qué punto del rango reciente está el precio. Escala de -100 a +100.
-              </p>
-            </div>
-            <div className="v3-card" style={{ padding: '16px' }}>
-              <div style={{ fontWeight: 700, marginBottom: '6px' }}>Zona</div>
-              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--v3-text-soft)' }}>
-                <strong>Alta</strong> (por encima de +40), <strong>intermedia</strong> (entre -40
-                y +40) o <strong>baja</strong> (por debajo de -40).
-              </p>
-            </div>
-            <div className="v3-card" style={{ padding: '16px' }}>
-              <div style={{ fontWeight: 700, marginBottom: '6px' }}>Percentil</div>
-              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--v3-text-soft)' }}>
-                Posición del valor actual dentro del rango de las últimas 60 sesiones. Del 0 al
-                100.
-              </p>
-            </div>
-            <div className="v3-card" style={{ padding: '16px' }}>
-              <div style={{ fontWeight: 700, marginBottom: '6px' }}>Nivel de riesgo</div>
-              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--v3-text-soft)' }}>
-                Se calcula con la zona del indicador y su distancia a los extremos. No mide el
-                riesgo de la empresa, solo el del momento estadístico.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* Consenso comunidad */}
+        <ConsensoComunidad ticker={empresa.ticker} />
 
-        {/* Bloque 3: resumen de un vistazo (con consenso dentro) */}
-        <ResumenVistazo analisis={analisis} empresa={empresa} />
-
-        {/* Bloque 4: estadística histórica */}
+        {/* ============================================================
+            ESTADÍSTICA HISTÓRICA
+        ============================================================ */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Estadística histórica</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
@@ -411,9 +456,10 @@ export default async function PaginaEmpresa({ params }) {
           )}
         </section>
 
-        {/* Bloque 5: gráfico + interpretación */}
+        {/* Gráfico */}
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
+        {/* Interpretación */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
@@ -439,18 +485,18 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* Bloque 6: histórico de movimientos */}
+        {/* Histórico */}
         <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
 
-        {/* Bloque 7: comparador sectorial */}
+        {/* Comparador */}
         <ComparadorSector empresa={empresa} analisis={analisis} />
 
-        {/* Bloque 8: noticias (solo si hay) */}
+        {/* Noticias (solo si hay) */}
         {analisis.noticias && analisis.noticias.length > 0 && (
           <ContextoReciente noticias={analisis.noticias} />
         )}
 
-        {/* Bloque 9: sobre la empresa */}
+        {/* Sobre la empresa */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
           <p style={{ lineHeight: 1.7 }}>
@@ -462,7 +508,7 @@ export default async function PaginaEmpresa({ params }) {
           </p>
         </section>
 
-        {/* Bloque 10: compartir */}
+        {/* Compartir */}
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
         <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
@@ -474,6 +520,59 @@ export default async function PaginaEmpresa({ params }) {
       <div className="v3-sidebar">
         <BarraLateral ticker={empresa.ticker} />
       </div>
+    </div>
+  );
+}
+
+function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }) {
+  return (
+    <div className="v3-card" style={{ padding: '16px' }}>
+      <div
+        style={{
+          color: 'var(--v3-text-mute)',
+          fontSize: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+          fontWeight: 600,
+          marginBottom: '6px'
+        }}
+      >
+        {etiqueta}
+      </div>
+      <div
+        style={{
+          fontSize: '20px',
+          fontWeight: 700,
+          color: colorValor || 'var(--v3-text)',
+          lineHeight: 1.2,
+          wordBreak: 'break-word'
+        }}
+      >
+        {valor}
+      </div>
+      {extra && (
+        <div
+          style={{
+            fontSize: '12px',
+            marginTop: '4px',
+            color: colorExtra || 'var(--v3-text-soft)'
+          }}
+        >
+          {extra}
+        </div>
+      )}
+      {explicacion && (
+        <p
+          style={{
+            margin: '10px 0 0 0',
+            fontSize: '12.5px',
+            color: 'var(--v3-text-soft)',
+            lineHeight: 1.5
+          }}
+        >
+          {explicacion}
+        </p>
+      )}
     </div>
   );
 }
