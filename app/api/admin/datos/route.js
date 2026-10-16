@@ -40,16 +40,27 @@ export async function GET(request) {
     const periodo = searchParams.get('periodo') || 'mes';
     const { desde } = rangoDesde(periodo);
 
-    const [totalVisitasRes, totalEmpresasRes, totalPaginasRes, visitantesAhoraRes] =
-      await Promise.all([
-        supabaseAdmin.from('visitas').select('*', { count: 'exact', head: true }),
-        supabaseAdmin.from('empresas').select('*', { count: 'exact', head: true }),
-        supabaseAdmin.from('paginas').select('*', { count: 'exact', head: true }),
-        supabaseAdmin
-          .from('visitas')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
-      ]);
+    const hace5min = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    const [
+      totalVisitasRes,
+      totalEmpresasRes,
+      totalPaginasRes,
+      visitantesAhoraRes
+    ] = await Promise.all([
+      supabaseAdmin.from('visitas').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('empresas').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('paginas').select('*', { count: 'exact', head: true }),
+      supabaseAdmin
+        .from('visitas')
+        .select('ip_hash')
+        .gte('created_at', hace5min)
+        .not('ip_hash', 'is', null)
+    ]);
+
+    const visitantesAhora = new Set(
+      (visitantesAhoraRes.data || []).map((v) => v.ip_hash)
+    ).size;
 
     const { data: visitas } = await supabaseAdmin
       .from('visitas')
@@ -183,7 +194,7 @@ export async function GET(request) {
         totalVisitas: totalVisitasRes.count || 0,
         totalEmpresas: totalEmpresasRes.count || 0,
         totalPaginas: totalPaginasRes.count || 0,
-        visitantesAhora: visitantesAhoraRes.count || 0,
+        visitantesAhora: visitantesAhora,
         totalPeriodo,
         unicosPeriodo,
         topPaginas,
