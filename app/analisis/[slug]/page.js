@@ -55,6 +55,26 @@ function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
   });
 }
 
+function calcularOportunidad(zona, percentil) {
+  if (zona === 'intermedia') {
+    return {
+      nivel: 'baja',
+      color: 'var(--v3-text-soft)'
+    };
+  }
+
+  const extremoBajo = percentil <= 5 || percentil >= 95;
+  const extremo = percentil <= 15 || percentil >= 85;
+
+  if (extremoBajo) {
+    return { nivel: 'muy alta', color: 'var(--v3-negative)' };
+  }
+  if (extremo) {
+    return { nivel: 'alta', color: 'var(--v3-warn)' };
+  }
+  return { nivel: 'media', color: 'var(--v3-text-soft)' };
+}
+
 export async function generateMetadata({ params }) {
   const slug = params.slug;
   let ticker;
@@ -174,7 +194,7 @@ export default async function PaginaEmpresa({ params }) {
     }
   };
 
-  // Cálculos previos
+  // Cálculos
   const ciclos = calcularCiclos(analisis.senales || [], analisis.precioActual);
   const compras = ciclos.filter((c) => c.tipo === 'compra');
   const ventas = ciclos.filter((c) => c.tipo === 'venta');
@@ -199,7 +219,6 @@ export default async function PaginaEmpresa({ params }) {
   const statsCompras = analizarEstadistica(compras);
   const statsVentas = analizarEstadistica(ventas);
 
-  // Variación a 5 sesiones y percentil
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
 
@@ -217,23 +236,14 @@ export default async function PaginaEmpresa({ params }) {
     percentil = Math.round((menores / smisOrdenados.length) * 100);
   }
 
-  let riesgo = 'bajo';
-  let colorRiesgo = 'var(--v3-positive)';
-  if (analisis.zona === 'alta' || analisis.zona === 'baja') {
-    riesgo = 'medio';
-    colorRiesgo = 'var(--v3-warn)';
-  }
-  if (Math.abs(analisis.smiActual) > 70) {
-    riesgo = 'alto';
-    colorRiesgo = 'var(--v3-negative)';
-  }
-
   const colorZona =
     analisis.zona === 'alta'
       ? 'var(--v3-negative)'
       : analisis.zona === 'baja'
       ? 'var(--v3-positive)'
       : 'var(--v3-text-soft)';
+
+  const oportunidad = calcularOportunidad(analisis.zona, percentil);
 
   const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
@@ -327,18 +337,9 @@ export default async function PaginaEmpresa({ params }) {
               marginTop: '16px'
             }}
           >
-            <Tarjeta
-              etiqueta="Ticker"
-              valor={empresa.ticker}
-            />
-            <Tarjeta
-              etiqueta="Sector"
-              valor={empresa.sector || '—'}
-            />
-            <Tarjeta
-              etiqueta="Mercado"
-              valor={empresa.mercado || '—'}
-            />
+            <Tarjeta etiqueta="Ticker" valor={empresa.ticker} />
+            <Tarjeta etiqueta="Sector" valor={empresa.sector || '—'} />
+            <Tarjeta etiqueta="Mercado" valor={empresa.mercado || '—'} />
             <Tarjeta
               etiqueta="Precio actual"
               valor={precioActual?.toFixed(2) ?? '—'}
@@ -359,13 +360,13 @@ export default async function PaginaEmpresa({ params }) {
             <Tarjeta
               etiqueta="Percentil"
               valor={percentil}
-              explicacion="Posición del valor actual dentro del rango de las últimas 60 sesiones. Del 0 al 100."
+              explicacion="Posición del valor actual del indicador en las últimas 60 sesiones. Percentil 0 = mínimo, 100 = máximo."
             />
             <Tarjeta
-              etiqueta="Nivel de riesgo"
-              valor={riesgo}
-              colorValor={colorRiesgo}
-              explicacion="Se calcula con la zona del indicador y su distancia a los extremos. No mide el riesgo de la empresa, solo el del momento estadístico."
+              etiqueta="Oportunidad de giro"
+              valor={oportunidad.nivel}
+              colorValor={oportunidad.color}
+              explicacion="Combina la zona del indicador y su percentil. Cuanto más extremo es el percentil dentro de una zona alta o baja, históricamente más frecuentes han sido los giros. No es una recomendación de inversión."
             />
             <Tarjeta
               etiqueta="Último movimiento"
