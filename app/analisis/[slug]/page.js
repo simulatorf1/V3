@@ -62,98 +62,126 @@ function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
   });
 }
 
-function calcularFuturoEstadistico(analisis) {
-  const smis = analisis.smisUltimos60 || [];
-  const velas = analisis.velasUltimos60 || [];
-  const smiActual = analisis.smiActual;
+async function calcularFuturoEstadisticoDesdeServidor(ticker) {
+  try {
+    const { supabaseAdmin } = await import('../../../lib/supabaseAdmin');
+    const { data } = await supabaseAdmin
+      .from('paginas')
+      .select('datos')
+      .eq('ticker', ticker.toUpperCase())
+      .maybeSingle();
 
-  if (!smis || smis.length < 5) return null;
+    if (!data || !data.datos) return null;
 
-  // Dirección actual: últimos 2 valores válidos
-  let ultimo = null;
-  let anterior = null;
-  for (let i = smis.length - 1; i >= 0; i--) {
-    if (smis[i] !== null && smis[i] !== undefined) {
-      if (ultimo === null) ultimo = smis[i];
-      else if (anterior === null) { anterior = smis[i]; break; }
-    }
-  }
-  if (ultimo === null || anterior === null) return null;
-  if (ultimo === anterior) return null;
-  const direccionActual = ultimo > anterior ? 'subiendo' : 'bajando';
-
-  const casos = [];
-
-  // Recorrer TODAS las sesiones (menos las 2 últimas)
-  for (let i = 0; i < smis.length - 2; i++) {
-    const smi = smis[i];
-    if (smi === null || smi === undefined) continue;
-
-    // ¿En ±20?
-    if (Math.abs(smi - smiActual) > 20) continue;
-
-    // Dirección de esta sesión (comparando con la anterior)
-    let dirSesion = null;
-    for (let k = i - 1; k >= 0; k--) {
-      if (smis[k] !== null && smis[k] !== undefined) {
-        if (smis[k] === smi) continue;
-        dirSesion = smi > smis[k] ? 'subiendo' : 'bajando';
-        break;
+    let datos = data.datos;
+    if (typeof datos === 'string') {
+      try {
+        datos = JSON.parse(datos);
+      } catch (e) {
+        return null;
       }
     }
-    if (!dirSesion) continue;
-    if (dirSesion !== direccionActual) continue;
 
-    // Buscar el primer giro después
-    let diasGiro = null;
-    let fechaGiro = null;
-    for (let j = i + 1; j < smis.length; j++) {
-      if (smis[j] === null || smis[j] === undefined) continue;
-      // Comparar smis[j] con el valor válido anterior
+    let smis = datos.smisUltimos60;
+    if (typeof smis === 'string') {
+      try {
+        smis = JSON.parse(smis);
+      } catch (e) {
+        return null;
+      }
+    }
+    if (!Array.isArray(smis) || smis.length < 5) return null;
+
+    let velas = datos.velasUltimos60;
+    if (typeof velas === 'string') {
+      try {
+        velas = JSON.parse(velas);
+      } catch (e) {
+        return null;
+      }
+    }
+    if (!Array.isArray(velas)) return null;
+
+    const smiActual = Number(datos.smiActual);
+    if (isNaN(smiActual)) return null;
+
+    const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
+    if (validos.length < 2) return null;
+
+    const ultimo = validos[validos.length - 1];
+    const anterior = validos[validos.length - 2];
+    const direccionActual =
+      ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
+    if (direccionActual === 'plana') return null;
+
+    const casos = [];
+
+    for (let i = 0; i < smis.length - 2; i++) {
+      const smi = smis[i];
+      if (smi === null || smi === undefined || isNaN(smi)) continue;
+      if (Math.abs(smi - smiActual) > 20) continue;
+
       let prevValido = null;
-      for (let k = j - 1; k >= 0; k--) {
-        if (smis[k] !== null && smis[k] !== undefined) {
+      for (let k = i - 1; k >= 0; k--) {
+        if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
           prevValido = smis[k];
           break;
         }
       }
-      if (prevValido === null || prevValido === smis[j]) continue;
-      const dirJ = smis[j] > prevValido ? 'subiendo' : 'bajando';
-      if (dirJ !== dirSesion) {
-        if (velas[i] && velas[j]) {
-          const d = diasEntre(velas[i].date, velas[j].date);
-          if (d !== null && d >= 0) {
-            diasGiro = d;
-            fechaGiro = velas[j].date;
+      if (prevValido === null || prevValido === smi) continue;
+      const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
+      if (dirSesion !== direccionActual) continue;
+
+      let diasGiro = null;
+      let fechaGiro = null;
+      for (let j = i + 1; j < smis.length; j++) {
+        if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
+        let prevJ = null;
+        for (let k = j - 1; k >= 0; k--) {
+          if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
+            prevJ = smis[k];
+            break;
           }
         }
-        break;
+        if (prevJ === null || prevJ === smis[j]) continue;
+        const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
+        if (dirJ !== dirSesion) {
+          if (velas[i] && velas[j] && velas[i].date && velas[j].date) {
+            const d = diasEntre(velas[i].date, velas[j].date);
+            if (d !== null && d >= 0) {
+              diasGiro = d;
+              fechaGiro = velas[j].date;
+            }
+          }
+          break;
+        }
+      }
+
+      if (diasGiro !== null) {
+        casos.push({
+          fecha: velas[i]?.date || '',
+          fechaGiro,
+          smi,
+          dias: diasGiro
+        });
       }
     }
 
-    if (diasGiro !== null) {
-      casos.push({
-        fecha: velas[i]?.date || '',
-        fechaGiro,
-        smi,
-        dias: diasGiro
-      });
+    if (casos.length === 0) {
+      return { direccionActual, casos: [], ultimoCaso: null, mediaDias: null };
     }
+
+    const mediaDias = casos.reduce((a, c) => a + c.dias, 0) / casos.length;
+    return {
+      direccionActual,
+      casos,
+      ultimoCaso: casos[casos.length - 1],
+      mediaDias
+    };
+  } catch (e) {
+    console.error('Error futuro estadístico:', e.message);
+    return null;
   }
-
-  if (casos.length === 0) {
-    return { direccionActual, casos: [], ultimoCaso: null, mediaDias: null };
-  }
-
-  const totalDias = casos.reduce((a, c) => a + c.dias, 0);
-  const mediaDias = totalDias / casos.length;
-
-  return {
-    direccionActual,
-    casos,
-    ultimoCaso: casos[casos.length - 1],
-    mediaDias
-  };
 }
 
 export async function generateMetadata({ params }) {
@@ -299,7 +327,7 @@ export default async function PaginaEmpresa({ params }) {
   const statsCompras = analizarEstadistica(compras);
   const statsVentas = analizarEstadistica(ventas);
 
-  const velas = analisis.velasUltimas60 || [];
+  const velas = analisis.velasUltimos60 || [];
   const smis = analisis.smisUltimos60 || [];
 
   const precioActual = analisis.precioActual;
@@ -340,7 +368,7 @@ export default async function PaginaEmpresa({ params }) {
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
   const ultimaSenalAbierta = analisis.posicionAbierta;
 
-  const futuro = calcularFuturoEstadistico(analisis);
+  const futuro = await calcularFuturoEstadisticoDesdeServidor(empresa.ticker);
 
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
@@ -536,7 +564,7 @@ export default async function PaginaEmpresa({ params }) {
           )}
         </section>
 
-        <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+        <Grafico velas={analisis.velasUltimos60} smis={analisis.smisUltimos60} />
 
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
