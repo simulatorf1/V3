@@ -13,11 +13,11 @@ export async function POST(request) {
     const referer = request.headers.get('referer') || null;
     const userAgent = request.headers.get('user-agent') || null;
 
-    // Hash simple de IP para contar únicos sin guardar la IP real
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
       'unknown';
+
     let hashIp = null;
     if (ip !== 'unknown') {
       let h = 0;
@@ -26,6 +26,35 @@ export async function POST(request) {
         h |= 0;
       }
       hashIp = Math.abs(h).toString(36);
+    }
+
+    // Si es una IP nueva, crear registro automático con número
+    if (hashIp) {
+      const { data: existente } = await supabaseAdmin
+        .from('visitantes_etiquetados')
+        .select('id')
+        .eq('ip_hash', hashIp)
+        .maybeSingle();
+
+      if (!existente) {
+        const { data: ultimo } = await supabaseAdmin
+          .from('visitantes_etiquetados')
+          .select('numero')
+          .order('numero', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const siguienteNumero = ultimo?.numero ? ultimo.numero + 1 : 1;
+        const etiquetaAuto = String(siguienteNumero).padStart(7, '0');
+
+        await supabaseAdmin
+          .from('visitantes_etiquetados')
+          .insert({
+            ip_hash: hashIp,
+            etiqueta: etiquetaAuto,
+            numero: siguienteNumero
+          });
+      }
     }
 
     await supabaseAdmin.from('visitas').insert({
@@ -39,6 +68,7 @@ export async function POST(request) {
 
     return Response.json({ ok: true });
   } catch (err) {
+    console.error('Error en /api/visita:', err);
     return Response.json({ ok: false }, { status: 200 });
   }
 }
