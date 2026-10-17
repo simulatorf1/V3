@@ -67,59 +67,65 @@ function calcularFuturoEstadistico(analisis) {
   const velas = analisis.velasUltimos60 || [];
   const smiActual = analisis.smiActual;
 
-  if (!smis || smis.length < 3) return null;
+  if (!smis || smis.length < 5) return null;
 
-  // Dirección actual: comparando los dos últimos valores válidos
-  let ultimoValido = null;
-  let anteriorValido = null;
+  // Dirección actual: últimos 2 valores válidos
+  let ultimo = null;
+  let anterior = null;
   for (let i = smis.length - 1; i >= 0; i--) {
     if (smis[i] !== null && smis[i] !== undefined) {
-      if (ultimoValido === null) {
-        ultimoValido = smis[i];
-      } else if (anteriorValido === null) {
-        anteriorValido = smis[i];
-        break;
-      }
+      if (ultimo === null) ultimo = smis[i];
+      else if (anterior === null) { anterior = smis[i]; break; }
     }
   }
-
-  if (ultimoValido === null || anteriorValido === null) return null;
-  if (ultimoValido === anteriorValido) return null;
-
-  const direccionActual = ultimoValido > anteriorValido ? 'subiendo' : 'bajando';
+  if (ultimo === null || anterior === null) return null;
+  if (ultimo === anterior) return null;
+  const direccionActual = ultimo > anterior ? 'subiendo' : 'bajando';
 
   const casos = [];
 
-  for (let i = 1; i < smis.length - 1; i++) {
+  // Recorrer TODAS las sesiones (menos las 2 últimas)
+  for (let i = 0; i < smis.length - 2; i++) {
     const smi = smis[i];
-    const smiPrev = smis[i - 1];
+    if (smi === null || smi === undefined) continue;
 
-    if (smi === null || smi === undefined || smiPrev === null || smiPrev === undefined) {
-      continue;
-    }
-
-    // Rango ±20
+    // ¿En ±20?
     if (Math.abs(smi - smiActual) > 20) continue;
 
-    if (smi === smiPrev) continue;
-    const direccionSesion = smi > smiPrev ? 'subiendo' : 'bajando';
-    if (direccionSesion !== direccionActual) continue;
-
-    // Buscar el primer día en que cambia de dirección
-    let diasGiro = null;
-    for (let j = i + 1; j < smis.length; j++) {
-      const sj = smis[j];
-      const sjPrev = smis[j - 1];
-      if (sj === null || sj === undefined || sjPrev === null || sjPrev === undefined) {
-        continue;
+    // Dirección de esta sesión (comparando con la anterior)
+    let dirSesion = null;
+    for (let k = i - 1; k >= 0; k--) {
+      if (smis[k] !== null && smis[k] !== undefined) {
+        if (smis[k] === smi) continue;
+        dirSesion = smi > smis[k] ? 'subiendo' : 'bajando';
+        break;
       }
-      if (sj === sjPrev) continue;
+    }
+    if (!dirSesion) continue;
+    if (dirSesion !== direccionActual) continue;
 
-      const dirJ = sj > sjPrev ? 'subiendo' : 'bajando';
-      if (dirJ !== direccionSesion) {
+    // Buscar el primer giro después
+    let diasGiro = null;
+    let fechaGiro = null;
+    for (let j = i + 1; j < smis.length; j++) {
+      if (smis[j] === null || smis[j] === undefined) continue;
+      // Comparar smis[j] con el valor válido anterior
+      let prevValido = null;
+      for (let k = j - 1; k >= 0; k--) {
+        if (smis[k] !== null && smis[k] !== undefined) {
+          prevValido = smis[k];
+          break;
+        }
+      }
+      if (prevValido === null || prevValido === smis[j]) continue;
+      const dirJ = smis[j] > prevValido ? 'subiendo' : 'bajando';
+      if (dirJ !== dirSesion) {
         if (velas[i] && velas[j]) {
           const d = diasEntre(velas[i].date, velas[j].date);
-          if (d !== null && d >= 0) diasGiro = d;
+          if (d !== null && d >= 0) {
+            diasGiro = d;
+            fechaGiro = velas[j].date;
+          }
         }
         break;
       }
@@ -128,20 +134,15 @@ function calcularFuturoEstadistico(analisis) {
     if (diasGiro !== null) {
       casos.push({
         fecha: velas[i]?.date || '',
+        fechaGiro,
         smi,
-        dias: diasGiro,
-        direccion: direccionSesion
+        dias: diasGiro
       });
     }
   }
 
   if (casos.length === 0) {
-    return {
-      direccionActual,
-      casos: [],
-      ultimoCaso: null,
-      mediaDias: null
-    };
+    return { direccionActual, casos: [], ultimoCaso: null, mediaDias: null };
   }
 
   const totalDias = casos.reduce((a, c) => a + c.dias, 0);
