@@ -152,11 +152,15 @@ export async function GET(request) {
 
     const { data: etiquetas } = await supabaseAdmin
       .from('visitantes_etiquetados')
-      .select('ip_hash, etiqueta, color');
+      .select('ip_hash, etiqueta, color, numero');
 
     const etiquetasMap = {};
     for (const e of etiquetas || []) {
-      etiquetasMap[e.ip_hash] = { etiqueta: e.etiqueta, color: e.color };
+      etiquetasMap[e.ip_hash] = {
+        etiqueta: e.etiqueta,
+        color: e.color,
+        numero: e.numero
+      };
     }
 
     let listadoHoy = [];
@@ -171,7 +175,8 @@ export async function GET(request) {
           ip_hash: v.ip_hash,
           user_agent: v.user_agent,
           etiqueta: et ? et.etiqueta : null,
-          color: et ? et.color : null
+          color: et ? et.color : null,
+          numero: et && et.numero ? et.numero : null
         };
       });
     }
