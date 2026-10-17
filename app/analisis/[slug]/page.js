@@ -94,7 +94,7 @@ function calcularFuturo(smis, velas, smiActual) {
   for (let i = 0; i < smis.length - 2; i++) {
     const smi = smis[i];
     if (smi === null || smi === undefined || isNaN(smi)) continue;
-    if (Math.abs(smi - smiActual) > 20) continue;
+    if (Math.abs(smi - smiActual) > 10) continue;
 
     let prevValido = null;
     for (let k = i - 1; k >= 0; k--) {
