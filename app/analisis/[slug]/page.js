@@ -9,6 +9,7 @@ import RegistrarVisita from '../../../components/RegistrarVisita';
 import BarraLateral from '../../../components/BarraLateral';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
+import FuturoEstadistico from '../../../components/FuturoEstadistico';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -379,6 +380,7 @@ export default async function PaginaEmpresa({ params }) {
               explicacion="Cambio registrado cuando el indicador gira de zona baja hacia arriba (compra) o de zona alta hacia abajo (venta)."
             />
           </div>
+          <FuturoEstadistico ticker={empresa.ticker} />                
         </section>
 
         <p className="v3-aviso-mute">
