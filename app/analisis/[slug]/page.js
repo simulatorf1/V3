@@ -63,50 +63,76 @@ function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
 }
 
 function calcularFuturoEstadistico(analisis) {
-  const senales = analisis.senales || [];
+  const smis = analisis.smisUltimos60 || [];
+  const velas = analisis.velasUltimos60 || [];
   const smiActual = analisis.smiActual;
+  const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
-  if (!ultimaSenal) return null;
 
-  const tipoUltimo = ultimaSenal.tipo;
-  const tipoContrario = tipoUltimo === 'compra' ? 'venta' : 'compra';
+  if (!ultimaSenal || smis.length < 5) {
+    return null;
+  }
 
-  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  // Dirección actual del indicador (últimas 2 sesiones)
+  const smiHoy = smis[smis.length - 1];
+  const smiAyer = smis[smis.length - 2];
+  if (smiHoy === null || smiAyer === null) return null;
 
-  // Buscar señales del mismo tipo con indicador parecido (±2)
+  const direccionActual = smiHoy > smiAyer ? 'subiendo' : smiHoy < smiAyer ? 'bajando' : 'plana';
+  if (direccionActual === 'plana') return null;
+
+  const tipoGiro = direccionActual === 'subiendo' ? 'venta' : 'compra';
+
   const casos = [];
-  for (let i = 0; i < lista.length; i++) {
-    const s = lista[i];
-    if (s.tipo !== tipoUltimo) continue;
-    if (typeof s.smiEnSenal !== 'number') continue;
-    if (Math.abs(s.smiEnSenal - smiActual) > 2) continue;
 
-    // Buscar la siguiente señal del tipo contrario
-    let siguiente = null;
-    for (let j = i + 1; j < lista.length; j++) {
-      if (lista[j].tipo === tipoContrario) {
-        siguiente = lista[j];
+  // Recorrer las últimas 60 sesiones
+  for (let i = 1; i < smis.length - 1; i++) {
+    const smi = smis[i];
+    if (smi === null || smi === undefined) continue;
+
+    // ¿Está en ±2 del actual?
+    if (Math.abs(smi - smiActual) > 2) continue;
+
+    // Miramos la dirección previa
+    const smiPrev = smis[i - 1];
+    if (smiPrev === null || smiPrev === undefined) continue;
+
+    // Buscamos hacia adelante el primer día que gira
+    let direccion = smi > smiPrev ? 'subiendo' : smi < smiPrev ? 'bajando' : 'plana';
+    if (direccion === 'plana') continue;
+
+    let diasGiro = null;
+    for (let j = i + 1; j < smis.length; j++) {
+      const sj = smis[j];
+      const sjPrev = smis[j - 1];
+      if (sj === null || sj === undefined || sjPrev === null || sjPrev === undefined) continue;
+
+      const dirJ = sj > sjPrev ? 'subiendo' : sj < sjPrev ? 'bajando' : 'plana';
+      if (dirJ === 'plana') continue;
+
+      if (dirJ !== direccion) {
+        if (velas[i] && velas[j]) {
+          const d = diasEntre(velas[i].date, velas[j].date);
+          if (d !== null && d >= 0) diasGiro = d;
+        }
         break;
       }
     }
 
-    if (siguiente) {
-      const dias = diasEntre(s.fecha, siguiente.fecha);
-      if (dias !== null && dias >= 0) {
-        casos.push({
-          fecha: s.fecha,
-          smi: s.smiEnSenal,
-          dias,
-          fechaGiro: siguiente.fecha
-        });
-      }
+    if (diasGiro !== null) {
+      casos.push({
+        fecha: velas[i]?.date || '',
+        smi,
+        dias: diasGiro,
+        direccion
+      });
     }
   }
 
   if (casos.length === 0) {
     return {
-      tipo: tipoUltimo,
-      tipoContrario,
+      tipo: ultimaSenal.tipo,
+      tipoGiro,
       casos: [],
       ultimoCaso: null,
       mediaDias: null
@@ -117,8 +143,8 @@ function calcularFuturoEstadistico(analisis) {
   const mediaDias = totalDias / casos.length;
 
   return {
-    tipo: tipoUltimo,
-    tipoContrario,
+    tipo: ultimaSenal.tipo,
+    tipoGiro,
     casos,
     ultimoCaso: casos[casos.length - 1],
     mediaDias
@@ -244,7 +270,6 @@ export default async function PaginaEmpresa({ params }) {
     }
   };
 
-  // Cálculos previos
   const ciclos = calcularCiclos(analisis.senales || [], analisis.precioActual);
   const compras = ciclos.filter((c) => c.tipo === 'compra');
   const ventas = ciclos.filter((c) => c.tipo === 'venta');
@@ -312,7 +337,6 @@ export default async function PaginaEmpresa({ params }) {
 
   const futuro = calcularFuturoEstadistico(analisis);
 
-  // Interpretación del gráfico
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre
@@ -386,7 +410,6 @@ export default async function PaginaEmpresa({ params }) {
           recomendación de inversión.
         </div>
 
-        {/* Panel de datos */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <h2 className="v3-seccion-titulo">Datos de la empresa</h2>
 
@@ -441,7 +464,6 @@ export default async function PaginaEmpresa({ params }) {
             />
           </div>
 
-          {/* Tarjeta futuro estadístico */}
           {futuro && (
             <div style={{ marginTop: '16px' }}>
               <TarjetaFuturo futuro={futuro} />
@@ -456,7 +478,6 @@ export default async function PaginaEmpresa({ params }) {
 
         <ConsensoComunidad ticker={empresa.ticker} />
 
-        {/* Estadística histórica */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Estadística histórica</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
@@ -473,15 +494,9 @@ export default async function PaginaEmpresa({ params }) {
             <div className="v3-card">
               <h3 style={{ marginTop: 0 }}>Movimientos de compra</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-                <li>
-                  <strong>Total:</strong> {statsCompras.muestra}
-                </li>
-                <li>
-                  <strong>Aciertos:</strong> {statsCompras.aciertos}
-                </li>
-                <li>
-                  <strong>Fallos:</strong> {statsCompras.fallos}
-                </li>
+                <li><strong>Total:</strong> {statsCompras.muestra}</li>
+                <li><strong>Aciertos:</strong> {statsCompras.aciertos}</li>
+                <li><strong>Fallos:</strong> {statsCompras.fallos}</li>
                 <li>
                   <strong>% acierto:</strong>{' '}
                   {statsCompras.muestra > 0 ? (
@@ -495,15 +510,9 @@ export default async function PaginaEmpresa({ params }) {
             <div className="v3-card">
               <h3 style={{ marginTop: 0 }}>Movimientos de venta</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-                <li>
-                  <strong>Total:</strong> {statsVentas.muestra}
-                </li>
-                <li>
-                  <strong>Aciertos:</strong> {statsVentas.aciertos}
-                </li>
-                <li>
-                  <strong>Fallos:</strong> {statsVentas.fallos}
-                </li>
+                <li><strong>Total:</strong> {statsVentas.muestra}</li>
+                <li><strong>Aciertos:</strong> {statsVentas.aciertos}</li>
+                <li><strong>Fallos:</strong> {statsVentas.fallos}</li>
                 <li>
                   <strong>% acierto:</strong>{' '}
                   {statsVentas.muestra > 0 ? (
@@ -638,9 +647,9 @@ function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }
 }
 
 function TarjetaFuturo({ futuro }) {
-  const { tipo, tipoContrario, casos, ultimoCaso, mediaDias } = futuro;
+  const { tipo, tipoGiro, casos, ultimoCaso, mediaDias } = futuro;
 
-  const textoGiro = tipoContrario === 'compra' ? 'para compra' : 'para venta';
+  const textoGiro = tipoGiro === 'compra' ? 'para compra' : 'para venta';
 
   if (!casos || casos.length === 0) {
     return (
@@ -665,8 +674,8 @@ function TarjetaFuturo({ futuro }) {
           Futuro estadístico
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-          Sin datos suficientes para esta situación en el último año. No se ha detectado ningún
-          caso anterior con un indicador parecido al actual.
+          Sin datos suficientes para esta situación en las últimas 60 sesiones. El indicador no ha
+          pasado antes por un valor similar (±2 puntos) con una dirección clara.
         </p>
       </div>
     );
@@ -702,10 +711,9 @@ function TarjetaFuturo({ futuro }) {
       </div>
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
-        El último movimiento registrado fue <strong>{tipo}</strong>. Buscando en el último año
-        situaciones con el indicador parecido (mismo tipo y ±2 puntos), se han encontrado{' '}
-        <strong>{casos.length}</strong>{' '}
-        {casos.length === 1 ? 'caso' : 'casos'} anteriores.
+        En las últimas 60 sesiones, el indicador ha pasado por un valor similar (±2 puntos) al
+        actual en <strong>{casos.length}</strong>{' '}
+        {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
       </p>
 
       <div
@@ -718,7 +726,7 @@ function TarjetaFuturo({ futuro }) {
         }}
       >
         <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          La última vez ({fechaUltimo}), el giro tardó
+          La última vez ({fechaUltimo}), tardó
         </span>
         <span style={{ fontSize: '32px', fontWeight: 800, color: 'var(--v3-negative)' }}>
           {ultimoCaso.dias}
@@ -733,7 +741,7 @@ function TarjetaFuturo({ futuro }) {
 
       {casos.length > 1 && (
         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          Media de los {casos.length} casos: <strong>{mediaDias.toFixed(1)} días</strong>{' '}
+          Media de las {casos.length} ocasiones: <strong>{mediaDias.toFixed(1)} días</strong>{' '}
           <strong>{textoGiro}</strong>.
         </p>
       )}
