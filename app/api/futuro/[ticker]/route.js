@@ -27,6 +27,9 @@ export async function GET(request, { params }) {
     }
 
     let datos = data.datos;
+    console.log('[FUTURO-API] tipo datos:', typeof datos);
+    console.log('[FUTURO-API] primeros 100 chars:', String(datos).substring(0, 100));
+    console.log('[FUTURO-API] tiene smisUltimos60?:', String(datos).includes('smisUltimos60'));    
     if (typeof datos === 'string') {
       try {
         datos = JSON.parse(datos);
