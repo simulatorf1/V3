@@ -20,7 +20,10 @@ export async function GET(request, { params }) {
       .maybeSingle();
 
     if (!data || !data.datos) {
-      return Response.json({ futuro: null });
+      return Response.json({
+        futuro: null,
+        motivo: 'No hay datos en Supabase para este ticker'
+      });
     }
 
     let datos = data.datos;
@@ -28,7 +31,10 @@ export async function GET(request, { params }) {
       try {
         datos = JSON.parse(datos);
       } catch (e) {
-        return Response.json({ futuro: null });
+        return Response.json({
+          futuro: null,
+          motivo: 'JSON no parseable: ' + e.message
+        });
       }
     }
 
@@ -37,11 +43,25 @@ export async function GET(request, { params }) {
       try {
         smis = JSON.parse(smis);
       } catch (e) {
-        return Response.json({ futuro: null });
+        return Response.json({
+          futuro: null,
+          motivo: 'smisUltimos60 no parseable: ' + e.message,
+          valor: smis.substring(0, 200)
+        });
       }
     }
-    if (!Array.isArray(smis) || smis.length < 5) {
-      return Response.json({ futuro: null });
+    if (!Array.isArray(smis)) {
+      return Response.json({
+        futuro: null,
+        motivo: 'smisUltimos60 no es array. Tipo: ' + typeof smis,
+        valor: String(smis).substring(0, 200)
+      });
+    }
+    if (smis.length < 5) {
+      return Response.json({
+        futuro: null,
+        motivo: 'smisUltimos60 tiene menos de 5 valores. Longitud: ' + smis.length
+      });
     }
 
     let velas = datos.velasUltimos60;
@@ -49,21 +69,34 @@ export async function GET(request, { params }) {
       try {
         velas = JSON.parse(velas);
       } catch (e) {
-        return Response.json({ futuro: null });
+        return Response.json({
+          futuro: null,
+          motivo: 'velasUltimos60 no parseable: ' + e.message
+        });
       }
     }
     if (!Array.isArray(velas)) {
-      return Response.json({ futuro: null });
+      return Response.json({
+        futuro: null,
+        motivo: 'velasUltimos60 no es array. Tipo: ' + typeof velas
+      });
     }
 
     const smiActual = Number(datos.smiActual);
     if (isNaN(smiActual)) {
-      return Response.json({ futuro: null });
+      return Response.json({
+        futuro: null,
+        motivo: 'smiActual no es número',
+        valor: String(datos.smiActual)
+      });
     }
 
     const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
     if (validos.length < 2) {
-      return Response.json({ futuro: null });
+      return Response.json({
+        futuro: null,
+        motivo: 'Menos de 2 valores válidos en smis. Válidos: ' + validos.length
+      });
     }
 
     const ultimo = validos[validos.length - 1];
@@ -72,7 +105,12 @@ export async function GET(request, { params }) {
       ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
 
     if (direccionActual === 'plana') {
-      return Response.json({ futuro: null });
+      return Response.json({
+        futuro: null,
+        motivo: 'Dirección plana (último = anterior)',
+        ultimo,
+        anterior
+      });
     }
 
     const casos = [];
@@ -139,7 +177,8 @@ export async function GET(request, { params }) {
           casos: [],
           ultimoCaso: null,
           mediaDias: null
-        }
+        },
+        motivo: 'Sin casos encontrados. SMI actual: ' + smiActual + '. Dirección: ' + direccionActual
       });
     }
 
@@ -155,6 +194,9 @@ export async function GET(request, { params }) {
     });
   } catch (err) {
     console.error('Error en /api/futuro:', err);
-    return Response.json({ futuro: null }, { status: 200 });
+    return Response.json(
+      { futuro: null, motivo: 'Excepción: ' + err.message },
+      { status: 200 }
+    );
   }
 }
