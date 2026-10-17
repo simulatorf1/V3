@@ -290,7 +290,7 @@ function SeccionEstadisticas({ datos, periodo, onRecargar }) {
         <Tarjeta
           etiqueta="Visitantes ahora"
           valor={stats.visitantesAhora ?? 0}
-          sub="últimos 5 min"
+          sub="últimos 5 min (únicos)"
         />
         <Tarjeta
           etiqueta="Visitas en el periodo"
@@ -359,6 +359,7 @@ function SeccionEstadisticas({ datos, periodo, onRecargar }) {
                             ipHash={v.ip_hash}
                             etiqueta={v.etiqueta}
                             color={v.color}
+                            numero={v.numero}
                             onActualizado={onRecargar}
                           />
                         </td>
@@ -555,7 +556,7 @@ function SeccionAdSense() {
   );
 }
 
-function BotonEtiqueta({ ipHash, etiqueta, color, onActualizado }) {
+function BotonEtiqueta({ ipHash, etiqueta, color, numero, onActualizado }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(etiqueta || '');
 
@@ -620,6 +621,7 @@ function BotonEtiqueta({ ipHash, etiqueta, color, onActualizado }) {
   }
 
   if (etiqueta) {
+    const esAuto = /^\d{7}$/.test(etiqueta);
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
         <span
@@ -628,8 +630,8 @@ function BotonEtiqueta({ ipHash, etiqueta, color, onActualizado }) {
             borderRadius: '999px',
             fontSize: '11px',
             fontWeight: 600,
-            background: '#e3f2fd',
-            color: color || 'var(--v3-primary)'
+            background: esAuto ? '#f0f2f5' : '#e3f2fd',
+            color: esAuto ? 'var(--v3-text-soft)' : color || 'var(--v3-primary)'
           }}
         >
           {etiqueta}
