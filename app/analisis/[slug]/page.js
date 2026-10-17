@@ -66,51 +66,60 @@ function calcularFuturoEstadistico(analisis) {
   const smis = analisis.smisUltimos60 || [];
   const velas = analisis.velasUltimos60 || [];
   const smiActual = analisis.smiActual;
-  const senales = analisis.senales || [];
-  const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
 
-  if (!ultimaSenal || smis.length < 5) {
-    return null;
+  // Necesitamos al menos 3 valores para saber dirección
+  if (!smis || smis.length < 3) return null;
+
+  // Dirección actual: comparando los dos últimos valores válidos
+  let ultimoValido = null;
+  let anteriorValido = null;
+  for (let i = smis.length - 1; i >= 0; i--) {
+    if (smis[i] !== null && smis[i] !== undefined) {
+      if (ultimoValido === null) {
+        ultimoValido = smis[i];
+      } else if (anteriorValido === null) {
+        anteriorValido = smis[i];
+        break;
+      }
+    }
   }
 
-  // Dirección actual del indicador (últimas 2 sesiones)
-  const smiHoy = smis[smis.length - 1];
-  const smiAyer = smis[smis.length - 2];
-  if (smiHoy === null || smiAyer === null) return null;
+  if (ultimoValido === null || anteriorValido === null) return null;
+  if (ultimoValido === anteriorValido) return null;
 
-  const direccionActual = smiHoy > smiAyer ? 'subiendo' : smiHoy < smiAyer ? 'bajando' : 'plana';
-  if (direccionActual === 'plana') return null;
-
-  const tipoGiro = direccionActual === 'subiendo' ? 'venta' : 'compra';
+  const direccionActual = ultimoValido > anteriorValido ? 'subiendo' : 'bajando';
 
   const casos = [];
 
-  // Recorrer las últimas 60 sesiones
+  // Recorrer todas las sesiones menos las 2 últimas (necesitamos mirar hacia adelante)
   for (let i = 1; i < smis.length - 1; i++) {
     const smi = smis[i];
-    if (smi === null || smi === undefined) continue;
-
-    // ¿Está en ±2 del actual?
-    if (Math.abs(smi - smiActual) > 2) continue;
-
-    // Miramos la dirección previa
     const smiPrev = smis[i - 1];
-    if (smiPrev === null || smiPrev === undefined) continue;
 
-    // Buscamos hacia adelante el primer día que gira
-    let direccion = smi > smiPrev ? 'subiendo' : smi < smiPrev ? 'bajando' : 'plana';
-    if (direccion === 'plana') continue;
+    if (smi === null || smi === undefined || smiPrev === null || smiPrev === undefined) {
+      continue;
+    }
 
+    // ¿Está en ±5 del valor actual?
+    if (Math.abs(smi - smiActual) > 5) continue;
+
+    // ¿Va en la misma dirección que hoy?
+    if (smi === smiPrev) continue;
+    const direccionSesion = smi > smiPrev ? 'subiendo' : 'bajando';
+    if (direccionSesion !== direccionActual) continue;
+
+    // Buscar el primer día en que cambia de dirección
     let diasGiro = null;
     for (let j = i + 1; j < smis.length; j++) {
       const sj = smis[j];
       const sjPrev = smis[j - 1];
-      if (sj === null || sj === undefined || sjPrev === null || sjPrev === undefined) continue;
+      if (sj === null || sj === undefined || sjPrev === null || sjPrev === undefined) {
+        continue;
+      }
+      if (sj === sjPrev) continue;
 
-      const dirJ = sj > sjPrev ? 'subiendo' : sj < sjPrev ? 'bajando' : 'plana';
-      if (dirJ === 'plana') continue;
-
-      if (dirJ !== direccion) {
+      const dirJ = sj > sjPrev ? 'subiendo' : 'bajando';
+      if (dirJ !== direccionSesion) {
         if (velas[i] && velas[j]) {
           const d = diasEntre(velas[i].date, velas[j].date);
           if (d !== null && d >= 0) diasGiro = d;
@@ -124,15 +133,14 @@ function calcularFuturoEstadistico(analisis) {
         fecha: velas[i]?.date || '',
         smi,
         dias: diasGiro,
-        direccion
+        direccion: direccionSesion
       });
     }
   }
 
   if (casos.length === 0) {
     return {
-      tipo: ultimaSenal.tipo,
-      tipoGiro,
+      direccionActual,
       casos: [],
       ultimoCaso: null,
       mediaDias: null
@@ -143,8 +151,7 @@ function calcularFuturoEstadistico(analisis) {
   const mediaDias = totalDias / casos.length;
 
   return {
-    tipo: ultimaSenal.tipo,
-    tipoGiro,
+    direccionActual,
     casos,
     ultimoCaso: casos[casos.length - 1],
     mediaDias
@@ -647,9 +654,7 @@ function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }
 }
 
 function TarjetaFuturo({ futuro }) {
-  const { tipo, tipoGiro, casos, ultimoCaso, mediaDias } = futuro;
-
-  const textoGiro = tipoGiro === 'compra' ? 'para compra' : 'para venta';
+  const { direccionActual, casos, ultimoCaso, mediaDias } = futuro;
 
   if (!casos || casos.length === 0) {
     return (
@@ -674,8 +679,8 @@ function TarjetaFuturo({ futuro }) {
           Futuro estadístico
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-          Sin datos suficientes para esta situación en las últimas 60 sesiones. El indicador no ha
-          pasado antes por un valor similar (±2 puntos) con una dirección clara.
+          Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
+          valor similar (±5 puntos) mientras {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
         </p>
       </div>
     );
@@ -711,9 +716,9 @@ function TarjetaFuturo({ futuro }) {
       </div>
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
-        En las últimas 60 sesiones, el indicador ha pasado por un valor similar (±2 puntos) al
-        actual en <strong>{casos.length}</strong>{' '}
-        {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
+        El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
+        estado en un valor similar (±5 puntos) mientras iba en la misma dirección en{' '}
+        <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
       </p>
 
       <div
@@ -735,14 +740,13 @@ function TarjetaFuturo({ futuro }) {
           días
         </span>
         <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          <strong>{textoGiro}</strong>.
+          en girar.
         </span>
       </div>
 
       {casos.length > 1 && (
         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          Media de las {casos.length} ocasiones: <strong>{mediaDias.toFixed(1)} días</strong>{' '}
-          <strong>{textoGiro}</strong>.
+          Media de las {casos.length} ocasiones: <strong>{mediaDias.toFixed(1)} días</strong>.
         </p>
       )}
 
