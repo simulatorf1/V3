@@ -67,7 +67,6 @@ function calcularFuturoEstadistico(analisis) {
   const velas = analisis.velasUltimos60 || [];
   const smiActual = analisis.smiActual;
 
-  // Necesitamos al menos 3 valores para saber dirección
   if (!smis || smis.length < 3) return null;
 
   // Dirección actual: comparando los dos últimos valores válidos
@@ -91,7 +90,6 @@ function calcularFuturoEstadistico(analisis) {
 
   const casos = [];
 
-  // Recorrer todas las sesiones menos las 2 últimas (necesitamos mirar hacia adelante)
   for (let i = 1; i < smis.length - 1; i++) {
     const smi = smis[i];
     const smiPrev = smis[i - 1];
@@ -100,10 +98,9 @@ function calcularFuturoEstadistico(analisis) {
       continue;
     }
 
-    // ¿Está en ±5 del valor actual?
-    if (Math.abs(smi - smiActual) > 5) continue;
+    // Rango ±20
+    if (Math.abs(smi - smiActual) > 20) continue;
 
-    // ¿Va en la misma dirección que hoy?
     if (smi === smiPrev) continue;
     const direccionSesion = smi > smiPrev ? 'subiendo' : 'bajando';
     if (direccionSesion !== direccionActual) continue;
@@ -680,7 +677,8 @@ function TarjetaFuturo({ futuro }) {
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
           Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
-          valor similar (±5 puntos) mientras {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
+          valor similar (±20 puntos) mientras{' '}
+          {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
         </p>
       </div>
     );
@@ -717,7 +715,7 @@ function TarjetaFuturo({ futuro }) {
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
         El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
-        estado en un valor similar (±5 puntos) mientras iba en la misma dirección en{' '}
+        estado en un valor similar (±20 puntos) mientras iba en la misma dirección en{' '}
         <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
       </p>
 
@@ -739,9 +737,7 @@ function TarjetaFuturo({ futuro }) {
         <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--v3-negative)' }}>
           días
         </span>
-        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          en girar.
-        </span>
+        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>en girar.</span>
       </div>
 
       {casos.length > 1 && (
