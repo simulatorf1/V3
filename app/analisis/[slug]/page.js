@@ -674,7 +674,7 @@ function TarjetaFuturo({ futuro }) {
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
           Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
-          valor similar (±20 puntos) mientras{' '}
+          valor similar (±4 puntos) mientras{' '}
           {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
         </p>
       </div>
@@ -711,7 +711,7 @@ function TarjetaFuturo({ futuro }) {
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
         El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
-        estado en un valor similar (±20 puntos) mientras iba en la misma dirección en{' '}
+        estado en un valor similar (±4 puntos) mientras iba en la misma dirección en{' '}
         <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
       </p>
 
