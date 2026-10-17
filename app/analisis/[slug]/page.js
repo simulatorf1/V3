@@ -36,13 +36,6 @@ function fechaMadrid(fecha = new Date()) {
   });
 }
 
-function diasEntre(fechaA, fechaB) {
-  if (!fechaA || !fechaB) return null;
-  const a = new Date(fechaA);
-  const b = new Date(fechaB);
-  return Math.round((b - a) / (1000 * 60 * 60 * 24));
-}
-
 function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
   const limitada = lista.slice(-limite);
@@ -60,128 +53,6 @@ function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
 
     return { tipo: s.tipo, variacion, acierto };
   });
-}
-
-async function calcularFuturoEstadisticoDesdeServidor(ticker) {
-  try {
-    const { supabaseAdmin } = await import('../../../lib/supabaseAdmin');
-    const { data } = await supabaseAdmin
-      .from('paginas')
-      .select('datos')
-      .eq('ticker', ticker.toUpperCase())
-      .maybeSingle();
-
-    if (!data || !data.datos) return null;
-
-    let datos = data.datos;
-    if (typeof datos === 'string') {
-      try {
-        datos = JSON.parse(datos);
-      } catch (e) {
-        return null;
-      }
-    }
-
-    let smis = datos.smisUltimos60;
-    if (typeof smis === 'string') {
-      try {
-        smis = JSON.parse(smis);
-      } catch (e) {
-        return null;
-      }
-    }
-    if (!Array.isArray(smis) || smis.length < 5) return null;
-
-    let velas = datos.velasUltimos60;
-    if (typeof velas === 'string') {
-      try {
-        velas = JSON.parse(velas);
-      } catch (e) {
-        return null;
-      }
-    }
-    if (!Array.isArray(velas)) return null;
-
-    const smiActual = Number(datos.smiActual);
-    if (isNaN(smiActual)) return null;
-
-    const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
-    if (validos.length < 2) return null;
-
-    const ultimo = validos[validos.length - 1];
-    const anterior = validos[validos.length - 2];
-    const direccionActual =
-      ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
-    if (direccionActual === 'plana') return null;
-
-    const casos = [];
-
-    for (let i = 0; i < smis.length - 2; i++) {
-      const smi = smis[i];
-      if (smi === null || smi === undefined || isNaN(smi)) continue;
-      if (Math.abs(smi - smiActual) > 20) continue;
-
-      let prevValido = null;
-      for (let k = i - 1; k >= 0; k--) {
-        if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
-          prevValido = smis[k];
-          break;
-        }
-      }
-      if (prevValido === null || prevValido === smi) continue;
-      const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
-      if (dirSesion !== direccionActual) continue;
-
-      let diasGiro = null;
-      let fechaGiro = null;
-      for (let j = i + 1; j < smis.length; j++) {
-        if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
-        let prevJ = null;
-        for (let k = j - 1; k >= 0; k--) {
-          if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
-            prevJ = smis[k];
-            break;
-          }
-        }
-        if (prevJ === null || prevJ === smis[j]) continue;
-        const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
-        if (dirJ !== dirSesion) {
-          if (velas[i] && velas[j] && velas[i].date && velas[j].date) {
-            const d = diasEntre(velas[i].date, velas[j].date);
-            if (d !== null && d >= 0) {
-              diasGiro = d;
-              fechaGiro = velas[j].date;
-            }
-          }
-          break;
-        }
-      }
-
-      if (diasGiro !== null) {
-        casos.push({
-          fecha: velas[i]?.date || '',
-          fechaGiro,
-          smi,
-          dias: diasGiro
-        });
-      }
-    }
-
-    if (casos.length === 0) {
-      return { direccionActual, casos: [], ultimoCaso: null, mediaDias: null };
-    }
-
-    const mediaDias = casos.reduce((a, c) => a + c.dias, 0) / casos.length;
-    return {
-      direccionActual,
-      casos,
-      ultimoCaso: casos[casos.length - 1],
-      mediaDias
-    };
-  } catch (e) {
-    console.error('Error futuro estadístico:', e.message);
-    return null;
-  }
 }
 
 export async function generateMetadata({ params }) {
@@ -368,8 +239,6 @@ export default async function PaginaEmpresa({ params }) {
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
   const ultimaSenalAbierta = analisis.posicionAbierta;
 
-  const futuro = await calcularFuturoEstadisticoDesdeServidor(empresa.ticker);
-
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre
@@ -496,12 +365,6 @@ export default async function PaginaEmpresa({ params }) {
               explicacion="Cambio registrado cuando el indicador gira de zona baja hacia arriba (compra) o de zona alta hacia abajo (venta)."
             />
           </div>
-
-          {futuro && (
-            <div style={{ marginTop: '16px' }}>
-              <TarjetaFuturo futuro={futuro} />
-            </div>
-          )}
         </section>
 
         <p className="v3-aviso-mute">
@@ -675,110 +538,6 @@ function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }
           {explicacion}
         </p>
       )}
-    </div>
-  );
-}
-
-function TarjetaFuturo({ futuro }) {
-  const { direccionActual, casos, ultimoCaso, mediaDias } = futuro;
-
-  if (!casos || casos.length === 0) {
-    return (
-      <div
-        className="v3-card"
-        style={{
-          padding: '16px',
-          gridColumn: '1 / -1',
-          borderLeft: '4px solid var(--v3-border-strong)'
-        }}
-      >
-        <div
-          style={{
-            color: 'var(--v3-text-mute)',
-            fontSize: '12px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            fontWeight: 600,
-            marginBottom: '6px'
-          }}
-        >
-          Futuro estadístico
-        </div>
-        <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-          Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
-          valor similar (±20 puntos) mientras{' '}
-          {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
-        </p>
-      </div>
-    );
-  }
-
-  const fechaUltimo = new Date(ultimoCaso.fecha).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Europe/Madrid'
-  });
-
-  return (
-    <div
-      className="v3-card"
-      style={{
-        padding: '20px',
-        gridColumn: '1 / -1',
-        borderLeft: '4px solid var(--v3-negative)'
-      }}
-    >
-      <div
-        style={{
-          color: 'var(--v3-text-mute)',
-          fontSize: '12px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          fontWeight: 600,
-          marginBottom: '8px'
-        }}
-      >
-        Futuro estadístico
-      </div>
-
-      <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
-        El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
-        estado en un valor similar (±20 puntos) mientras iba en la misma dirección en{' '}
-        <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
-      </p>
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: '8px',
-          marginTop: '12px',
-          flexWrap: 'wrap'
-        }}
-      >
-        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          La última vez ({fechaUltimo}), tardó
-        </span>
-        <span style={{ fontSize: '32px', fontWeight: 800, color: 'var(--v3-negative)' }}>
-          {ultimoCaso.dias}
-        </span>
-        <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--v3-negative)' }}>
-          días
-        </span>
-        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>en girar.</span>
-      </div>
-
-      {casos.length > 1 && (
-        <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          Media de las {casos.length} ocasiones: <strong>{mediaDias.toFixed(1)} días</strong>.
-        </p>
-      )}
-
-      <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: 'var(--v3-text-mute)' }}>
-        Esto no es una predicción. Es una descripción de lo que ha pasado otras veces en
-        situaciones parecidas.
-      </p>
     </div>
   );
 }
