@@ -10,23 +10,6 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function colorZona(zona) {
-  if (zona === 'alta') return { bg: '#fde8e8', text: '#c62828', border: '#f5c2c2' };
-  if (zona === 'baja') return { bg: '#e6f4ea', text: '#1a7f37', border: '#b8dfc4' };
-  return { bg: '#f0f2f5', text: '#56606c', border: '#d8dce2' };
-}
-
-function fechaCorta(fecha) {
-  if (!fecha) return '';
-  return new Date(fecha).toLocaleString('es-ES', {
-    timeZone: 'Europe/Madrid',
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
 export default function CambiosRecientes({ cambios }) {
   return (
     <section className="v3-seccion">
@@ -44,13 +27,15 @@ export default function CambiosRecientes({ cambios }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: '12px',
             marginTop: '16px'
           }}
         >
           {cambios.slice(0, 12).map((c) => {
-            const cz = colorZona(c.zona);
+            const stats = c.stats || {};
+            const futuro = c.futuro;
+
             return (
               <Link
                 key={c.ticker}
@@ -62,81 +47,123 @@ export default function CambiosRecientes({ cambios }) {
                   borderRadius: 'var(--v3-radius-sm)',
                   textDecoration: 'none',
                   color: 'var(--v3-text)',
-                  background: '#fff',
-                  transition: 'border 0.15s ease'
+                  background: '#fff'
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    gap: '8px'
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: '15px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {c.nombre}
-                    </div>
-                    <div
-                      style={{
-                        color: 'var(--v3-text-soft)',
-                        fontSize: '12px',
-                        marginTop: '2px'
-                      }}
-                    >
-                      {c.ticker}
-                      {c.sector && ` · ${c.sector}`}
-                    </div>
-                  </div>
-
-                  <span
+                <div style={{ marginBottom: '10px' }}>
+                  <div
                     style={{
-                      padding: '2px 8px',
-                      borderRadius: '999px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      background: cz.bg,
-                      color: cz.text,
-                      border: `1px solid ${cz.border}`,
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {c.zona}
-                  </span>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: '14px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline'
-                  }}
-                >
+                    {c.nombre}
+                  </div>
                   <div
                     style={{
-                      fontSize: '20px',
-                      fontWeight: 700,
-                      color: 'var(--v3-text)'
+                      color: 'var(--v3-text-soft)',
+                      fontSize: '12px',
+                      marginTop: '2px'
                     }}
                   >
-                    {c.precio !== undefined && c.precio !== null
-                      ? Number(c.precio).toFixed(2)
-                      : '—'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)' }}>
-                    {fechaCorta(c.actualizado_at)}
+                    {c.ticker}
+                    {c.sector && ` · ${c.sector}`}
                   </div>
                 </div>
+
+                {futuro && (
+                  <div style={{ marginBottom: '10px' }}>
+                    <div
+                      style={{
+                        color: 'var(--v3-text-mute)',
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        fontWeight: 600,
+                        marginBottom: '4px'
+                      }}
+                    >
+                      Estadísticamente
+                    </div>
+                    <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+                      <strong style={{ color: 'var(--v3-negative)' }}>
+                        {futuro.ultimoCaso.sesiones}{' '}
+                        {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
+                      </strong>{' '}
+                      para dar <strong>{futuro.tipoGiro}</strong> de nuevo.
+                    </div>
+                  </div>
+                )}
+
+                {(!stats.compras || !stats.ventas) === false && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      paddingTop: '10px',
+                      borderTop: '1px solid var(--v3-border)'
+                    }}
+                  >
+                    {stats.compras && stats.compras.muestra > 0 && (
+                      <div style={{ flex: 1, minWidth: '100px' }}>
+                        <div
+                          style={{
+                            color: 'var(--v3-text-mute)',
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Acierto compras
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '18px',
+                            fontWeight: 800,
+                            color:
+                              stats.compras.porcentajeAcierto >= 50
+                                ? 'var(--v3-positive)'
+                                : 'var(--v3-negative)'
+                          }}
+                        >
+                          {stats.compras.porcentajeAcierto.toFixed(1)}%
+                        </div>
+                      </div>
+                    )}
+                    {stats.ventas && stats.ventas.muestra > 0 && (
+                      <div style={{ flex: 1, minWidth: '100px' }}>
+                        <div
+                          style={{
+                            color: 'var(--v3-text-mute)',
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Acierto ventas
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '18px',
+                            fontWeight: 800,
+                            color:
+                              stats.ventas.porcentajeAcierto >= 50
+                                ? 'var(--v3-positive)'
+                                : 'var(--v3-negative)'
+                          }}
+                        >
+                          {stats.ventas.porcentajeAcierto.toFixed(1)}%
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Link>
             );
           })}
