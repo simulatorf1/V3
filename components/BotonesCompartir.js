@@ -2,6 +2,82 @@
 
 import { useState } from 'react';
 
+function calcularFuturo(smis, velas, smiActual) {
+  if (!Array.isArray(smis) || smis.length < 5) return null;
+  if (!Array.isArray(velas) || velas.length < 5) return null;
+  if (typeof smiActual !== 'number' || isNaN(smiActual)) return null;
+
+  const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
+  if (validos.length < 2) return null;
+
+  const ultimo = validos[validos.length - 1];
+  const anterior = validos[validos.length - 2];
+  const direccionActual =
+    ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
+  if (direccionActual === 'plana') return null;
+
+  const casos = [];
+
+  for (let i = 0; i < smis.length - 2; i++) {
+    const smi = smis[i];
+    if (smi === null || smi === undefined || isNaN(smi)) continue;
+    if (Math.abs(smi - smiActual) > 10) continue;
+
+    let prevValido = null;
+    for (let k = i - 1; k >= 0; k--) {
+      if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
+        prevValido = smis[k];
+        break;
+      }
+    }
+    if (prevValido === null || prevValido === smi) continue;
+
+    const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
+    if (dirSesion !== direccionActual) continue;
+
+    let sesionesGiro = null;
+    let direccionGiro = null;
+
+    for (let j = i + 1; j < smis.length; j++) {
+      if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
+
+      let prevJ = null;
+      for (let k = j - 1; k >= 0; k--) {
+        if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
+          prevJ = smis[k];
+          break;
+        }
+      }
+      if (prevJ === null || prevJ === smis[j]) continue;
+
+      const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
+      if (dirJ !== dirSesion) {
+        sesionesGiro = j - i;
+        direccionGiro = dirJ;
+        break;
+      }
+    }
+
+    if (sesionesGiro !== null) {
+      casos.push({ smi, sesiones: sesionesGiro, direccionGiro });
+    }
+  }
+
+  if (casos.length === 0) return null;
+
+  const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
+  const ultimoCaso = casos[casos.length - 1];
+  const tipoGiro = ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
+
+  return {
+    direccionActual,
+    casos,
+    ultimoCaso,
+    mediaSesiones,
+    tipoGiro
+  };
+}
+
 export default function BotonesCompartir({ empresa, analisis, url }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [textoTuit, setTextoTuit] = useState('');
@@ -14,81 +90,88 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
     const zona = analisis.zona;
     const precio = analisis.precioActual?.toFixed(2) || '—';
 
-    const smis = (analisis.smisUltimos60 || []).filter(
-      (v) => v !== null && v !== undefined
-    );
-    const ordenados = [...smis].sort((a, b) => a - b);
-    const smi = analisis.smiActual;
-    const menores = ordenados.filter((v) => v < smi).length;
-    const percentil =
-      ordenados.length > 0 ? Math.round((menores / ordenados.length) * 100) : 0;
-
-    // Estadística de ciclos
+    // Último movimiento
     const senales = analisis.senales || [];
+    const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
+
+    // Futuro estadístico
+    const futuro = calcularFuturo(
+      analisis.smisUltimos60 || [],
+      analisis.velasUltimos60 || [],
+      analisis.smiActual
+    );
+
+    // Aciertos
+    const ciclos = [];
     const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-    const ciclos = lista.map((s, i) => {
+    for (let i = 0; i < lista.length; i++) {
+      const s = lista[i];
       const siguiente = lista[i + 1];
       const precioCierre = siguiente ? siguiente.precio : analisis.precioActual;
-      const variacion = precioCierre
-        ? ((precioCierre - s.precio) / s.precio) * 100
-        : 0;
+      const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
       let acierto = null;
       if (variacion !== 0) {
         if (s.tipo === 'compra') acierto = variacion > 0;
         else if (s.tipo === 'venta') acierto = variacion < 0;
       }
-      return { tipo: s.tipo, acierto };
-    });
+      ciclos.push({ tipo: s.tipo, acierto });
+    }
 
-    const compras = ciclos.filter((c) => c.tipo === 'compra');
-    const ventas = ciclos.filter((c) => c.tipo === 'venta');
-
-    function statsCiclo(listaCiclos) {
+    function statsCiclo(tipo) {
+      const filtrados = ciclos.filter((c) => c.tipo === tipo);
       let aciertos = 0;
       let total = 0;
-      for (const c of listaCiclos) {
+      for (const c of filtrados) {
         if (c.acierto === null) continue;
         total++;
         if (c.acierto) aciertos++;
       }
       return {
-        total: listaCiclos.length,
+        muestra: filtrados.length,
         porcentaje: total > 0 ? (aciertos / total) * 100 : 0
       };
     }
 
-    const statsCompras = statsCiclo(compras);
-    const statsVentas = statsCiclo(ventas);
+    const statsCompras = statsCiclo('compra');
+    const statsVentas = statsCiclo('venta');
 
-    const ultima = lista.length > 0 ? lista[lista.length - 1] : null;
-    const ultimaTipo = ultima ? ultima.tipo : null;
-    const posicionAbierta = analisis.posicionAbierta;
-
-    // Texto humano y descriptivo
+    // Construir el texto
     let texto = `Nuevo análisis de ${nombre} (${ticker}). `;
     texto += `Precio ${precio}. `;
-    texto += `Indicador en zona ${zona}, percentil ${percentil}.`;
 
-    // Estadística del último tipo de movimiento
-    if (ultimaTipo === 'compra' && statsCompras.total > 0) {
-      texto += ` Acierto histórico de movimientos de compra: ${statsCompras.porcentaje.toFixed(0)}% (${statsCompras.total} ciclos).`;
-    } else if (ultimaTipo === 'venta' && statsVentas.total > 0) {
-      texto += ` Acierto histórico de movimientos de venta: ${statsVentas.porcentaje.toFixed(0)}% (${statsVentas.total} ciclos).`;
+    if (zona === 'alta') {
+      texto += `Indicador en zona alta. `;
+    } else if (zona === 'baja') {
+      texto += `Indicador en zona baja. `;
+    } else {
+      texto += `Indicador en zona intermedia. `;
     }
 
-    // Posición abierta
-    if (posicionAbierta && ultimaTipo) {
-      texto += ` Posición abierta según reglas del registro: ${ultimaTipo}.`;
+    if (futuro && futuro.ultimoCaso) {
+      const tipoGiro = futuro.ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
+      texto += `Estadísticamente, ${futuro.ultimoCaso.sesiones} ${
+        futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'
+      } para dar ${tipoGiro} de nuevo. `;
     }
 
-    // Enlace
-    const enlace = ` Más en: ${url}`;
+    if (ultimaSenal) {
+      texto += `Último movimiento registrado: ${ultimaSenal.tipo}. `;
+    }
+
+    if (statsCompras.muestra > 0) {
+      texto += `Acierto histórico de compras: ${statsCompras.porcentaje.toFixed(0)}%. `;
+    }
+    if (statsVentas.muestra > 0) {
+      texto += `Acierto histórico de ventas: ${statsVentas.porcentaje.toFixed(0)}%. `;
+    }
+
+    const enlace = `Más en: ${url}`;
     texto += enlace;
 
-    // Recorte a 280
+    // Recorte a 280 caracteres si excede
     if (texto.length > 280) {
-      const espacio = 280 - enlace.length - 3;
-      texto = texto.slice(0, espacio) + '...' + enlace;
+      const espacio = 280 - enlace.length - 4;
+      texto = texto.slice(0, espacio) + '... ' + enlace;
     }
 
     return texto;
