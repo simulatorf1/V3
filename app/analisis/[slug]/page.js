@@ -108,7 +108,7 @@ function calcularFuturo(smis, velas, smiActual) {
     const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
     if (dirSesion !== direccionActual) continue;
 
-    let diasGiro = null;
+    let sesionesGiro = null;
     let fechaGiro = null;
 
     for (let j = i + 1; j < smis.length; j++) {
@@ -126,38 +126,33 @@ function calcularFuturo(smis, velas, smiActual) {
       const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
       if (dirJ !== dirSesion) {
         if (velas[i] && velas[j] && velas[i].date && velas[j].date) {
-          const a = new Date(velas[i].date);
-          const b = new Date(velas[j].date);
-          const d = Math.round((b - a) / (1000 * 60 * 60 * 24));
-          if (!isNaN(d) && d >= 0) {
-            diasGiro = d;
-            fechaGiro = velas[j].date;
-          }
+          sesionesGiro = j - i;
+          fechaGiro = velas[j].date;
         }
         break;
       }
     }
 
-    if (diasGiro !== null) {
+    if (sesionesGiro !== null) {
       casos.push({
         fecha: velas[i]?.date || '',
         fechaGiro,
         smi,
-        dias: diasGiro
+        sesiones: sesionesGiro
       });
     }
   }
 
   if (casos.length === 0) {
-    return { direccionActual, casos: [], ultimoCaso: null, mediaDias: null };
+    return { direccionActual, casos: [], ultimoCaso: null, mediaSesiones: null };
   }
 
-  const mediaDias = casos.reduce((a, c) => a + c.dias, 0) / casos.length;
+  const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
   return {
     direccionActual,
     casos,
     ultimoCaso: casos[casos.length - 1],
-    mediaDias
+    mediaSesiones
   };
 }
 
@@ -410,7 +405,6 @@ export default async function PaginaEmpresa({ params }) {
           recomendación de inversión.
         </div>
 
-        {/* Panel de datos */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <h2 className="v3-seccion-titulo">Datos de la empresa</h2>
 
@@ -479,7 +473,6 @@ export default async function PaginaEmpresa({ params }) {
 
         <ConsensoComunidad ticker={empresa.ticker} />
 
-        {/* Estadística histórica */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Estadística histórica</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
@@ -535,7 +528,6 @@ export default async function PaginaEmpresa({ params }) {
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
-        {/* Interpretación del gráfico — TODO AL MISMO TAMAÑO Y COLOR */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
@@ -569,11 +561,19 @@ export default async function PaginaEmpresa({ params }) {
                   year: 'numeric',
                   timeZone: 'Europe/Madrid'
                 })}
-                . En esa ocasión tardó <strong>{futuro.ultimoCaso.dias} días</strong> en girar. La
-                media de las <strong>{futuro.casos.length}</strong>{' '}
+                . En esa ocasión tardó{' '}
+                <strong>
+                  {futuro.ultimoCaso.sesiones}{' '}
+                  {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
+                </strong>{' '}
+                en girar. La media de las <strong>{futuro.casos.length}</strong>{' '}
                 {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
-                sesiones es de <strong>{futuro.mediaDias.toFixed(1)} días</strong>. Esto no es una
-                predicción: es lo que ha pasado otras veces.
+                sesiones es de{' '}
+                <strong>
+                  {futuro.mediaSesiones.toFixed(1)}{' '}
+                  {futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'}
+                </strong>
+                . Esto no es una predicción: es lo que ha pasado otras veces.
               </p>
             )}
           </div>
@@ -667,7 +667,7 @@ function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }
 }
 
 function TarjetaFuturo({ futuro }) {
-  const { direccionActual, casos, ultimoCaso, mediaDias } = futuro;
+  const { direccionActual, casos, ultimoCaso, mediaSesiones } = futuro;
 
   if (!casos || casos.length === 0) {
     return (
@@ -746,17 +746,21 @@ function TarjetaFuturo({ futuro }) {
           La última vez ({fechaUltimo}), tardó
         </span>
         <span style={{ fontSize: '32px', fontWeight: 800, color: 'var(--v3-negative)' }}>
-          {ultimoCaso.dias}
+          {ultimoCaso.sesiones}
         </span>
         <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--v3-negative)' }}>
-          días
+          {ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
         </span>
         <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>en girar.</span>
       </div>
 
       {casos.length > 1 && (
         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          Media de las {casos.length} ocasiones: <strong>{mediaDias.toFixed(1)} días</strong>.
+          Media de las {casos.length} ocasiones:{' '}
+          <strong>
+            {mediaSesiones.toFixed(1)} {mediaSesiones === 1 ? 'sesión' : 'sesiones'}
+          </strong>
+          .
         </p>
       )}
 
