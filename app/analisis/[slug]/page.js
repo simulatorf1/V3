@@ -94,7 +94,7 @@ function calcularFuturo(smis, velas, smiActual) {
   for (let i = 0; i < smis.length - 2; i++) {
     const smi = smis[i];
     if (smi === null || smi === undefined || isNaN(smi)) continue;
-    if (Math.abs(smi - smiActual) > 10) continue;
+    if (Math.abs(smi - smiActual) > 20) continue;
 
     let prevValido = null;
     for (let k = i - 1; k >= 0; k--) {
@@ -535,29 +535,47 @@ export default async function PaginaEmpresa({ params }) {
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
+        {/* Interpretación del gráfico — TODO AL MISMO TAMAÑO Y COLOR */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
-            <p style={{ marginTop: 0 }}>
+            <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
               En las últimas 60 sesiones, {empresa.nombre} ha pasado de {primerCierre?.toFixed(2)}{' '}
               a {ultimoCierre?.toFixed(2)}, con una variación del {variacion60 >= 0 ? '+' : ''}
               {variacion60.toFixed(2)}%. El rango de cotización se ha movido entre un mínimo de{' '}
               {minimo.toFixed(2)} y un máximo de {maximo.toFixed(2)}. La volatilidad diaria media
               ha sido del {volatilidad.toFixed(2)}%.
             </p>
-            <p>
+            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               De las {totalSesiones} sesiones analizadas, el indicador ha estado{' '}
               <strong>{enAlta} en zona alta</strong>, <strong>{enMedia} en zona intermedia</strong>{' '}
               y <strong>{enBaja} en zona baja</strong>. La zona intermedia es la más habitual en
               prácticamente cualquier empresa.
             </p>
-            <p style={{ marginBottom: 0, color: 'var(--v3-text-soft)', fontSize: '13.5px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               Los tramos sombreados en rojo marcan las fases en las que el indicador ha
               sobresalido por encima de +40. Los tramos sombreados en verde, las fases en las que
               ha caído por debajo de -40. Estas son las zonas en las que, estadísticamente, el
               precio ha cotizado más caro o más barato de lo habitual dentro de su propio rango
               reciente.
             </p>
+            {futuro && futuro.casos && futuro.casos.length > 0 && (
+              <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
+                La última vez que el indicador estuvo en un valor similar (±20 puntos) mientras{' '}
+                {futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'} fue el{' '}
+                {new Date(futuro.ultimoCaso.fecha).toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  timeZone: 'Europe/Madrid'
+                })}
+                . En esa ocasión tardó <strong>{futuro.ultimoCaso.dias} días</strong> en girar. La
+                media de las <strong>{futuro.casos.length}</strong>{' '}
+                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
+                sesiones es de <strong>{futuro.mediaDias.toFixed(1)} días</strong>. Esto no es una
+                predicción: es lo que ha pasado otras veces.
+              </p>
+            )}
           </div>
         </section>
 
@@ -674,7 +692,7 @@ function TarjetaFuturo({ futuro }) {
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
           Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
-          valor similar (±10 puntos) mientras{' '}
+          valor similar (±20 puntos) mientras{' '}
           {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
         </p>
       </div>
@@ -711,7 +729,7 @@ function TarjetaFuturo({ futuro }) {
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
         El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
-        estado en un valor similar (±10 puntos) mientras iba en la misma dirección en{' '}
+        estado en un valor similar (±20 puntos) mientras iba en la misma dirección en{' '}
         <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
       </p>
 
