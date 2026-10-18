@@ -168,7 +168,27 @@ async function cargarDatos() {
         }
       }
 
-      const futuro = calcularFuturo(datos.smisUltimos60, datos.velasUltimos60, datos.smiActual);
+      // Parsear smisUltimos60 si viene como string
+      let smis = datos.smisUltimos60;
+      if (typeof smis === 'string') {
+        try {
+          smis = JSON.parse(smis);
+        } catch (e) {
+          smis = null;
+        }
+      }
+
+      // Parsear velasUltimos60 si viene como string
+      let velas = datos.velasUltimos60;
+      if (typeof velas === 'string') {
+        try {
+          velas = JSON.parse(velas);
+        } catch (e) {
+          velas = null;
+        }
+      }
+
+      const futuro = calcularFuturo(smis, velas, datos.smiActual);
       const stats = analizarEstadistica(datos.senales || [], datos.precioActual);
 
       cambios.push({
