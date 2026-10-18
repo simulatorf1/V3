@@ -57,21 +57,12 @@ function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
 
 function calcularOportunidad(zona, percentil) {
   if (zona === 'intermedia') {
-    return {
-      nivel: 'baja',
-      color: 'var(--v3-text-soft)'
-    };
+    return { nivel: 'baja', color: 'var(--v3-text-soft)' };
   }
-
   const extremoBajo = percentil <= 5 || percentil >= 95;
   const extremo = percentil <= 15 || percentil >= 85;
-
-  if (extremoBajo) {
-    return { nivel: 'muy alta', color: 'var(--v3-negative)' };
-  }
-  if (extremo) {
-    return { nivel: 'alta', color: 'var(--v3-warn)' };
-  }
+  if (extremoBajo) return { nivel: 'muy alta', color: 'var(--v3-negative)' };
+  if (extremo) return { nivel: 'alta', color: 'var(--v3-warn)' };
   return { nivel: 'media', color: 'var(--v3-text-soft)' };
 }
 
@@ -331,6 +322,9 @@ export default async function PaginaEmpresa({ params }) {
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
   const ultimaSenalAbierta = analisis.posicionAbierta;
 
+  const colorUltimoMovimiento =
+    ultimaSenal?.tipo === 'compra' ? 'var(--v3-positive)' : 'var(--v3-negative)';
+
   // Interpretación del gráfico
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
@@ -405,65 +399,191 @@ export default async function PaginaEmpresa({ params }) {
           recomendación de inversión.
         </div>
 
+        {/* BLOQUE 1: Datos de la empresa */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <h2 className="v3-seccion-titulo">Datos de la empresa</h2>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '12px',
-              marginTop: '16px'
-            }}
-          >
-            <Tarjeta etiqueta="Ticker" valor={empresa.ticker} />
-            <Tarjeta etiqueta="Sector" valor={empresa.sector || '—'} />
-            <Tarjeta etiqueta="Mercado" valor={empresa.mercado || '—'} />
-            <Tarjeta
-              etiqueta="Precio actual"
-              valor={precioActual?.toFixed(2) ?? '—'}
-              extra={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}% en 5 sesiones`}
-              colorExtra={variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'}
-            />
-            <Tarjeta
-              etiqueta="Indicador propio"
-              valor={analisis.smiActual?.toFixed(2) ?? '—'}
-              explicacion="Mide en qué punto del rango reciente está el precio. Escala de -100 a +100."
-            />
-            <Tarjeta
-              etiqueta="Zona"
-              valor={analisis.zona}
-              colorValor={colorZona}
-              explicacion="Alta (por encima de +40), intermedia (entre -40 y +40) o baja (por debajo de -40)."
-            />
-            <Tarjeta
-              etiqueta="Percentil"
-              valor={percentil}
-              explicacion="Posición del valor actual del indicador en las últimas 60 sesiones. Percentil 0 = mínimo, 100 = máximo."
-            />
-            <Tarjeta
-              etiqueta="Oportunidad de giro"
-              valor={oportunidad.nivel}
-              colorValor={oportunidad.color}
-              explicacion="Combina la zona del indicador y su percentil. Cuanto más extremo es el percentil dentro de una zona alta o baja, históricamente más frecuentes han sido los giros. No es una recomendación de inversión."
-            />
-            <Tarjeta
-              etiqueta="Último movimiento"
-              valor={ultimaSenal ? ultimaSenal.tipo : '—'}
-              extra={
-                ultimaSenal
-                  ? `${ultimaSenal.fecha}${ultimaSenalAbierta ? ' · en curso' : ''}`
-                  : 'sin movimientos registrados'
-              }
-              explicacion="Cambio registrado cuando el indicador gira de zona baja hacia arriba (compra) o de zona alta hacia abajo (venta)."
-            />
-          </div>
-
-          {futuro && (
-            <div style={{ marginTop: '16px' }}>
-              <TarjetaFuturo futuro={futuro} />
+          <div className="v3-card" style={{ padding: '20px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '16px'
+              }}
+            >
+              <Dato etiqueta="Ticker" valor={empresa.ticker} />
+              <Dato etiqueta="Sector" valor={empresa.sector || '—'} />
+              <Dato etiqueta="Mercado" valor={empresa.mercado || '—'} />
+              <Dato
+                etiqueta="Precio actual"
+                valor={precioActual?.toFixed(2) ?? '—'}
+                extra={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}% en 5 sesiones`}
+                colorExtra={variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'}
+              />
             </div>
-          )}
+          </div>
+        </section>
+
+        {/* BLOQUE 2: Indicador propio */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Indicador propio</h2>
+          <div className="v3-card" style={{ padding: '20px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '16px'
+              }}
+            >
+              <Dato
+                etiqueta="Valor"
+                valor={analisis.smiActual?.toFixed(2) ?? '—'}
+                extra="Escala -100 a +100"
+              />
+              <Dato etiqueta="Zona" valor={analisis.zona} colorValor={colorZona} />
+              <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
+              <Dato
+                etiqueta="Oportunidad de giro"
+                valor={oportunidad.nivel}
+                colorValor={oportunidad.color}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* BLOQUE 3: Último movimiento registrado */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Último movimiento registrado</h2>
+          <div className="v3-card" style={{ padding: '20px' }}>
+            {ultimaSenal ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  flexWrap: 'wrap'
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '28px',
+                    fontWeight: 800,
+                    color: colorUltimoMovimiento,
+                    textTransform: 'capitalize'
+                  }}
+                >
+                  {ultimaSenal.tipo}
+                </div>
+                <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
+                  {ultimaSenal.fecha}
+                  {ultimaSenalAbierta && ' · en curso'}
+                </div>
+              </div>
+            ) : (
+              <p style={{ margin: 0, color: 'var(--v3-text-soft)' }}>
+                Sin movimientos registrados en el último año.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* BLOQUE 4: Futuro estadístico */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
+
+          {futuro && <TarjetaFuturo futuro={futuro} />}
+
+          <div className="v3-card" style={{ padding: '20px', marginTop: '16px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '16px'
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: 'var(--v3-text-mute)',
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    fontWeight: 600,
+                    marginBottom: '8px'
+                  }}
+                >
+                  Movimientos de compra
+                </div>
+                <div
+                  style={{
+                    fontSize: '36px',
+                    fontWeight: 800,
+                    color:
+                      statsCompras.porcentajeAcierto >= 50
+                        ? 'var(--v3-positive)'
+                        : 'var(--v3-negative)'
+                  }}
+                >
+                  {statsCompras.muestra > 0
+                    ? `${statsCompras.porcentajeAcierto.toFixed(1)}%`
+                    : '—'}
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                  {statsCompras.aciertos} aciertos / {statsCompras.fallos} fallos ·{' '}
+                  {statsCompras.muestra} ciclos
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: 'var(--v3-text-mute)',
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    fontWeight: 600,
+                    marginBottom: '8px'
+                  }}
+                >
+                  Movimientos de venta
+                </div>
+                <div
+                  style={{
+                    fontSize: '36px',
+                    fontWeight: 800,
+                    color:
+                      statsVentas.porcentajeAcierto >= 50
+                        ? 'var(--v3-positive)'
+                        : 'var(--v3-negative)'
+                  }}
+                >
+                  {statsVentas.muestra > 0
+                    ? `${statsVentas.porcentajeAcierto.toFixed(1)}%`
+                    : '—'}
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                  {statsVentas.aciertos} aciertos / {statsVentas.fallos} fallos ·{' '}
+                  {statsVentas.muestra} ciclos
+                </div>
+              </div>
+            </div>
+
+            {(statsCompras.muestra < 10 || statsVentas.muestra < 10) && (
+              <p style={{ color: 'var(--v3-negative)', fontSize: '13px', marginTop: '12px' }}>
+                Muestra limitada en alguno de los tipos de movimiento. Interpretar con cautela.
+              </p>
+            )}
+
+            <p
+              style={{
+                margin: '16px 0 0 0',
+                fontSize: '12px',
+                color: 'var(--v3-text-mute)',
+                lineHeight: 1.5
+              }}
+            >
+              Estos datos proceden del gráfico y de la tabla de movimientos que aparecen más abajo.
+            </p>
+          </div>
         </section>
 
         <p className="v3-aviso-mute">
@@ -472,59 +592,6 @@ export default async function PaginaEmpresa({ params }) {
         </p>
 
         <ConsensoComunidad ticker={empresa.ticker} />
-
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Estadística histórica</h2>
-          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-            Calculada sobre los mismos ciclos que aparecen en el histórico de movimientos.
-          </p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '16px',
-              marginTop: '16px'
-            }}
-          >
-            <div className="v3-card">
-              <h3 style={{ marginTop: 0 }}>Movimientos de compra</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-                <li><strong>Total:</strong> {statsCompras.muestra}</li>
-                <li><strong>Aciertos:</strong> {statsCompras.aciertos}</li>
-                <li><strong>Fallos:</strong> {statsCompras.fallos}</li>
-                <li>
-                  <strong>% acierto:</strong>{' '}
-                  {statsCompras.muestra > 0 ? (
-                    <span className="v3-pos">{statsCompras.porcentajeAcierto.toFixed(1)}%</span>
-                  ) : (
-                    '—'
-                  )}
-                </li>
-              </ul>
-            </div>
-            <div className="v3-card">
-              <h3 style={{ marginTop: 0 }}>Movimientos de venta</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: 1.9 }}>
-                <li><strong>Total:</strong> {statsVentas.muestra}</li>
-                <li><strong>Aciertos:</strong> {statsVentas.aciertos}</li>
-                <li><strong>Fallos:</strong> {statsVentas.fallos}</li>
-                <li>
-                  <strong>% acierto:</strong>{' '}
-                  {statsVentas.muestra > 0 ? (
-                    <span className="v3-pos">{statsVentas.porcentajeAcierto.toFixed(1)}%</span>
-                  ) : (
-                    '—'
-                  )}
-                </li>
-              </ul>
-            </div>
-          </div>
-          {(statsCompras.muestra < 10 || statsVentas.muestra < 10) && (
-            <p style={{ color: 'var(--v3-negative)', fontSize: '13px', marginTop: '12px' }}>
-              Muestra limitada en alguno de los tipos de movimiento. Interpretar con cautela.
-            </p>
-          )}
-        </section>
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
@@ -613,9 +680,9 @@ export default async function PaginaEmpresa({ params }) {
   );
 }
 
-function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }) {
+function Dato({ etiqueta, valor, extra, colorValor, colorExtra }) {
   return (
-    <div className="v3-card" style={{ padding: '16px' }}>
+    <div>
       <div
         style={{
           color: 'var(--v3-text-mute)',
@@ -623,7 +690,7 @@ function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
           fontWeight: 600,
-          marginBottom: '6px'
+          marginBottom: '4px'
         }}
       >
         {etiqueta}
@@ -649,18 +716,6 @@ function Tarjeta({ etiqueta, valor, extra, explicacion, colorValor, colorExtra }
         >
           {extra}
         </div>
-      )}
-      {explicacion && (
-        <p
-          style={{
-            margin: '10px 0 0 0',
-            fontSize: '12.5px',
-            color: 'var(--v3-text-soft)',
-            lineHeight: 1.5
-          }}
-        >
-          {explicacion}
-        </p>
       )}
     </div>
   );
@@ -688,7 +743,7 @@ function TarjetaFuturo({ futuro }) {
             marginBottom: '6px'
           }}
         >
-          Futuro estadístico
+          Última situación similar
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
           Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
@@ -724,7 +779,7 @@ function TarjetaFuturo({ futuro }) {
           marginBottom: '8px'
         }}
       >
-        Futuro estadístico
+        Última situación similar
       </div>
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
