@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function FormularioAlerta({ empresa }) {
+export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
   const [email, setEmail] = useState('');
   const [acepta, setAcepta] = useState(false);
   const [estado, setEstado] = useState('inicial');
@@ -51,72 +51,158 @@ export default function FormularioAlerta({ empresa }) {
     }
   }
 
+  const esSidebar = variante === 'sidebar';
+
   if (estado === 'enviado') {
     return (
-      <section className="v3-seccion">
-        <h2 className="v3-seccion-titulo">Alertas por email</h2>
+      <div
+        style={{
+          padding: esSidebar ? '16px' : '20px',
+          borderLeft: '4px solid var(--v3-positive)',
+          background: '#f0fdf4',
+          borderRadius: 'var(--v3-radius-sm)',
+          marginTop: esSidebar ? '0' : '30px'
+        }}
+      >
         <div
-          className="v3-card"
           style={{
-            padding: '20px',
-            borderLeft: '4px solid var(--v3-positive)',
-            background: '#f0fdf4'
+            fontSize: '13px',
+            fontWeight: 700,
+            color: 'var(--v3-positive)',
+            marginBottom: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
           }}
         >
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
-            <strong>Revisa tu correo.</strong> Te hemos enviado un email para confirmar la
-            suscripción. Hasta que no hagas clic en el enlace, no recibirás alertas.
-          </p>
+          ✓ Casi listo
         </div>
-      </section>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--v3-text)', lineHeight: 1.5 }}>
+          Revisa tu correo y pulsa el enlace de confirmación. Hasta que no lo hagas, no recibirás
+          alertas.
+        </p>
+      </div>
     );
   }
 
   return (
-    <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Alertas por email</h2>
+    <>
+      <style jsx global>{`
+        @keyframes v3-parpadeo-gratis {
+          0%, 100% {
+            background-color: #dc2626;
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+          }
+          50% {
+            background-color: #991b1b;
+            box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+          }
+        }
+        .v3-gratis-badge {
+          animation: v3-parpadeo-gratis 1.2s ease-in-out infinite;
+        }
+      `}</style>
 
-      <div className="v3-card" style={{ padding: '20px' }}>
-        <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text-soft)' }}>
-          Avísame cuando el indicador de <strong>{empresa.nombre}</strong> cambie de movimiento
-          registrado (de compra a venta o de venta a compra).
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+          border: '2px solid #f97316',
+          borderRadius: 'var(--v3-radius)',
+          padding: esSidebar ? '16px' : '20px',
+          marginTop: esSidebar ? '0' : '30px',
+          position: 'relative'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '10px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <div
+            style={{
+              fontSize: esSidebar ? '14px' : '16px',
+              fontWeight: 800,
+              color: '#9a3412'
+            }}
+          >
+            {esSidebar ? 'Alertas gratis' : 'Alertas por email'}
+          </div>
+          <span
+            className="v3-gratis-badge"
+            style={{
+              display: 'inline-block',
+              padding: '2px 8px',
+              borderRadius: '999px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#fff',
+              letterSpacing: '0.5px'
+            }}
+          >
+            GRATIS
+          </span>
+        </div>
+
+        <p
+          style={{
+            margin: '0 0 12px 0',
+            fontSize: esSidebar ? '12.5px' : '14px',
+            color: '#7c2d12',
+            lineHeight: 1.5
+          }}
+        >
+          {esSidebar
+            ? `Avisamos cuando ${empresa.nombre} cambie de movimiento. Sin registro.`
+            : `Avísame cuando el indicador de ${empresa.nombre} cambie de movimiento registrado (de compra a venta o de venta a compra). Sin registro, sin coste.`}
         </p>
 
-        <form onSubmit={enviar} style={{ marginTop: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              style={{
-                flex: 1,
-                minWidth: '220px',
-                padding: '10px 12px',
-                fontSize: '14px',
-                border: '1px solid var(--v3-border-strong)',
-                borderRadius: 'var(--v3-radius-sm)',
-                outline: 'none'
-              }}
-              disabled={estado === 'enviando'}
-            />
-            <button
-              type="submit"
-              className="v3-btn"
-              disabled={estado === 'enviando'}
-            >
-              {estado === 'enviando' ? 'Enviando…' : 'Suscribirme'}
-            </button>
-          </div>
+        <form onSubmit={enviar}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@email.com"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              fontSize: '14px',
+              border: '2px solid #fdba74',
+              borderRadius: 'var(--v3-radius-sm)',
+              outline: 'none',
+              boxSizing: 'border-box',
+              marginBottom: '8px'
+            }}
+            disabled={estado === 'enviando'}
+          />
+          <button
+            type="submit"
+            disabled={estado === 'enviando'}
+            style={{
+              width: '100%',
+              padding: '11px 16px',
+              fontSize: '14px',
+              fontWeight: 700,
+              color: '#fff',
+              background: estado === 'enviando' ? '#9ca3af' : '#ea580c',
+              border: 'none',
+              borderRadius: 'var(--v3-radius-sm)',
+              cursor: estado === 'enviando' ? 'wait' : 'pointer'
+            }}
+          >
+            {estado === 'enviando' ? 'Enviando…' : 'Quiero recibirlas gratis'}
+          </button>
 
           <label
             style={{
               display: 'flex',
               gap: '8px',
               alignItems: 'flex-start',
-              marginTop: '12px',
-              fontSize: '13px',
-              color: 'var(--v3-text-soft)',
+              marginTop: '10px',
+              fontSize: '11.5px',
+              color: '#7c2d12',
               cursor: 'pointer'
             }}
           >
@@ -128,9 +214,8 @@ export default function FormularioAlerta({ empresa }) {
               disabled={estado === 'enviando'}
             />
             <span>
-              Acepto recibir alertas por email sobre esta empresa. Puedo darme de baja en
-              cualquier momento. He leído la{' '}
-              <a href="/privacidad" style={{ color: 'var(--v3-primary)' }}>
+              Acepto recibir alertas por email. Puedo darme de baja cuando quiera. He leído la{' '}
+              <a href="/privacidad" style={{ color: '#9a3412', fontWeight: 600 }}>
                 Política de Privacidad
               </a>
               .
@@ -138,17 +223,23 @@ export default function FormularioAlerta({ empresa }) {
           </label>
 
           {error && (
-            <p style={{ color: 'var(--v3-negative)', fontSize: '13px', marginTop: '10px' }}>
-              {error}
-            </p>
+            <p style={{ color: '#b91c1c', fontSize: '12px', marginTop: '8px' }}>{error}</p>
           )}
         </form>
 
-        <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '14px' }}>
-          Recibirás únicamente alertas del algoritmo sobre esta empresa. Puedes darte de baja en
-          cualquier momento.
+        <p
+          style={{
+            color: '#9a3412',
+            fontSize: '11px',
+            marginTop: '10px',
+            marginBottom: 0,
+            lineHeight: 1.4
+          }}
+        >
+          Recibirás únicamente alertas sobre esta empresa. Puedes darte de baja en cualquier
+          momento con un clic.
         </p>
       </div>
-    </section>
+    </>
   );
 }
