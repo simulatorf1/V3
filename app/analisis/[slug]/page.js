@@ -666,7 +666,7 @@ export default async function PaginaEmpresa({ params }) {
             </p>
           </div>
         </section>
-        <FormularioAlerta empresa={empresa} />
+
         <p className="v3-aviso-mute">
           Este análisis se elabora de forma independiente a las circunstancias personales de cada
           lector. No constituye asesoramiento financiero personalizado.
@@ -826,7 +826,7 @@ export default async function PaginaEmpresa({ params }) {
             equipo de Equaty.
           </p>
         </section>
-
+        <FormularioAlerta empresa={empresa} />
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
         <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
