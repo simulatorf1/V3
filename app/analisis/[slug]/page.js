@@ -827,7 +827,12 @@ export default async function PaginaEmpresa({ params }) {
           </p>
         </section>
         <FormularioAlerta empresa={empresa} />
-        <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
+        <BotonesCompartir
+          empresa={empresa}
+          analisis={analisis}
+          url={canonical}
+          futuro={futuro}
+        />
 
         <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
           Este registro se basa exclusivamente en datos históricos y no garantiza ningún resultado
