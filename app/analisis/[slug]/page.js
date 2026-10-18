@@ -10,6 +10,7 @@ import BarraLateral from '../../../components/BarraLateral';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import FormularioAlerta from '../../../components/FormularioAlerta';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -665,7 +666,7 @@ export default async function PaginaEmpresa({ params }) {
             </p>
           </div>
         </section>
-
+        <FormularioAlerta empresa={empresa} />
         <p className="v3-aviso-mute">
           Este análisis se elabora de forma independiente a las circunstancias personales de cada
           lector. No constituye asesoramiento financiero personalizado.
