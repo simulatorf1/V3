@@ -85,7 +85,7 @@ function calcularFuturo(smis, velas, smiActual) {
   for (let i = 0; i < smis.length - 2; i++) {
     const smi = smis[i];
     if (smi === null || smi === undefined || isNaN(smi)) continue;
-    if (Math.abs(smi - smiActual) > 20) continue;
+    if (Math.abs(smi - smiActual) > 10) continue;
 
     let prevValido = null;
     for (let k = i - 1; k >= 0; k--) {
@@ -101,6 +101,7 @@ function calcularFuturo(smis, velas, smiActual) {
 
     let sesionesGiro = null;
     let fechaGiro = null;
+    let direccionGiro = null;
 
     for (let j = i + 1; j < smis.length; j++) {
       if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
@@ -119,6 +120,7 @@ function calcularFuturo(smis, velas, smiActual) {
         if (velas[i] && velas[j] && velas[i].date && velas[j].date) {
           sesionesGiro = j - i;
           fechaGiro = velas[j].date;
+          direccionGiro = dirJ;
         }
         break;
       }
@@ -129,16 +131,23 @@ function calcularFuturo(smis, velas, smiActual) {
         fecha: velas[i]?.date || '',
         fechaGiro,
         smi,
-        sesiones: sesionesGiro
+        sesiones: sesionesGiro,
+        direccionGiro
       });
     }
   }
 
   if (casos.length === 0) {
-    return { direccionActual, casos: [], ultimoCaso: null, mediaSesiones: null };
+    return {
+      direccionActual,
+      casos: [],
+      ultimoCaso: null,
+      mediaSesiones: null
+    };
   }
 
   const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
+
   return {
     direccionActual,
     casos,
@@ -423,7 +432,7 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* BLOQUE 2: Indicador propio */}
+        {/* BLOQUE 2: Indicador propio con explicación */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Indicador propio</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
@@ -447,6 +456,23 @@ export default async function PaginaEmpresa({ params }) {
                 colorValor={oportunidad.color}
               />
             </div>
+
+            <p
+              style={{
+                margin: '20px 0 0 0',
+                fontSize: '14px',
+                color: 'var(--v3-text)',
+                lineHeight: 1.7
+              }}
+            >
+              El <strong>valor</strong> mide en qué punto del rango reciente está el precio, en una
+              escala de -100 a +100. La <strong>zona</strong> indica si ese valor está en la parte
+              alta (por encima de +40), intermedia (entre -40 y +40) o baja (por debajo de -40). El{' '}
+              <strong>percentil</strong> señala la posición de ese valor dentro de las últimas 60
+              sesiones: 0 es el mínimo y 100 el máximo. La <strong>oportunidad de giro</strong>{' '}
+              combina la zona y el percentil para indicar cuándo, históricamente, los giros han
+              sido más frecuentes.
+            </p>
           </div>
         </section>
 
@@ -455,29 +481,40 @@ export default async function PaginaEmpresa({ params }) {
           <h2 className="v3-seccion-titulo">Último movimiento registrado</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             {ultimaSenal ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  flexWrap: 'wrap'
-                }}
-              >
+              <>
                 <div
                   style={{
-                    fontSize: '28px',
-                    fontWeight: 800,
-                    color: colorUltimoMovimiento,
-                    textTransform: 'capitalize'
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    flexWrap: 'wrap'
                   }}
                 >
-                  {ultimaSenal.tipo}
+                  <div
+                    style={{
+                      fontSize: '28px',
+                      fontWeight: 800,
+                      color: colorUltimoMovimiento,
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {ultimaSenal.tipo}
+                  </div>
+                  <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
+                    {ultimaSenal.fecha}
+                    {ultimaSenalAbierta && ' · en curso'}
+                  </div>
                 </div>
-                <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
-                  {ultimaSenal.fecha}
-                  {ultimaSenalAbierta && ' · en curso'}
-                </div>
-              </div>
+                <p
+                  style={{
+                    margin: '12px 0 0 0',
+                    fontSize: '12px',
+                    color: 'var(--v3-text-mute)'
+                  }}
+                >
+                  Puedes ver todos los movimientos registrados en la tabla inferior.
+                </p>
+              </>
             ) : (
               <p style={{ margin: 0, color: 'var(--v3-text-soft)' }}>
                 Sin movimientos registrados en el último año.
@@ -486,18 +523,23 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* BLOQUE 4: Futuro estadístico */}
+        {/* BLOQUE 4: Futuro estadístico + estadística */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
 
-          {futuro && <TarjetaFuturo futuro={futuro} />}
+          {futuro && <TarjetaFuturo futuro={futuro} empresa={empresa} />}
 
           <div className="v3-card" style={{ padding: '20px', marginTop: '16px' }}>
+            <h3 style={{ marginTop: 0, fontSize: '16px' }}>
+              Nuestros aciertos estadísticos en {empresa.nombre}
+            </h3>
+
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: '16px'
+                gap: '16px',
+                marginTop: '12px'
               }}
             >
               <div>
@@ -608,41 +650,15 @@ export default async function PaginaEmpresa({ params }) {
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               De las {totalSesiones} sesiones analizadas, el indicador ha estado{' '}
               <strong>{enAlta} en zona alta</strong>, <strong>{enMedia} en zona intermedia</strong>{' '}
-              y <strong>{enBaja} en zona baja</strong>. La zona intermedia es la más habitual en
-              prácticamente cualquier empresa.
+              y <strong>{enBaja} en zona baja</strong>.
             </p>
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
+            <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
               Los tramos sombreados en rojo marcan las fases en las que el indicador ha
               sobresalido por encima de +40. Los tramos sombreados en verde, las fases en las que
               ha caído por debajo de -40. Estas son las zonas en las que, estadísticamente, el
               precio ha cotizado más caro o más barato de lo habitual dentro de su propio rango
               reciente.
             </p>
-            {futuro && futuro.casos && futuro.casos.length > 0 && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
-                La última vez que el indicador estuvo en un valor similar (±20 puntos) mientras{' '}
-                {futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'} fue el{' '}
-                {new Date(futuro.ultimoCaso.fecha).toLocaleDateString('es-ES', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  timeZone: 'Europe/Madrid'
-                })}
-                . En esa ocasión tardó{' '}
-                <strong>
-                  {futuro.ultimoCaso.sesiones}{' '}
-                  {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
-                </strong>{' '}
-                en girar. La media de las <strong>{futuro.casos.length}</strong>{' '}
-                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
-                sesiones es de{' '}
-                <strong>
-                  {futuro.mediaSesiones.toFixed(1)}{' '}
-                  {futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'}
-                </strong>
-                . Esto no es una predicción: es lo que ha pasado otras veces.
-              </p>
-            )}
           </div>
         </section>
 
@@ -721,7 +737,7 @@ function Dato({ etiqueta, valor, extra, colorValor, colorExtra }) {
   );
 }
 
-function TarjetaFuturo({ futuro }) {
+function TarjetaFuturo({ futuro, empresa }) {
   const { direccionActual, casos, ultimoCaso, mediaSesiones } = futuro;
 
   if (!casos || casos.length === 0) {
@@ -747,7 +763,7 @@ function TarjetaFuturo({ futuro }) {
         </div>
         <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
           Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
-          valor similar (±20 puntos) mientras{' '}
+          valor similar (±10 puntos) mientras{' '}
           {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
         </p>
       </div>
@@ -760,6 +776,8 @@ function TarjetaFuturo({ futuro }) {
     year: 'numeric',
     timeZone: 'Europe/Madrid'
   });
+
+  const tipoGiro = ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
 
   return (
     <div
@@ -784,7 +802,7 @@ function TarjetaFuturo({ futuro }) {
 
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
         El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
-        estado en un valor similar (±20 puntos) mientras iba en la misma dirección en{' '}
+        estado en un valor similar (±10 puntos) mientras iba en la misma dirección en{' '}
         <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
       </p>
 
@@ -806,7 +824,9 @@ function TarjetaFuturo({ futuro }) {
         <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--v3-negative)' }}>
           {ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
         </span>
-        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>en girar.</span>
+        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+          en dar <strong>{tipoGiro}</strong> de nuevo.
+        </span>
       </div>
 
       {casos.length > 1 && (
@@ -818,11 +838,6 @@ function TarjetaFuturo({ futuro }) {
           .
         </p>
       )}
-
-      <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: 'var(--v3-text-mute)' }}>
-        Esto no es una predicción. Es una descripción de lo que ha pasado otras veces en
-        situaciones parecidas.
-      </p>
     </div>
   );
 }
