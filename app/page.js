@@ -53,82 +53,6 @@ function analizarEstadistica(senales, precioActual) {
   };
 }
 
-function calcularFuturo(smis, velas, smiActual) {
-  if (!Array.isArray(smis) || smis.length < 5) return null;
-  if (!Array.isArray(velas) || velas.length < 5) return null;
-  if (typeof smiActual !== 'number' || isNaN(smiActual)) return null;
-
-  const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
-  if (validos.length < 2) return null;
-
-  const ultimo = validos[validos.length - 1];
-  const anterior = validos[validos.length - 2];
-  const direccionActual =
-    ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
-  if (direccionActual === 'plana') return null;
-
-  const casos = [];
-
-  for (let i = 0; i < smis.length - 2; i++) {
-    const smi = smis[i];
-    if (smi === null || smi === undefined || isNaN(smi)) continue;
-    if (Math.abs(smi - smiActual) > 10) continue;
-
-    let prevValido = null;
-    for (let k = i - 1; k >= 0; k--) {
-      if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
-        prevValido = smis[k];
-        break;
-      }
-    }
-    if (prevValido === null || prevValido === smi) continue;
-
-    const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
-    if (dirSesion !== direccionActual) continue;
-
-    let sesionesGiro = null;
-    let direccionGiro = null;
-
-    for (let j = i + 1; j < smis.length; j++) {
-      if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
-
-      let prevJ = null;
-      for (let k = j - 1; k >= 0; k--) {
-        if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
-          prevJ = smis[k];
-          break;
-        }
-      }
-      if (prevJ === null || prevJ === smis[j]) continue;
-
-      const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
-      if (dirJ !== dirSesion) {
-        sesionesGiro = j - i;
-        direccionGiro = dirJ;
-        break;
-      }
-    }
-
-    if (sesionesGiro !== null) {
-      casos.push({ smi, sesiones: sesionesGiro, direccionGiro });
-    }
-  }
-
-  if (casos.length === 0) return null;
-
-  const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
-  const ultimoCaso = casos[casos.length - 1];
-  const tipoGiro = ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
-
-  return {
-    direccionActual,
-    casos,
-    ultimoCaso,
-    mediaSesiones,
-    tipoGiro
-  };
-}
-
 async function cargarDatos() {
   const vacio = { cambios: [], sectores: [] };
 
@@ -168,34 +92,13 @@ async function cargarDatos() {
         }
       }
 
-      // Parsear smisUltimos60 si viene como string
-      let smis = datos.smisUltimos60;
-      if (typeof smis === 'string') {
-        try {
-          smis = JSON.parse(smis);
-        } catch (e) {
-          smis = null;
-        }
-      }
-
-      // Parsear velasUltimos60 si viene como string
-      let velas = datos.velasUltimos60;
-      if (typeof velas === 'string') {
-        try {
-          velas = JSON.parse(velas);
-        } catch (e) {
-          velas = null;
-        }
-      }
-
-      const futuro = calcularFuturo(smis, velas, datos.smiActual);
       const stats = analizarEstadistica(datos.senales || [], datos.precioActual);
 
       cambios.push({
         ticker: p.ticker,
         nombre: emp.nombre,
         sector: emp.sector,
-        futuro,
+        precio: datos.precioActual,
         stats
       });
     }
