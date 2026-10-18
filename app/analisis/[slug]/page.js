@@ -9,6 +9,7 @@ import RegistrarVisita from '../../../components/RegistrarVisita';
 import BarraLateral from '../../../components/BarraLateral';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -154,6 +155,35 @@ function calcularFuturo(smis, velas, smiActual) {
     ultimoCaso: casos[casos.length - 1],
     mediaSesiones
   };
+}
+
+async function cargarConsenso(ticker) {
+  try {
+    const { data } = await supabaseAdmin
+      .from('votos')
+      .select('opcion')
+      .eq('ticker', ticker.toUpperCase());
+
+    if (!data || data.length === 0) {
+      return { total: 0, sentimiento: null, conteo: { seguimiento: 0, cartera: 0, fuera: 0 } };
+    }
+
+    const conteo = { seguimiento: 0, cartera: 0, fuera: 0 };
+    for (const v of data) {
+      if (conteo[v.opcion] !== undefined) conteo[v.opcion]++;
+    }
+    const total = conteo.seguimiento + conteo.cartera + conteo.fuera;
+    let sentimiento = null;
+    if (total > 0) {
+      const max = Math.max(conteo.seguimiento, conteo.cartera, conteo.fuera);
+      if (conteo.seguimiento === max) sentimiento = 'mayoritariamente en seguimiento';
+      else if (conteo.cartera === max) sentimiento = 'mayoritariamente en cartera';
+      else sentimiento = 'mayoritariamente fuera';
+    }
+    return { total, sentimiento, conteo };
+  } catch (e) {
+    return { total: 0, sentimiento: null, conteo: { seguimiento: 0, cartera: 0, fuera: 0 } };
+  }
 }
 
 export async function generateMetadata({ params }) {
@@ -326,6 +356,7 @@ export default async function PaginaEmpresa({ params }) {
 
   const oportunidad = calcularOportunidad(analisis.zona, percentil);
   const futuro = calcularFuturo(smis, velas, analisis.smiActual);
+  const consenso = await cargarConsenso(empresa.ticker);
 
   const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
@@ -364,6 +395,101 @@ export default async function PaginaEmpresa({ params }) {
     else enMedia++;
   }
   const totalSesiones = enAlta + enMedia + enBaja;
+
+  // Texto del resumen completo (un solo párrafo)
+  const tipoGiroTexto =
+    futuro && futuro.ultimoCaso
+      ? futuro.ultimoCaso.direccionGiro === 'subiendo'
+        ? 'compra'
+        : 'venta'
+      : null;
+
+  const resumenPartes = [];
+
+  resumenPartes.push(
+    `En las últimas 60 sesiones, ${empresa.nombre} ha pasado de ${primerCierre?.toFixed(
+      2
+    )} a ${ultimoCierre?.toFixed(2)}, con una variación del ${
+      variacion60 >= 0 ? '+' : ''
+    }${variacion60.toFixed(2)}%. El rango de cotización se ha movido entre un mínimo de ${minimo.toFixed(
+      2
+    )} y un máximo de ${maximo.toFixed(2)}, y la volatilidad diaria media ha sido del ${volatilidad.toFixed(
+      2
+    )}%.`
+  );
+
+  resumenPartes.push(
+    `De las ${totalSesiones} sesiones analizadas, el indicador ha estado ${enAlta} en zona alta, ${enMedia} en zona intermedia y ${enBaja} en zona baja.`
+  );
+
+  resumenPartes.push(
+    `Los tramos sombreados en rojo marcan las fases en las que el indicador ha sobresalido por encima de +40. Los tramos sombreados en verde, las fases en las que ha caído por debajo de -40. Estas son las zonas en las que, estadísticamente, el precio ha cotizado más caro o más barato de lo habitual dentro de su propio rango reciente.`
+  );
+
+  resumenPartes.push(
+    `Actualmente el indicador se encuentra en un valor de ${analisis.smiActual?.toFixed(
+      2
+    )}, dentro de la zona ${analisis.zona}, con un percentil ${percentil} sobre las últimas 60 sesiones y una oportunidad de giro ${oportunidad.nivel}.`
+  );
+
+  if (ultimaSenal) {
+    resumenPartes.push(
+      `El último movimiento registrado fue de ${ultimaSenal.tipo} el ${ultimaSenal.fecha}${
+        ultimaSenalAbierta ? ', y sigue en curso' : ''
+      }.`
+    );
+  }
+
+  if (futuro && futuro.ultimoCaso && tipoGiroTexto) {
+    const fechaUltimo = new Date(futuro.ultimoCaso.fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Europe/Madrid'
+    });
+    resumenPartes.push(
+      `La última vez que el indicador estuvo en un valor similar (±10 puntos) mientras ${
+        futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'
+      } fue el ${fechaUltimo}, y tardó ${futuro.ultimoCaso.sesiones} ${
+        futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'
+      } en dar ${tipoGiroTexto} de nuevo. La media de las ${futuro.casos.length} ${
+        futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'
+      } similares en las últimas 60 sesiones es de ${futuro.mediaSesiones.toFixed(1)} ${
+        futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'
+      }.`
+    );
+  }
+
+  if (statsCompras.muestra > 0 || statsVentas.muestra > 0) {
+    const partes = [];
+    if (statsCompras.muestra > 0) {
+      partes.push(
+        `en los movimientos de compra el porcentaje de acierto es del ${statsCompras.porcentajeAcierto.toFixed(
+          1
+        )}% (${statsCompras.aciertos} aciertos y ${statsCompras.fallos} fallos sobre ${statsCompras.muestra} ciclos)`
+      );
+    }
+    if (statsVentas.muestra > 0) {
+      partes.push(
+        `en los movimientos de venta el porcentaje de acierto es del ${statsVentas.porcentajeAcierto.toFixed(
+          1
+        )}% (${statsVentas.aciertos} aciertos y ${statsVentas.fallos} fallos sobre ${statsVentas.muestra} ciclos)`
+      );
+    }
+    if (partes.length > 0) {
+      resumenPartes.push(`En cuanto a nuestros aciertos estadísticos, ${partes.join('; ')}.`);
+    }
+  }
+
+  if (consenso && consenso.total > 0) {
+    resumenPartes.push(
+      `El consenso de la comunidad muestra ${consenso.total} ${
+        consenso.total === 1 ? 'voto' : 'votos'
+      } registrados, con un sentimiento ${consenso.sentimiento}.`
+    );
+  }
+
+  const resumenTexto = resumenPartes.join(' ');
 
   return (
     <div className="v3-grid-analisis">
@@ -527,7 +653,7 @@ export default async function PaginaEmpresa({ params }) {
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
 
-          {futuro && <TarjetaFuturo futuro={futuro} empresa={empresa} />}
+          {futuro && <TarjetaFuturo futuro={futuro} />}
 
           <div className="v3-card" style={{ padding: '20px', marginTop: '16px' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>
@@ -640,25 +766,7 @@ export default async function PaginaEmpresa({ params }) {
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
-            <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
-              En las últimas 60 sesiones, {empresa.nombre} ha pasado de {primerCierre?.toFixed(2)}{' '}
-              a {ultimoCierre?.toFixed(2)}, con una variación del {variacion60 >= 0 ? '+' : ''}
-              {variacion60.toFixed(2)}%. El rango de cotización se ha movido entre un mínimo de{' '}
-              {minimo.toFixed(2)} y un máximo de {maximo.toFixed(2)}. La volatilidad diaria media
-              ha sido del {volatilidad.toFixed(2)}%.
-            </p>
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              De las {totalSesiones} sesiones analizadas, el indicador ha estado{' '}
-              <strong>{enAlta} en zona alta</strong>, <strong>{enMedia} en zona intermedia</strong>{' '}
-              y <strong>{enBaja} en zona baja</strong>.
-            </p>
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
-              Los tramos sombreados en rojo marcan las fases en las que el indicador ha
-              sobresalido por encima de +40. Los tramos sombreados en verde, las fases en las que
-              ha caído por debajo de -40. Estas son las zonas en las que, estadísticamente, el
-              precio ha cotizado más caro o más barato de lo habitual dentro de su propio rango
-              reciente.
-            </p>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text)' }}>{resumenTexto}</p>
           </div>
         </section>
 
@@ -737,7 +845,7 @@ function Dato({ etiqueta, valor, extra, colorValor, colorExtra }) {
   );
 }
 
-function TarjetaFuturo({ futuro, empresa }) {
+function TarjetaFuturo({ futuro }) {
   const { direccionActual, casos, ultimoCaso, mediaSesiones } = futuro;
 
   if (!casos || casos.length === 0) {
