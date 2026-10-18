@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import FormularioAlerta from './FormularioAlerta';
 
 function slugEmpresa(e) {
   const nombreLimpio = (e.nombre || e.ticker)
@@ -110,7 +111,9 @@ export default function BarraLateral({ ticker }) {
           </ul>
         </section>
       )}
-
+      <section style={{ marginBottom: '28px' }}>
+        <FormularioAlerta empresa={{ ticker: ticker, nombre: ticker }} variante="sidebar" />
+      </section>
       <section
         style={{
           border: '1px dashed var(--v3-border-strong)',
