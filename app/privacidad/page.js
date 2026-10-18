@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Política de Privacidad — V3',
-  description: 'Política de privacidad de V3.'
+  title: 'Política de Privacidad — Equaty',
+  description: 'Política de privacidad de Equaty.'
 };
 
 export default function Privacidad() {
@@ -9,7 +9,7 @@ export default function Privacidad() {
       <h1>Política de Privacidad</h1>
 
       <p>
-        V3 no requiere registro ni creación de cuentas. No se recopilan datos personales para el
+        Equaty no requiere registro ni creación de cuentas. No se recopilan datos personales para el
         uso general del sitio.
       </p>
 
