@@ -6,6 +6,129 @@ import { supabase } from '../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+function calcularCiclos(senales, precioActual) {
+  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const limitada = lista.slice(-100);
+
+  return limitada.map((s, i) => {
+    const siguiente = limitada[i + 1];
+    const precioCierre = siguiente ? siguiente.precio : precioActual;
+    const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
+
+    let acierto = null;
+    if (variacion !== 0) {
+      if (s.tipo === 'compra') acierto = variacion > 0;
+      else if (s.tipo === 'venta') acierto = variacion < 0;
+    }
+
+    return { tipo: s.tipo, acierto };
+  });
+}
+
+function analizarEstadistica(senales, precioActual) {
+  const ciclos = calcularCiclos(senales, precioActual);
+  const compras = ciclos.filter((c) => c.tipo === 'compra');
+  const ventas = ciclos.filter((c) => c.tipo === 'venta');
+
+  function analizar(lista) {
+    let aciertos = 0;
+    let total = 0;
+    for (const c of lista) {
+      if (c.acierto === null) continue;
+      total++;
+      if (c.acierto) aciertos++;
+    }
+    const porcentaje = total > 0 ? (aciertos / total) * 100 : 0;
+    return {
+      muestra: lista.length,
+      aciertos,
+      fallos: total - aciertos,
+      porcentajeAcierto: porcentaje
+    };
+  }
+
+  return {
+    compras: analizar(compras),
+    ventas: analizar(ventas)
+  };
+}
+
+function calcularFuturo(smis, velas, smiActual) {
+  if (!Array.isArray(smis) || smis.length < 5) return null;
+  if (!Array.isArray(velas) || velas.length < 5) return null;
+  if (typeof smiActual !== 'number' || isNaN(smiActual)) return null;
+
+  const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
+  if (validos.length < 2) return null;
+
+  const ultimo = validos[validos.length - 1];
+  const anterior = validos[validos.length - 2];
+  const direccionActual =
+    ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
+  if (direccionActual === 'plana') return null;
+
+  const casos = [];
+
+  for (let i = 0; i < smis.length - 2; i++) {
+    const smi = smis[i];
+    if (smi === null || smi === undefined || isNaN(smi)) continue;
+    if (Math.abs(smi - smiActual) > 10) continue;
+
+    let prevValido = null;
+    for (let k = i - 1; k >= 0; k--) {
+      if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
+        prevValido = smis[k];
+        break;
+      }
+    }
+    if (prevValido === null || prevValido === smi) continue;
+
+    const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
+    if (dirSesion !== direccionActual) continue;
+
+    let sesionesGiro = null;
+    let direccionGiro = null;
+
+    for (let j = i + 1; j < smis.length; j++) {
+      if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
+
+      let prevJ = null;
+      for (let k = j - 1; k >= 0; k--) {
+        if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
+          prevJ = smis[k];
+          break;
+        }
+      }
+      if (prevJ === null || prevJ === smis[j]) continue;
+
+      const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
+      if (dirJ !== dirSesion) {
+        sesionesGiro = j - i;
+        direccionGiro = dirJ;
+        break;
+      }
+    }
+
+    if (sesionesGiro !== null) {
+      casos.push({ smi, sesiones: sesionesGiro, direccionGiro });
+    }
+  }
+
+  if (casos.length === 0) return null;
+
+  const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
+  const ultimoCaso = casos[casos.length - 1];
+  const tipoGiro = ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
+
+  return {
+    direccionActual,
+    casos,
+    ultimoCaso,
+    mediaSesiones,
+    tipoGiro
+  };
+}
+
 async function cargarDatos() {
   const vacio = { cambios: [], sectores: [] };
 
@@ -35,13 +158,25 @@ async function cargarDatos() {
       if (!p || !p.datos) continue;
       const emp = empresasMap[p.ticker];
       if (!emp) continue;
+
+      let datos = p.datos;
+      if (typeof datos === 'string') {
+        try {
+          datos = JSON.parse(datos);
+        } catch (e) {
+          continue;
+        }
+      }
+
+      const futuro = calcularFuturo(datos.smisUltimos60, datos.velasUltimos60, datos.smiActual);
+      const stats = analizarEstadistica(datos.senales || [], datos.precioActual);
+
       cambios.push({
         ticker: p.ticker,
         nombre: emp.nombre,
         sector: emp.sector,
-        zona: p.datos.zona,
-        precio: p.datos.precioActual,
-        actualizado_at: p.actualizado_at
+        futuro,
+        stats
       });
     }
 
@@ -104,5 +239,186 @@ export default async function Home() {
         recomendación de inversión.
       </p>
     </main>
+  );
+}
+```
+
+Commit: feat: mostrar futuro estadístico y aciertos en la home.
+
+components/CambiosRecientes.js
+
+```js
+import Link from 'next/link';
+
+function construirSlug(cambio) {
+  const nombreLimpio = (cambio.nombre || cambio.ticker)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
+}
+
+export default function CambiosRecientes({ cambios }) {
+  return (
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">Últimas empresas buscadas</h2>
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
+        Análisis actualizados en las últimas 48 horas.
+      </p>
+
+      {!cambios || cambios.length === 0 ? (
+        <p style={{ color: 'var(--v3-text-soft)' }}>
+          Aún no hay empresas buscadas en las últimas 48 horas. Prueba a buscar cualquier empresa
+          en el buscador de arriba.
+        </p>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '12px',
+            marginTop: '16px'
+          }}
+        >
+          {cambios.slice(0, 12).map((c) => {
+            const stats = c.stats || {};
+            const futuro = c.futuro;
+
+            return (
+              <Link
+                key={c.ticker}
+                href={`/analisis/${construirSlug(c)}`}
+                style={{
+                  display: 'block',
+                  padding: '16px',
+                  border: '1px solid var(--v3-border)',
+                  borderRadius: 'var(--v3-radius-sm)',
+                  textDecoration: 'none',
+                  color: 'var(--v3-text)',
+                  background: '#fff'
+                }}
+              >
+                <div style={{ marginBottom: '10px' }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {c.nombre}
+                  </div>
+                  <div
+                    style={{
+                      color: 'var(--v3-text-soft)',
+                      fontSize: '12px',
+                      marginTop: '2px'
+                    }}
+                  >
+                    {c.ticker}
+                    {c.sector && ` · ${c.sector}`}
+                  </div>
+                </div>
+
+                {futuro && (
+                  <div style={{ marginBottom: '10px' }}>
+                    <div
+                      style={{
+                        color: 'var(--v3-text-mute)',
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        fontWeight: 600,
+                        marginBottom: '4px'
+                      }}
+                    >
+                      Estadísticamente
+                    </div>
+                    <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+                      <strong style={{ color: 'var(--v3-negative)' }}>
+                        {futuro.ultimoCaso.sesiones}{' '}
+                        {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
+                      </strong>{' '}
+                      para dar <strong>{futuro.tipoGiro}</strong> de nuevo.
+                    </div>
+                  </div>
+                )}
+
+                {(!stats.compras || !stats.ventas) === false && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      paddingTop: '10px',
+                      borderTop: '1px solid var(--v3-border)'
+                    }}
+                  >
+                    {stats.compras && stats.compras.muestra > 0 && (
+                      <div style={{ flex: 1, minWidth: '100px' }}>
+                        <div
+                          style={{
+                            color: 'var(--v3-text-mute)',
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Acierto compras
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '18px',
+                            fontWeight: 800,
+                            color:
+                              stats.compras.porcentajeAcierto >= 50
+                                ? 'var(--v3-positive)'
+                                : 'var(--v3-negative)'
+                          }}
+                        >
+                          {stats.compras.porcentajeAcierto.toFixed(1)}%
+                        </div>
+                      </div>
+                    )}
+                    {stats.ventas && stats.ventas.muestra > 0 && (
+                      <div style={{ flex: 1, minWidth: '100px' }}>
+                        <div
+                          style={{
+                            color: 'var(--v3-text-mute)',
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Acierto ventas
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '18px',
+                            fontWeight: 800,
+                            color:
+                              stats.ventas.porcentajeAcierto >= 50
+                                ? 'var(--v3-positive)'
+                                : 'var(--v3-negative)'
+                          }}
+                        >
+                          {stats.ventas.porcentajeAcierto.toFixed(1)}%
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
