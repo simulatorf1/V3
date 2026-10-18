@@ -27,14 +27,13 @@ export default function CambiosRecientes({ cambios }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
             gap: '12px',
             marginTop: '16px'
           }}
         >
           {cambios.slice(0, 12).map((c) => {
             const stats = c.stats || {};
-            const futuro = c.futuro;
 
             return (
               <Link
@@ -74,96 +73,102 @@ export default function CambiosRecientes({ cambios }) {
                   </div>
                 </div>
 
-                {futuro && (
-                  <div style={{ marginBottom: '10px' }}>
-                    <div
-                      style={{
-                        color: 'var(--v3-text-mute)',
-                        fontSize: '11px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        fontWeight: 600,
-                        marginBottom: '4px'
-                      }}
-                    >
-                      Estadísticamente
-                    </div>
-                    <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
-                      <strong style={{ color: 'var(--v3-negative)' }}>
-                        {futuro.ultimoCaso.sesiones}{' '}
-                        {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
-                      </strong>{' '}
-                      para dar <strong>{futuro.tipoGiro}</strong> de nuevo.
-                    </div>
-                  </div>
-                )}
-
-                {(!stats.compras || !stats.ventas) === false && (
-                  <div
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    paddingBottom: '10px',
+                    marginBottom: '10px',
+                    borderBottom: '1px solid var(--v3-border)'
+                  }}
+                >
+                  <span
                     style={{
-                      display: 'flex',
-                      gap: '12px',
-                      flexWrap: 'wrap',
-                      paddingTop: '10px',
-                      borderTop: '1px solid var(--v3-border)'
+                      color: 'var(--v3-text-mute)',
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      fontWeight: 600
                     }}
                   >
-                    {stats.compras && stats.compras.muestra > 0 && (
-                      <div style={{ flex: 1, minWidth: '100px' }}>
-                        <div
-                          style={{
-                            color: 'var(--v3-text-mute)',
-                            fontSize: '10px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            fontWeight: 600
-                          }}
-                        >
-                          Acierto compras
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '18px',
-                            fontWeight: 800,
-                            color:
-                              stats.compras.porcentajeAcierto >= 50
-                                ? 'var(--v3-positive)'
-                                : 'var(--v3-negative)'
-                          }}
-                        >
-                          {stats.compras.porcentajeAcierto.toFixed(1)}%
-                        </div>
+                    Último precio
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '20px',
+                      fontWeight: 800,
+                      color: 'var(--v3-text)'
+                    }}
+                  >
+                    {c.precio !== undefined && c.precio !== null
+                      ? Number(c.precio).toFixed(2)
+                      : '—'}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '12px',
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  {stats.compras && stats.compras.muestra > 0 && (
+                    <div style={{ flex: 1, minWidth: '100px' }}>
+                      <div
+                        style={{
+                          color: 'var(--v3-text-mute)',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          fontWeight: 600
+                        }}
+                      >
+                        Acierto compras
                       </div>
-                    )}
-                    {stats.ventas && stats.ventas.muestra > 0 && (
-                      <div style={{ flex: 1, minWidth: '100px' }}>
-                        <div
-                          style={{
-                            color: 'var(--v3-text-mute)',
-                            fontSize: '10px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            fontWeight: 600
-                          }}
-                        >
-                          Acierto ventas
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '18px',
-                            fontWeight: 800,
-                            color:
-                              stats.ventas.porcentajeAcierto >= 50
-                                ? 'var(--v3-positive)'
-                                : 'var(--v3-negative)'
-                          }}
-                        >
-                          {stats.ventas.porcentajeAcierto.toFixed(1)}%
-                        </div>
+                      <div
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: 800,
+                          color:
+                            stats.compras.porcentajeAcierto >= 50
+                              ? 'var(--v3-positive)'
+                              : 'var(--v3-negative)'
+                        }}
+                      >
+                        {stats.compras.porcentajeAcierto.toFixed(1)}%
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                  {stats.ventas && stats.ventas.muestra > 0 && (
+                    <div style={{ flex: 1, minWidth: '100px' }}>
+                      <div
+                        style={{
+                          color: 'var(--v3-text-mute)',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          fontWeight: 600
+                        }}
+                      >
+                        Acierto ventas
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: 800,
+                          color:
+                            stats.ventas.porcentajeAcierto >= 50
+                              ? 'var(--v3-positive)'
+                              : 'var(--v3-negative)'
+                        }}
+                      >
+                        {stats.ventas.porcentajeAcierto.toFixed(1)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
               </Link>
             );
           })}
