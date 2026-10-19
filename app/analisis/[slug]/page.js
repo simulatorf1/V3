@@ -530,9 +530,9 @@ export default async function PaginaEmpresa({ params }) {
                     lineHeight: 1.6
                   }}
                 >
-                  Este movimiento es un <strong>registro histórico</strong>: refleja lo que ha hecho
-                  el indicador en el pasado, no lo que va a hacer. Estadísticamente, el valor se
-                  encuentra en una posición parecida a la de otras ocasiones en las que el precio
+                  Este movimiento es un <strong>reflejo estadístico del pasado</strong>: a partir de lo que ha hecho
+                  en el historicamente en el pasado, podemos apoyarnos para tomar futuras decisiones. Estadísticamente, el valor se
+                  encuentra en una posición similar a la de otras ocasiones en las que el precio
                   giró. Eso es lo que se describe aquí: <strong>lo que ocurrió antes en situaciones
                   similares</strong>, no una recomendación de compra ni de venta.
                 </p>
