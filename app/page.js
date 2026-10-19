@@ -61,17 +61,26 @@ async function cargarDatos() {
     const hace48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const [paginasRes, empresasRes] = await Promise.all([
+    // Tres consultas en paralelo
+    const [paginasRecientesRes, paginasMovimientosRes, empresasRes] = await Promise.all([
+      // Para "Últimas empresas buscadas"
       supabase
         .from('paginas')
-        .select('ticker, datos, actualizado_at, ultimo_movimiento_anterior')
+        .select('ticker, datos, actualizado_at')
         .gte('actualizado_at', hace48h)
         .order('actualizado_at', { ascending: false })
         .limit(30),
+      // Para "Movimientos de hoy" (igual que la barra lateral)
+      supabase
+        .from('paginas')
+        .select('ticker, datos, actualizado_at, ultimo_movimiento_anterior')
+        .gte('actualizado_at', hace24h)
+        .not('ultimo_movimiento_anterior', 'is', null),
       supabase.from('empresas').select('ticker, nombre, sector')
     ]);
 
-    const paginas = paginasRes?.data || [];
+    const paginasRecientes = paginasRecientesRes?.data || [];
+    const paginasMovimientos = paginasMovimientosRes?.data || [];
     const empresas = empresasRes?.data || [];
 
     const empresasMap = {};
@@ -79,10 +88,9 @@ async function cargarDatos() {
       if (e && e.ticker) empresasMap[e.ticker] = e;
     }
 
+    // Cambios recientes
     const cambios = [];
-    const movimientos = [];
-
-    for (const p of paginas) {
+    for (const p of paginasRecientes) {
       if (!p || !p.datos) continue;
       const emp = empresasMap[p.ticker];
       if (!emp) continue;
@@ -106,15 +114,31 @@ async function cargarDatos() {
         precio: datos.precioActual,
         stats
       });
+    }
 
-      // Movimientos: cambios en las últimas 24h
+    // Movimientos de hoy
+    const movimientos = [];
+    for (const p of paginasMovimientos) {
+      if (!p || !p.datos) continue;
+      const emp = empresasMap[p.ticker];
+      if (!emp) continue;
+
+      let datos = p.datos;
+      if (typeof datos === 'string') {
+        try { datos = JSON.parse(datos); } catch (e) { continue; }
+      }
+
+      let senales = datos.senales;
+      if (typeof senales === 'string') {
+        try { senales = JSON.parse(senales); } catch (e) { senales = []; }
+      }
+
       const ultima = Array.isArray(senales) && senales.length > 0
         ? senales[senales.length - 1]
         : null;
       const movActual = ultima ? ultima.tipo : null;
 
       if (
-        p.actualizado_at >= hace24h &&
         p.ultimo_movimiento_anterior &&
         movActual &&
         p.ultimo_movimiento_anterior !== movActual
@@ -129,6 +153,7 @@ async function cargarDatos() {
       }
     }
 
+    // Sectores
     const conteoSectores = {};
     for (const e of empresas) {
       if (!e || !e.sector) continue;
@@ -187,7 +212,7 @@ export default async function Home() {
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
         Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
-        recomendación de inversión .
+        recomendación de inversión.
       </p>
     </main>
   );
