@@ -17,6 +17,13 @@ export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
 
+// Mapea el tipo interno (compra/venta) a una etiqueta neutral de estado
+function etiquetaLectura(tipo) {
+  if (tipo === 'compra') return 'lectura baja';
+  if (tipo === 'venta') return 'lectura alta';
+  return 'lectura';
+}
+
 function slugSector(s) {
   return s
     .toLowerCase()
@@ -217,8 +224,8 @@ export default async function PaginaEmpresa({ params }) {
 
   // Cálculos
   const comportamientos = calcularComportamiento(analisis.senales || []);
-  const comportamientosTrasCompra = comportamientos.filter((c) => c.tipo === 'compra');
-  const comportamientosTrasVenta = comportamientos.filter((c) => c.tipo === 'venta');
+  const comportamientosBaja = comportamientos.filter((c) => c.tipo === 'compra');
+  const comportamientosAlta = comportamientos.filter((c) => c.tipo === 'venta');
 
   function analizarComportamiento(lista) {
     let subidas = 0;
@@ -233,8 +240,8 @@ export default async function PaginaEmpresa({ params }) {
     return { muestra: lista.length, subidas, bajadas, total };
   }
 
-  const compTrasCompra = analizarComportamiento(comportamientosTrasCompra);
-  const compTrasVenta = analizarComportamiento(comportamientosTrasVenta);
+  const compTrasBaja = analizarComportamiento(comportamientosBaja);
+  const compTrasAlta = analizarComportamiento(comportamientosAlta);
 
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
@@ -432,7 +439,7 @@ export default async function PaginaEmpresa({ params }) {
                 }}
               >
                 Última lectura registrada: {ultimaSenal.fecha} (tipo de lectura:{' '}
-                {ultimaSenal.tipo}). Registro histórico cerrado.
+                {etiquetaLectura(ultimaSenal.tipo)}). Registro histórico cerrado.
               </p>
             )}
           </div>
@@ -484,26 +491,26 @@ export default async function PaginaEmpresa({ params }) {
               </p>
             )}
 
-            {(compTrasCompra.total > 0 || compTrasVenta.total > 0) && (
+            {(compTrasBaja.total > 0 || compTrasAlta.total > 0) && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
                 Comportamiento posterior del precio tras lecturas anteriores del indicador:
-                {compTrasCompra.total > 0 && (
+                {compTrasBaja.total > 0 && (
                   <>
                     {' '}
-                    tras las lecturas de tipo compra, el precio subió en{' '}
-                    <strong>{compTrasCompra.subidas}</strong> ocasiones y bajó en{' '}
-                    <strong>{compTrasCompra.bajadas}</strong> (sobre{' '}
-                    <strong>{compTrasCompra.total}</strong> lecturas cerradas)
+                    tras las lecturas bajas, el precio subió en{' '}
+                    <strong>{compTrasBaja.subidas}</strong> ocasiones y bajó en{' '}
+                    <strong>{compTrasBaja.bajadas}</strong> (sobre{' '}
+                    <strong>{compTrasBaja.total}</strong> lecturas cerradas)
                   </>
                 )}
-                {compTrasCompra.total > 0 && compTrasVenta.total > 0 && ';'}
-                {compTrasVenta.total > 0 && (
+                {compTrasBaja.total > 0 && compTrasAlta.total > 0 && ';'}
+                {compTrasAlta.total > 0 && (
                   <>
                     {' '}
-                    tras las lecturas de tipo venta, el precio subió en{' '}
-                    <strong>{compTrasVenta.subidas}</strong> ocasiones y bajó en{' '}
-                    <strong>{compTrasVenta.bajadas}</strong> (sobre{' '}
-                    <strong>{compTrasVenta.total}</strong> lecturas cerradas)
+                    tras las lecturas altas, el precio subió en{' '}
+                    <strong>{compTrasAlta.subidas}</strong> ocasiones y bajó en{' '}
+                    <strong>{compTrasAlta.bajadas}</strong> (sobre{' '}
+                    <strong>{compTrasAlta.total}</strong> lecturas cerradas)
                   </>
                 )}
                 .
@@ -612,7 +619,7 @@ export default async function PaginaEmpresa({ params }) {
                     marginBottom: '8px'
                   }}
                 >
-                  Tras lecturas de tipo compra
+                  Tras lecturas bajas
                 </div>
                 <div
                   style={{
@@ -621,12 +628,12 @@ export default async function PaginaEmpresa({ params }) {
                     color: 'var(--v3-text)'
                   }}
                 >
-                  {compTrasCompra.total > 0
-                    ? `${compTrasCompra.subidas} subidas / ${compTrasCompra.bajadas} bajadas`
+                  {compTrasBaja.total > 0
+                    ? `${compTrasBaja.subidas} subidas / ${compTrasBaja.bajadas} bajadas`
                     : '—'}
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                  Sobre {compTrasCompra.total} lecturas cerradas
+                  Sobre {compTrasBaja.total} lecturas cerradas
                 </div>
               </div>
 
@@ -641,7 +648,7 @@ export default async function PaginaEmpresa({ params }) {
                     marginBottom: '8px'
                   }}
                 >
-                  Tras lecturas de tipo venta
+                  Tras lecturas altas
                 </div>
                 <div
                   style={{
@@ -650,17 +657,17 @@ export default async function PaginaEmpresa({ params }) {
                     color: 'var(--v3-text)'
                   }}
                 >
-                  {compTrasVenta.total > 0
-                    ? `${compTrasVenta.subidas} subidas / ${compTrasVenta.bajadas} bajadas`
+                  {compTrasAlta.total > 0
+                    ? `${compTrasAlta.subidas} subidas / ${compTrasAlta.bajadas} bajadas`
                     : '—'}
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                  Sobre {compTrasVenta.total} lecturas cerradas
+                  Sobre {compTrasAlta.total} lecturas cerradas
                 </div>
               </div>
             </div>
 
-            {(compTrasCompra.total < 10 || compTrasVenta.total < 10) && (
+            {(compTrasBaja.total < 10 || compTrasAlta.total < 10) && (
               <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
                 Muestra limitada en alguno de los tipos de lectura. Interpretar con cautela.
               </p>
