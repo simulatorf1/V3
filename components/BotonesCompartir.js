@@ -2,59 +2,6 @@
 
 import { useState } from 'react';
 
-function calcularAciertos(senales, velas) {
-  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const velasOrdenadas = [...velas].sort((a, b) => (a.date < b.date ? -1 : 1));
-
-  const ciclos = lista.map((s, i) => {
-    const siguiente = lista[i + 1];
-    const fechaInicio = s.fecha;
-    const fechaFin = siguiente ? siguiente.fecha : null;
-
-    let extremo = null;
-    for (const v of velasOrdenadas) {
-      if (v.date < fechaInicio) continue;
-      if (fechaFin && v.date >= fechaFin) break;
-      if (s.tipo === 'compra') {
-        if (extremo === null || v.high > extremo) extremo = v.high;
-      } else {
-        if (extremo === null || v.low < extremo) extremo = v.low;
-      }
-    }
-
-    let variacion = 0;
-    let acierto = null;
-    if (extremo !== null) {
-      if (s.tipo === 'compra') {
-        variacion = ((extremo - s.precio) / s.precio) * 100;
-        acierto = variacion > 0;
-      } else {
-        variacion = ((s.precio - extremo) / s.precio) * 100;
-        acierto = variacion > 0;
-      }
-    }
-
-    return { tipo: s.tipo, acierto };
-  });
-
-  function stats(tipo) {
-    const filtrados = ciclos.filter((c) => c.tipo === tipo);
-    let aciertos = 0;
-    let total = 0;
-    for (const c of filtrados) {
-      if (c.acierto === null) continue;
-      total++;
-      if (c.acierto) aciertos++;
-    }
-    return {
-      muestra: filtrados.length,
-      porcentaje: total > 0 ? (aciertos / total) * 100 : 0
-    };
-  }
-
-  return { compras: stats('compra'), ventas: stats('venta') };
-}
-
 export default function BotonesCompartir({ empresa, analisis, url, futuro }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [textoTuit, setTextoTuit] = useState('');
@@ -68,17 +15,52 @@ export default function BotonesCompartir({ empresa, analisis, url, futuro }) {
     const precio = analisis.precioActual?.toFixed(2) || '—';
 
     const senales = analisis.senales || [];
-    const velas = analisis.velasUltimos60 || [];
     const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
 
-    const stats = calcularAciertos(senales, velas);
+    // Aciertos
+    const ciclos = [];
+    const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+    for (let i = 0; i < lista.length; i++) {
+      const s = lista[i];
+      const siguiente = lista[i + 1];
+      const precioCierre = siguiente ? siguiente.precio : analisis.precioActual;
+      const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
+      let acierto = null;
+      if (variacion !== 0) {
+        if (s.tipo === 'compra') acierto = variacion > 0;
+        else if (s.tipo === 'venta') acierto = variacion < 0;
+      }
+      ciclos.push({ tipo: s.tipo, acierto });
+    }
+
+    function statsCiclo(tipo) {
+      const filtrados = ciclos.filter((c) => c.tipo === tipo);
+      let aciertos = 0;
+      let total = 0;
+      for (const c of filtrados) {
+        if (c.acierto === null) continue;
+        total++;
+        if (c.acierto) aciertos++;
+      }
+      return {
+        muestra: filtrados.length,
+        porcentaje: total > 0 ? (aciertos / total) * 100 : 0
+      };
+    }
+
+    const statsCompras = statsCiclo('compra');
+    const statsVentas = statsCiclo('venta');
 
     let texto = `Nuevo análisis de ${nombre} (${ticker}). `;
     texto += `Precio ${precio}. `;
 
-    if (zona === 'alta') texto += `Indicador en zona alta. `;
-    else if (zona === 'baja') texto += `Indicador en zona baja. `;
-    else texto += `Indicador en zona intermedia. `;
+    if (zona === 'alta') {
+      texto += `Indicador en zona alta. `;
+    } else if (zona === 'baja') {
+      texto += `Indicador en zona baja. `;
+    } else {
+      texto += `Indicador en zona intermedia. `;
+    }
 
     if (futuro && futuro.ultimoCaso) {
       const tipoGiro = futuro.ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
@@ -91,11 +73,11 @@ export default function BotonesCompartir({ empresa, analisis, url, futuro }) {
       texto += `Último movimiento registrado: ${ultimaSenal.tipo}. `;
     }
 
-    if (stats.compras.muestra > 0) {
-      texto += `Acierto histórico de compras: ${stats.compras.porcentaje.toFixed(0)}%. `;
+    if (statsCompras.muestra > 0) {
+      texto += `Acierto histórico de compras: ${statsCompras.porcentaje.toFixed(0)}%. `;
     }
-    if (stats.ventas.muestra > 0) {
-      texto += `Acierto histórico de ventas: ${stats.ventas.porcentaje.toFixed(0)}%. `;
+    if (statsVentas.muestra > 0) {
+      texto += `Acierto histórico de ventas: ${statsVentas.porcentaje.toFixed(0)}%. `;
     }
 
     const enlace = `Más en: ${url}`;
