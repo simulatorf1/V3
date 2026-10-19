@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import FormularioAlerta from './FormularioAlerta';
+import MovimientosHoy from './MovimientosHoy';
 
 function slugEmpresa(e) {
   const nombreLimpio = (e.nombre || e.ticker)
@@ -15,7 +15,7 @@ function slugEmpresa(e) {
 }
 
 export default function BarraLateral({ ticker }) {
-  const [datos, setDatos] = useState({ relacionados: [], top: [], noticias: [] });
+  const [datos, setDatos] = useState({ relacionados: [], top: [], noticias: [], movimientos: [] });
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -29,7 +29,9 @@ export default function BarraLateral({ ticker }) {
 
   if (cargando) {
     return (
-      <aside style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>Cargando…</aside>
+      <aside style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+        Cargando…
+      </aside>
     );
   }
 
@@ -44,6 +46,10 @@ export default function BarraLateral({ ticker }) {
 
   return (
     <aside style={{ fontSize: '14px' }}>
+      {datos.movimientos && datos.movimientos.length > 0 && (
+        <MovimientosHoy cambios={datos.movimientos} variante="sidebar" />
+      )}
+
       {datos.relacionados.length > 0 && (
         <section style={{ marginBottom: '28px' }}>
           <h3 style={tituloSeccion}>Del mismo sector</h3>
@@ -111,9 +117,7 @@ export default function BarraLateral({ ticker }) {
           </ul>
         </section>
       )}
-      <section style={{ marginBottom: '28px' }}>
-        <FormularioAlerta empresa={{ ticker: ticker, nombre: ticker }} variante="sidebar" />
-      </section>
+
       <section
         style={{
           border: '1px dashed var(--v3-border-strong)',
