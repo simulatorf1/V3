@@ -31,7 +31,6 @@ export async function GET(request) {
         .select('ticker, datos, actualizado_at, ultimo_movimiento_anterior')
         .gte('actualizado_at', hace24h)
         .not('ultimo_movimiento_anterior', 'is', null)
-        .limit(30)
     ]);
 
     const empresa = empresaResult.data;
