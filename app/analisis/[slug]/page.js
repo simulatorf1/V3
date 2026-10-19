@@ -17,7 +17,6 @@ export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
 
-// Mapea el tipo interno (compra/venta) a una etiqueta neutral de estado
 function etiquetaLectura(tipo) {
   if (tipo === 'compra') return 'lectura baja';
   if (tipo === 'venta') return 'lectura alta';
@@ -44,34 +43,43 @@ function fechaMadrid(fecha = new Date()) {
   });
 }
 
-function calcularComportamiento(senales, limite = 100) {
+// Devuelve estadísticos puros de la serie de variaciones, sin balances "subidas/bajadas"
+function estadisticosVariacion(senales, limite = 100) {
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
   const limitada = lista.slice(-limite);
 
-  return limitada.map((s, i) => {
+  const variaciones = [];
+  let pendientes = 0;
+  for (let i = 0; i < limitada.length; i++) {
+    const s = limitada[i];
     const siguiente = limitada[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : null;
-    const variacion =
-      precioCierre !== null && precioCierre !== undefined
-        ? ((precioCierre - s.precio) / s.precio) * 100
-        : null;
-    let comportamiento = null;
-    if (variacion !== null && variacion !== 0) {
-      comportamiento = variacion > 0 ? 'subida' : 'bajada';
+    if (!siguiente) {
+      pendientes++;
+      continue;
     }
-    return { tipo: s.tipo, variacion, comportamiento };
-  });
-}
-
-function calcularFrecuenciaGiro(zona, percentil) {
-  if (zona === 'intermedia') {
-    return { nivel: 'baja', color: 'var(--v3-text-soft)' };
+    if (!s.precio) continue;
+    variaciones.push(((siguiente.precio - s.precio) / s.precio) * 100);
   }
-  const extremoBajo = percentil <= 5 || percentil >= 95;
-  const extremo = percentil <= 15 || percentil >= 85;
-  if (extremoBajo) return { nivel: 'muy alta', color: 'var(--v3-negative)' };
-  if (extremo) return { nivel: 'alta', color: 'var(--v3-warn)' };
-  return { nivel: 'media', color: 'var(--v3-text-soft)' };
+
+  if (variaciones.length === 0) {
+    return { n: 0, pendientes, min: null, max: null, media: null, mediana: null };
+  }
+
+  const ordenadas = [...variaciones].sort((a, b) => a - b);
+  const media = variaciones.reduce((a, b) => a + b, 0) / variaciones.length;
+  const mediana =
+    ordenadas.length % 2 === 1
+      ? ordenadas[Math.floor(ordenadas.length / 2)]
+      : (ordenadas[ordenadas.length / 2 - 1] + ordenadas[ordenadas.length / 2]) / 2;
+
+  return {
+    n: variaciones.length,
+    pendientes,
+    min: ordenadas[0],
+    max: ordenadas[ordenadas.length - 1],
+    media,
+    mediana
+  };
 }
 
 async function cargarConsenso(ticker) {
@@ -222,26 +230,13 @@ export default async function PaginaEmpresa({ params }) {
     }
   };
 
-  // Cálculos
-  const comportamientos = calcularComportamiento(analisis.senales || []);
-  const comportamientosBaja = comportamientos.filter((c) => c.tipo === 'compra');
-  const comportamientosAlta = comportamientos.filter((c) => c.tipo === 'venta');
-
-  function analizarComportamiento(lista) {
-    let subidas = 0;
-    let bajadas = 0;
-    let total = 0;
-    for (const c of lista) {
-      if (c.variacion === null) continue;
-      total++;
-      if (c.variacion > 0) subidas++;
-      else if (c.variacion < 0) bajadas++;
-    }
-    return { muestra: lista.length, subidas, bajadas, total };
-  }
-
-  const compTrasBaja = analizarComportamiento(comportamientosBaja);
-  const compTrasAlta = analizarComportamiento(comportamientosAlta);
+  // Estadísticos puros de la serie de variaciones (sin balances subida/bajada)
+  const variacionesTrasBaja = estadisticosVariacion(
+    (analisis.senales || []).filter((s) => s.tipo === 'compra')
+  );
+  const variacionesTrasAlta = estadisticosVariacion(
+    (analisis.senales || []).filter((s) => s.tipo === 'venta')
+  );
 
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
@@ -267,7 +262,6 @@ export default async function PaginaEmpresa({ params }) {
       ? 'var(--v3-positive)'
       : 'var(--v3-text-soft)';
 
-  const frecuenciaGiro = calcularFrecuenciaGiro(analisis.zona, percentil);
   const consenso = await cargarConsenso(empresa.ticker);
 
   const senales = analisis.senales || [];
@@ -392,7 +386,7 @@ export default async function PaginaEmpresa({ params }) {
           <ComparadorSector empresa={empresa} analisis={analisis} />
         </section>
 
-        {/* BLOQUE 3: Estado actual del indicador (sin "compra"/"venta") */}
+        {/* BLOQUE 3: Estado actual del indicador */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Estado actual del indicador</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
@@ -491,37 +485,12 @@ export default async function PaginaEmpresa({ params }) {
               </p>
             )}
 
-            {(compTrasBaja.total > 0 || compTrasAlta.total > 0) && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                Comportamiento posterior del precio tras lecturas anteriores del indicador:
-                {compTrasBaja.total > 0 && (
-                  <>
-                    {' '}
-                    tras las lecturas bajas, el precio subió en{' '}
-                    <strong>{compTrasBaja.subidas}</strong> ocasiones y bajó en{' '}
-                    <strong>{compTrasBaja.bajadas}</strong> (sobre{' '}
-                    <strong>{compTrasBaja.total}</strong> lecturas cerradas)
-                  </>
-                )}
-                {compTrasBaja.total > 0 && compTrasAlta.total > 0 && ';'}
-                {compTrasAlta.total > 0 && (
-                  <>
-                    {' '}
-                    tras las lecturas altas, el precio subió en{' '}
-                    <strong>{compTrasAlta.subidas}</strong> ocasiones y bajó en{' '}
-                    <strong>{compTrasAlta.bajadas}</strong> (sobre{' '}
-                    <strong>{compTrasAlta.total}</strong> lecturas cerradas)
-                  </>
-                )}
-                .
-              </p>
-            )}
-
             {consenso && consenso.total > 0 && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
                 El consenso de la comunidad muestra <strong>{consenso.total}</strong>{' '}
-                {consenso.total === 1 ? 'voto' : 'votos'} registrados, con un sentimiento{' '}
-                <strong>{consenso.sentimiento}</strong>.
+                {consenso.total === 1 ? 'voto' : 'votos'} registrados. Los votos reflejan
+                opiniones subjetivas no verificadas de usuarios de internet y no representan
+                análisis ni recomendación alguna.
               </p>
             )}
           </div>
@@ -547,11 +516,6 @@ export default async function PaginaEmpresa({ params }) {
               />
               <Dato etiqueta="Zona" valor={analisis.zona} colorValor={colorZona} />
               <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
-              <Dato
-                etiqueta="Frecuencia histórica de giro"
-                valor={frecuenciaGiro.nivel}
-                colorValor={frecuenciaGiro.color}
-              />
             </div>
 
             <p
@@ -570,21 +534,19 @@ export default async function PaginaEmpresa({ params }) {
               reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong> divide
               ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y +40) y
               baja (por debajo de -40). El <strong>percentil</strong> señala la posición exacta del
-              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. La{' '}
-              <strong>frecuencia histórica de giro</strong> combina la zona y el percentil para
-              indicar cuándo, históricamente, los giros han sido más frecuentes. No predice el
-              futuro: describe lo que ha pasado otras veces en situaciones parecidas.
+              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. No
+              predice el futuro: describe lo que ha pasado otras veces en situaciones parecidas.
             </p>
           </div>
         </section>
 
-        {/* BLOQUE 4: Comportamiento posterior del precio */}
+        {/* BLOQUE 4: Serie histórica de variaciones (datos puros, sin balances subida/bajada) */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Comportamiento posterior del precio</h2>
+          <h2 className="v3-seccion-titulo">Serie histórica de variaciones del precio</h2>
 
           <div className="v3-card" style={{ padding: '20px' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>
-              Histórico de variaciones en {empresa.nombre}
+              Variaciones posteriores a cada lectura en {empresa.nombre}
             </h3>
 
             <p
@@ -595,9 +557,9 @@ export default async function PaginaEmpresa({ params }) {
                 lineHeight: 1.6
               }}
             >
-              Estos datos muestran <strong>qué hizo el precio después</strong> de cada lectura
-              histórica del indicador en esta empresa: cuántas veces subió y cuántas bajó hasta el
-              cierre del ciclo. No es una garantía de resultados futuros ni una recomendación.
+              Estos datos describen la <strong>serie histórica de variaciones del precio</strong>{' '}
+              medidas desde cada lectura del indicador hasta el cierre del ciclo. No constituyen
+              una probabilidad, una tasa de acierto ni una recomendación.
             </p>
 
             <div
@@ -621,20 +583,27 @@ export default async function PaginaEmpresa({ params }) {
                 >
                   Tras lecturas bajas
                 </div>
-                <div
-                  style={{
-                    fontSize: '28px',
-                    fontWeight: 800,
-                    color: 'var(--v3-text)'
-                  }}
-                >
-                  {compTrasBaja.total > 0
-                    ? `${compTrasBaja.subidas} subidas / ${compTrasBaja.bajadas} bajadas`
-                    : '—'}
-                </div>
-                <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                  Sobre {compTrasBaja.total} lecturas cerradas
-                </div>
+                {variacionesTrasBaja.n > 0 ? (
+                  <>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+                      Lecturas cerradas: <strong>{variacionesTrasBaja.n}</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación mínima: <strong>{variacionesTrasBaja.min.toFixed(2)}%</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación máxima: <strong>{variacionesTrasBaja.max.toFixed(2)}%</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación media: <strong>{variacionesTrasBaja.media.toFixed(2)}%</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación mediana: <strong>{variacionesTrasBaja.mediana.toFixed(2)}%</strong>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>—</div>
+                )}
               </div>
 
               <div>
@@ -650,28 +619,29 @@ export default async function PaginaEmpresa({ params }) {
                 >
                   Tras lecturas altas
                 </div>
-                <div
-                  style={{
-                    fontSize: '28px',
-                    fontWeight: 800,
-                    color: 'var(--v3-text)'
-                  }}
-                >
-                  {compTrasAlta.total > 0
-                    ? `${compTrasAlta.subidas} subidas / ${compTrasAlta.bajadas} bajadas`
-                    : '—'}
-                </div>
-                <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                  Sobre {compTrasAlta.total} lecturas cerradas
-                </div>
+                {variacionesTrasAlta.n > 0 ? (
+                  <>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+                      Lecturas cerradas: <strong>{variacionesTrasAlta.n}</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación mínima: <strong>{variacionesTrasAlta.min.toFixed(2)}%</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación máxima: <strong>{variacionesTrasAlta.max.toFixed(2)}%</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación media: <strong>{variacionesTrasAlta.media.toFixed(2)}%</strong>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
+                      Variación mediana: <strong>{variacionesTrasAlta.mediana.toFixed(2)}%</strong>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>—</div>
+                )}
               </div>
             </div>
-
-            {(compTrasBaja.total < 10 || compTrasAlta.total < 10) && (
-              <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
-                Muestra limitada en alguno de los tipos de lectura. Interpretar con cautela.
-              </p>
-            )}
 
             <p
               style={{
