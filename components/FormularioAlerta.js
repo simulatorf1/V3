@@ -155,8 +155,8 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           }}
         >
           {esSidebar
-            ? `Avisamos cuando ${empresa.nombre} cambie de movimiento. Sin registro.`
-            : `Avísame cuando el indicador de ${empresa.nombre} cambie de movimiento registrado (de compra a venta o de venta a compra). Sin registro, sin coste.`}
+            ? `Avisamos cuando ${empresa.nombre} cambie de zona de lectura. Sin registro.`
+            : `Avísame cuando el indicador de ${empresa.nombre} cambie de zona de lectura (alta → baja o baja → alta). Sin registro, sin coste.`}
         </p>
 
         <form onSubmit={enviar}>
