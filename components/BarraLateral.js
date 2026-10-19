@@ -118,6 +118,7 @@ export default function BarraLateral({ ticker }) {
         </section>
       )}
 
+        
       <section
         style={{
           border: '1px dashed var(--v3-border-strong)',
