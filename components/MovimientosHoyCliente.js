@@ -29,7 +29,6 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
   if (!cambios || cambios.length === 0) return null;
 
   const esSidebar = variante === 'sidebar';
-
   return (
     <section
       className={esSidebar ? '' : 'v3-seccion'}
