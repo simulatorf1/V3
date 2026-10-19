@@ -60,15 +60,43 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
         }}
       >
         {!esSidebar && (
+          <>
+            <p
+              style={{
+                margin: '0 0 8px 0',
+                fontSize: '13px',
+                color: '#1e40af',
+                lineHeight: 1.5
+              }}
+            >
+              Empresas que han cambiado de movimiento en las últimas 24 horas.
+            </p>
+            <p
+              style={{
+                margin: '0 0 14px 0',
+                fontSize: '13px',
+                color: '#ea580c',
+                fontWeight: 600,
+                lineHeight: 1.5
+              }}
+            >
+              ¿Quieres recibir un aviso cuando cambie el movimiento de tu empresa? Entra en su
+              ficha y suscríbete. Es gratis.
+            </p>
+          </>
+        )}
+
+        {esSidebar && (
           <p
             style={{
-              margin: '0 0 14px 0',
-              fontSize: '13px',
-              color: '#1e40af',
-              lineHeight: 1.5
+              margin: '0 0 10px 0',
+              fontSize: '11px',
+              color: '#ea580c',
+              fontWeight: 600,
+              lineHeight: 1.4
             }}
           >
-            Empresas que han cambiado de movimiento en las últimas 24 horas.
+            Suscríbete en la ficha de tu empresa para recibir avisos gratis.
           </p>
         )}
 
