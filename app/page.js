@@ -2,6 +2,7 @@ import Buscador from '../components/Buscador';
 import UltimaConsulta from '../components/UltimaConsulta';
 import CambiosRecientes from '../components/CambiosRecientes';
 import SectoresPrincipales from '../components/SectoresPrincipales';
+import MovimientosHoy from '../components/MovimientosHoy';
 import { supabase } from '../lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -54,18 +55,19 @@ function analizarEstadistica(senales, precioActual) {
 }
 
 async function cargarDatos() {
-  const vacio = { cambios: [], sectores: [] };
+  const vacio = { cambios: [], sectores: [], movimientos: [] };
 
   try {
     const hace48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const [paginasRes, empresasRes] = await Promise.all([
       supabase
         .from('paginas')
-        .select('ticker, datos, actualizado_at')
+        .select('ticker, datos, actualizado_at, ultimo_movimiento_anterior')
         .gte('actualizado_at', hace48h)
         .order('actualizado_at', { ascending: false })
-        .limit(20),
+        .limit(30),
       supabase.from('empresas').select('ticker, nombre, sector')
     ]);
 
@@ -78,6 +80,8 @@ async function cargarDatos() {
     }
 
     const cambios = [];
+    const movimientos = [];
+
     for (const p of paginas) {
       if (!p || !p.datos) continue;
       const emp = empresasMap[p.ticker];
@@ -85,14 +89,15 @@ async function cargarDatos() {
 
       let datos = p.datos;
       if (typeof datos === 'string') {
-        try {
-          datos = JSON.parse(datos);
-        } catch (e) {
-          continue;
-        }
+        try { datos = JSON.parse(datos); } catch (e) { continue; }
       }
 
-      const stats = analizarEstadistica(datos.senales || [], datos.precioActual);
+      let senales = datos.senales;
+      if (typeof senales === 'string') {
+        try { senales = JSON.parse(senales); } catch (e) { senales = []; }
+      }
+
+      const stats = analizarEstadistica(senales || [], datos.precioActual);
 
       cambios.push({
         ticker: p.ticker,
@@ -101,6 +106,27 @@ async function cargarDatos() {
         precio: datos.precioActual,
         stats
       });
+
+      // Movimientos: cambios en las últimas 24h
+      const ultima = Array.isArray(senales) && senales.length > 0
+        ? senales[senales.length - 1]
+        : null;
+      const movActual = ultima ? ultima.tipo : null;
+
+      if (
+        p.actualizado_at >= hace24h &&
+        p.ultimo_movimiento_anterior &&
+        movActual &&
+        p.ultimo_movimiento_anterior !== movActual
+      ) {
+        movimientos.push({
+          ticker: p.ticker,
+          nombre: emp.nombre,
+          sector: emp.sector,
+          movimientoAnterior: p.ultimo_movimiento_anterior,
+          movimientoNuevo: movActual
+        });
+      }
     }
 
     const conteoSectores = {};
@@ -113,7 +139,7 @@ async function cargarDatos() {
       .slice(0, 12)
       .map(([sector, empresas]) => ({ sector, empresas }));
 
-    return { cambios, sectores };
+    return { cambios, sectores, movimientos };
   } catch (e) {
     console.error('[home] Error cargando datos:', e.message);
     return vacio;
@@ -134,6 +160,8 @@ export default async function Home() {
       </section>
 
       <Buscador />
+
+      <MovimientosHoy cambios={datos.movimientos} />
 
       <div
         style={{
