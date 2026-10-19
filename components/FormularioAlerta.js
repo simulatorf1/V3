@@ -78,7 +78,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
         </div>
         <p style={{ margin: 0, fontSize: '13px', color: 'var(--v3-text)', lineHeight: 1.5 }}>
           Revisa tu correo y pulsa el enlace de confirmación. Hasta que no lo hagas, no recibirás
-          alertas.
+          avisos.
         </p>
       </div>
     );
@@ -128,7 +128,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               color: '#9a3412'
             }}
           >
-            {esSidebar ? 'Alertas gratis' : 'Alertas por email'}
+            {esSidebar ? 'Avisos informativos' : 'Avisos informativos por email'}
           </div>
           <span
             className="v3-gratis-badge"
@@ -155,8 +155,8 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           }}
         >
           {esSidebar
-            ? `Avisamos cuando ${empresa.nombre} cambie de zona de lectura. Sin registro.`
-            : `Avísame cuando el indicador de ${empresa.nombre} cambie de zona de lectura (alta → baja o baja → alta). Sin registro, sin coste.`}
+            ? `Aviso técnico informativo: recibirás un email cuando el indicador de ${empresa.nombre} cambie de rango dentro del histórico de datos.`
+            : `Aviso técnico informativo: recibirás un email cuando el indicador de ${empresa.nombre} cambie de rango dentro del histórico de datos (alta → baja o baja → alta). Este aviso es informativo y no constituye una señal ni recomendación de inversión.`}
         </p>
 
         <form onSubmit={enviar}>
@@ -192,7 +192,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               cursor: estado === 'enviando' ? 'wait' : 'pointer'
             }}
           >
-            {estado === 'enviando' ? 'Enviando…' : 'Quiero recibirlas gratis'}
+            {estado === 'enviando' ? 'Enviando…' : 'Quiero recibirlos gratis'}
           </button>
 
           <label
@@ -214,7 +214,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               disabled={estado === 'enviando'}
             />
             <span>
-              Acepto recibir alertas por email. Puedo darme de baja cuando quiera. He leído la{' '}
+              Acepto recibir avisos por email. Puedo darme de baja cuando quiera. He leído la{' '}
               <a href="/privacidad" style={{ color: '#9a3412', fontWeight: 600 }}>
                 Política de Privacidad
               </a>
@@ -236,8 +236,9 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
             lineHeight: 1.4
           }}
         >
-          Recibirás únicamente alertas sobre esta empresa. Puedes darte de baja en cualquier
-          momento con un clic.
+          Recibirás únicamente avisos informativos sobre esta empresa. Puedes darte de baja en
+          cualquier momento con un clic. Estos avisos no constituyen una señal ni recomendación de
+          inversión.
         </p>
       </div>
     </>
