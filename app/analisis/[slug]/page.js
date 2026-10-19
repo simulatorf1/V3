@@ -16,7 +16,6 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
-const MAX_SENALES_TABLA = 100;
 
 function slugSector(s) {
   return s
@@ -38,27 +37,26 @@ function fechaMadrid(fecha = new Date()) {
   });
 }
 
-function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
+function calcularComportamiento(senales, limite = 100) {
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
   const limitada = lista.slice(-limite);
 
   return limitada.map((s, i) => {
     const siguiente = limitada[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : null; // ciclo abierto -> null
+    const precioCierre = siguiente ? siguiente.precio : null;
     const variacion =
-      precioCierre && s.precio ? ((precioCierre - s.precio) / s.precio) * 100 : null;
-
-    let acierto = null;
-    if (variacion !== null) {
-      if (s.tipo === 'compra') acierto = variacion > 0;
-      else if (s.tipo === 'venta') acierto = variacion < 0;
+      precioCierre !== null && precioCierre !== undefined
+        ? ((precioCierre - s.precio) / s.precio) * 100
+        : null;
+    let comportamiento = null;
+    if (variacion !== null && variacion !== 0) {
+      comportamiento = variacion > 0 ? 'subida' : 'bajada';
     }
-
-    return { tipo: s.tipo, variacion, acierto };
+    return { tipo: s.tipo, variacion, comportamiento };
   });
 }
 
-function calcularOportunidad(zona, percentil) {
+function calcularFrecuenciaGiro(zona, percentil) {
   if (zona === 'intermedia') {
     return { nivel: 'baja', color: 'var(--v3-text-soft)' };
   }
@@ -110,7 +108,7 @@ export async function generateMetadata({ params }) {
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-    const descripcion = `Informe estadístico de ${empresa.nombre} (${empresa.ticker}): indicador propio, zonas, histórico de movimientos y estadística. No es recomendación de inversión.`;
+    const descripcion = `Informe estadístico de ${empresa.nombre} (${empresa.ticker}): indicador propio, zonas, histórico de lecturas y estadística. No es recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -218,29 +216,25 @@ export default async function PaginaEmpresa({ params }) {
   };
 
   // Cálculos
-  const ciclos = calcularCiclos(analisis.senales || [], null);
-  const compras = ciclos.filter((c) => c.tipo === 'compra');
-  const ventas = ciclos.filter((c) => c.tipo === 'venta');
+  const comportamientos = calcularComportamiento(analisis.senales || []);
+  const comportamientosTrasCompra = comportamientos.filter((c) => c.tipo === 'compra');
+  const comportamientosTrasVenta = comportamientos.filter((c) => c.tipo === 'venta');
 
-  function analizarEstadistica(lista) {
-    let aciertos = 0;
+  function analizarComportamiento(lista) {
+    let subidas = 0;
+    let bajadas = 0;
     let total = 0;
     for (const c of lista) {
-      if (c.acierto === null) continue;
+      if (c.variacion === null) continue;
       total++;
-      if (c.acierto) aciertos++;
+      if (c.variacion > 0) subidas++;
+      else if (c.variacion < 0) bajadas++;
     }
-    const porcentaje = total > 0 ? (aciertos / total) * 100 : 0;
-    return {
-      muestra: lista.length,
-      aciertos,
-      fallos: total - aciertos,
-      porcentajeAcierto: porcentaje
-    };
+    return { muestra: lista.length, subidas, bajadas, total };
   }
 
-  const statsCompras = analizarEstadistica(compras);
-  const statsVentas = analizarEstadistica(ventas);
+  const compTrasCompra = analizarComportamiento(comportamientosTrasCompra);
+  const compTrasVenta = analizarComportamiento(comportamientosTrasVenta);
 
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
@@ -266,14 +260,11 @@ export default async function PaginaEmpresa({ params }) {
       ? 'var(--v3-positive)'
       : 'var(--v3-text-soft)';
 
-  const oportunidad = calcularOportunidad(analisis.zona, percentil);
+  const frecuenciaGiro = calcularFrecuenciaGiro(analisis.zona, percentil);
   const consenso = await cargarConsenso(empresa.ticker);
 
   const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
-
-  const colorUltimoMovimiento =
-    ultimaSenal?.tipo === 'compra' ? 'var(--v3-positive)' : 'var(--v3-negative)';
 
   // Interpretación del gráfico
   const primerCierre = velas[0]?.close;
@@ -345,8 +336,16 @@ export default async function PaginaEmpresa({ params }) {
         </p>
 
         <div className="v3-aviso">
-          Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
-          recomendación de inversión.
+          <p style={{ margin: 0 }}>
+            Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
+            recomendación de inversión.
+          </p>
+          <p style={{ margin: '8px 0 0 0' }}>
+            Este indicador mide la posición del precio dentro de su rango histórico reciente
+            (últimas 60 sesiones). No evalúa ni predice la dirección futura del precio. Los
+            registros históricos muestran la variación del precio después de cada lectura, no lo
+            que ocurrirá.
+          </p>
         </div>
 
         {/* BLOQUE 1: Datos de la empresa */}
@@ -386,59 +385,54 @@ export default async function PaginaEmpresa({ params }) {
           <ComparadorSector empresa={empresa} analisis={analisis} />
         </section>
 
-        {/* BLOQUE 3: Último movimiento (solo hecho histórico, sin "en curso") */}
+        {/* BLOQUE 3: Estado actual del indicador (sin "compra"/"venta") */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Último movimiento estadístico registrado</h2>
+          <h2 className="v3-seccion-titulo">Estado actual del indicador</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
-            {ultimaSenal ? (
-              <>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '28px',
-                      fontWeight: 800,
-                      color: colorUltimoMovimiento,
-                      textTransform: 'capitalize'
-                    }}
-                  >
-                    {ultimaSenal.tipo}
-                  </div>
-                  <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
-                    Registrado el {ultimaSenal.fecha}
-                  </div>
-                </div>
-                <p
-                  style={{
-                    margin: '12px 0 0 0',
-                    fontSize: '13px',
-                    color: 'var(--v3-text-soft)',
-                    lineHeight: 1.6
-                  }}
-                >
-                  Este es un <strong>registro histórico cerrado</strong>: refleja el movimiento que
-                  el algoritmo registró en esa fecha concreta. No describe la situación actual ni
-                  constituye una recomendación de compra o de venta.
-                </p>
-                <p
-                  style={{
-                    margin: '8px 0 0 0',
-                    fontSize: '12px',
-                    color: 'var(--v3-text-mute)'
-                  }}
-                >
-                  Puedes ver todos los movimientos registrados en la tabla inferior.
-                </p>
-              </>
-            ) : (
-              <p style={{ margin: 0, color: 'var(--v3-text-soft)' }}>
-                Sin movimientos registrados en el último año.
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '16px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '28px',
+                  fontWeight: 800,
+                  color: colorZona,
+                  textTransform: 'capitalize'
+                }}
+              >
+                Zona {analisis.zona}
+              </div>
+              <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
+                Percentil {percentil} sobre 60 sesiones
+              </div>
+            </div>
+            <p
+              style={{
+                margin: '12px 0 0 0',
+                fontSize: '13px',
+                color: 'var(--v3-text-soft)',
+                lineHeight: 1.6
+              }}
+            >
+              Valor de lectura actual: <strong>{analisis.smiActual?.toFixed(2) ?? '—'}</strong>.
+              Este dato describe dónde se sitúa el precio dentro de su rango reciente. No es una
+              señal de acción ni una recomendación de compra o de venta.
+            </p>
+            {ultimaSenal && (
+              <p
+                style={{
+                  margin: '8px 0 0 0',
+                  fontSize: '12px',
+                  color: 'var(--v3-text-mute)'
+                }}
+              >
+                Última lectura registrada: {ultimaSenal.fecha} (tipo de lectura:{' '}
+                {ultimaSenal.tipo}). Registro histórico cerrado.
               </p>
             )}
           </div>
@@ -446,7 +440,7 @@ export default async function PaginaEmpresa({ params }) {
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
-        {/* Interpretación del gráfico (sin comparaciones pasado-presente, sin "oportunidad") */}
+        {/* Interpretación del gráfico */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
@@ -485,52 +479,31 @@ export default async function PaginaEmpresa({ params }) {
 
             {ultimaSenal && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                El último movimiento estadístico registrado fue de{' '}
-                <strong style={{ color: colorUltimoMovimiento }}>{ultimaSenal.tipo}</strong> el{' '}
+                La última lectura del indicador registrada fue el{' '}
                 <strong>{ultimaSenal.fecha}</strong>.
               </p>
             )}
 
-            {(statsCompras.muestra > 0 || statsVentas.muestra > 0) && (
+            {(compTrasCompra.total > 0 || compTrasVenta.total > 0) && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                En cuanto a las tasas de acierto históricas de las señales,
-                {statsCompras.muestra > 0 && (
+                Comportamiento posterior del precio tras lecturas anteriores del indicador:
+                {compTrasCompra.total > 0 && (
                   <>
                     {' '}
-                    en los movimientos de compra el porcentaje de acierto histórico es del{' '}
-                    <strong
-                      style={{
-                        color:
-                          statsCompras.porcentajeAcierto >= 50
-                            ? 'var(--v3-positive)'
-                            : 'var(--v3-negative)'
-                      }}
-                    >
-                      {statsCompras.porcentajeAcierto.toFixed(1)}%
-                    </strong>{' '}
-                    (<strong>{statsCompras.aciertos}</strong> aciertos y{' '}
-                    <strong>{statsCompras.fallos}</strong> fallos sobre{' '}
-                    <strong>{statsCompras.muestra}</strong> ciclos)
+                    tras las lecturas de tipo compra, el precio subió en{' '}
+                    <strong>{compTrasCompra.subidas}</strong> ocasiones y bajó en{' '}
+                    <strong>{compTrasCompra.bajadas}</strong> (sobre{' '}
+                    <strong>{compTrasCompra.total}</strong> lecturas cerradas)
                   </>
                 )}
-                {statsCompras.muestra > 0 && statsVentas.muestra > 0 && ';'}
-                {statsVentas.muestra > 0 && (
+                {compTrasCompra.total > 0 && compTrasVenta.total > 0 && ';'}
+                {compTrasVenta.total > 0 && (
                   <>
                     {' '}
-                    en los movimientos de venta el porcentaje de acierto histórico es del{' '}
-                    <strong
-                      style={{
-                        color:
-                          statsVentas.porcentajeAcierto >= 50
-                            ? 'var(--v3-positive)'
-                            : 'var(--v3-negative)'
-                      }}
-                    >
-                      {statsVentas.porcentajeAcierto.toFixed(1)}%
-                    </strong>{' '}
-                    (<strong>{statsVentas.aciertos}</strong> aciertos y{' '}
-                    <strong>{statsVentas.fallos}</strong> fallos sobre{' '}
-                    <strong>{statsVentas.muestra}</strong> ciclos)
+                    tras las lecturas de tipo venta, el precio subió en{' '}
+                    <strong>{compTrasVenta.subidas}</strong> ocasiones y bajó en{' '}
+                    <strong>{compTrasVenta.bajadas}</strong> (sobre{' '}
+                    <strong>{compTrasVenta.total}</strong> lecturas cerradas)
                   </>
                 )}
                 .
@@ -569,8 +542,8 @@ export default async function PaginaEmpresa({ params }) {
               <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
               <Dato
                 etiqueta="Frecuencia histórica de giro"
-                valor={oportunidad.nivel}
-                colorValor={oportunidad.color}
+                valor={frecuenciaGiro.nivel}
+                colorValor={frecuenciaGiro.color}
               />
             </div>
 
@@ -598,13 +571,13 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* BLOQUE 4: Aciertos estadísticos (solo datos históricos) */}
+        {/* BLOQUE 4: Comportamiento posterior del precio */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Tasas de acierto históricas del algoritmo</h2>
+          <h2 className="v3-seccion-titulo">Comportamiento posterior del precio</h2>
 
           <div className="v3-card" style={{ padding: '20px' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>
-              Histórico de aciertos en {empresa.nombre}
+              Histórico de variaciones en {empresa.nombre}
             </h3>
 
             <p
@@ -615,9 +588,9 @@ export default async function PaginaEmpresa({ params }) {
                 lineHeight: 1.6
               }}
             >
-              Estos datos muestran el <strong>porcentaje de acierto histórico</strong> de las
-              señales del algoritmo en esta empresa: cuántas veces acertaron y cuántas no. No es
-              una garantía de resultados futuros ni una recomendación.
+              Estos datos muestran <strong>qué hizo el precio después</strong> de cada lectura
+              histórica del indicador en esta empresa: cuántas veces subió y cuántas bajó hasta el
+              cierre del ciclo. No es una garantía de resultados futuros ni una recomendación.
             </p>
 
             <div
@@ -639,25 +612,21 @@ export default async function PaginaEmpresa({ params }) {
                     marginBottom: '8px'
                   }}
                 >
-                  Movimientos de compra
+                  Tras lecturas de tipo compra
                 </div>
                 <div
                   style={{
-                    fontSize: '36px',
+                    fontSize: '28px',
                     fontWeight: 800,
-                    color:
-                      statsCompras.porcentajeAcierto >= 50
-                        ? 'var(--v3-positive)'
-                        : 'var(--v3-negative)'
+                    color: 'var(--v3-text)'
                   }}
                 >
-                  {statsCompras.muestra > 0
-                    ? `${statsCompras.porcentajeAcierto.toFixed(1)}%`
+                  {compTrasCompra.total > 0
+                    ? `${compTrasCompra.subidas} subidas / ${compTrasCompra.bajadas} bajadas`
                     : '—'}
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                  {statsCompras.aciertos} aciertos / {statsCompras.fallos} fallos ·{' '}
-                  {statsCompras.muestra} ciclos
+                  Sobre {compTrasCompra.total} lecturas cerradas
                 </div>
               </div>
 
@@ -672,32 +641,28 @@ export default async function PaginaEmpresa({ params }) {
                     marginBottom: '8px'
                   }}
                 >
-                  Movimientos de venta
+                  Tras lecturas de tipo venta
                 </div>
                 <div
                   style={{
-                    fontSize: '36px',
+                    fontSize: '28px',
                     fontWeight: 800,
-                    color:
-                      statsVentas.porcentajeAcierto >= 50
-                        ? 'var(--v3-positive)'
-                        : 'var(--v3-negative)'
+                    color: 'var(--v3-text)'
                   }}
                 >
-                  {statsVentas.muestra > 0
-                    ? `${statsVentas.porcentajeAcierto.toFixed(1)}%`
+                  {compTrasVenta.total > 0
+                    ? `${compTrasVenta.subidas} subidas / ${compTrasVenta.bajadas} bajadas`
                     : '—'}
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                  {statsVentas.aciertos} aciertos / {statsVentas.fallos} fallos ·{' '}
-                  {statsVentas.muestra} ciclos
+                  Sobre {compTrasVenta.total} lecturas cerradas
                 </div>
               </div>
             </div>
 
-            {(statsCompras.muestra < 10 || statsVentas.muestra < 10) && (
-              <p style={{ color: 'var(--v3-negative)', fontSize: '13px', marginTop: '12px' }}>
-                Muestra limitada en alguno de los tipos de movimiento. Interpretar con cautela.
+            {(compTrasCompra.total < 10 || compTrasVenta.total < 10) && (
+              <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
+                Muestra limitada en alguno de los tipos de lectura. Interpretar con cautela.
               </p>
             )}
 
@@ -709,7 +674,7 @@ export default async function PaginaEmpresa({ params }) {
                 lineHeight: 1.6
               }}
             >
-              Todos estos datos proceden del gráfico y de la tabla de movimientos que aparecen más
+              Todos estos datos proceden del gráfico y de la tabla de lecturas que aparecen más
               abajo. Es información histórica, no una recomendación.
             </p>
           </div>
