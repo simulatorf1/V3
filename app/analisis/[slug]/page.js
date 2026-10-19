@@ -486,7 +486,7 @@ export default async function PaginaEmpresa({ params }) {
 
         {/* BLOQUE 3: Último movimiento */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Último movimiento registrado</h2>
+          <h2 className="v3-seccion-titulo">Último movimiento realizado por Equaty</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             {ultimaSenal ? (
               <>
