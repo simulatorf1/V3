@@ -561,7 +561,7 @@ export default async function PaginaEmpresa({ params }) {
             )}
           </div>
         </section>
-
+        <FormularioAlerta empresa={empresa} />
         {/* BLOQUE 4: Futuro estadístico + aciertos */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
@@ -826,7 +826,6 @@ export default async function PaginaEmpresa({ params }) {
             equipo de Equaty.
           </p>
         </section>
-        <FormularioAlerta empresa={empresa} />
         <BotonesCompartir
           empresa={empresa}
           analisis={analisis}
