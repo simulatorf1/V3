@@ -104,6 +104,13 @@ export async function GET(request) {
         if (ok) enviados++; else errores++;
       }
 
+      // Guardar el cambio en la tabla
+      await supabaseAdmin.from('cambios_movimiento').insert({
+        ticker: p.ticker,
+        movimiento_anterior: movimientoAnterior,
+        movimiento_nuevo: movimientoActual
+      });
+
       await supabaseAdmin
         .from('paginas')
         .update({ ultimo_movimiento_anterior: movimientoActual })
