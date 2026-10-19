@@ -57,4 +57,4 @@ export async function GET() {
     return Response.json({ movimientos: [] }, { status: 200 });
   }
 }
-```
+
