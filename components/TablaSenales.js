@@ -1,3 +1,9 @@
+function etiquetaLectura(tipo) {
+  if (tipo === 'compra') return 'baja';
+  if (tipo === 'venta') return 'alta';
+  return '—';
+}
+
 export default function TablaSenales({ senales, precioActual }) {
   if (!senales) return null;
 
@@ -56,7 +62,7 @@ export default function TablaSenales({ senales, precioActual }) {
             >
               <tr>
                 <th>Fecha</th>
-                <th>Tipo de lectura</th>
+                <th>Posición en la lectura</th>
                 <th>Precio en la lectura</th>
                 <th>Indicador en la lectura</th>
                 <th>Precio al cierre</th>
@@ -69,7 +75,7 @@ export default function TablaSenales({ senales, precioActual }) {
               {mostrar.map((s, i) => (
                 <tr key={i}>
                   <td>{s.fecha}</td>
-                  <td>{s.tipo}</td>
+                  <td>{etiquetaLectura(s.tipo)}</td>
                   <td>{s.precio.toFixed(2)}</td>
                   <td>{s.smiEnSenal !== undefined ? s.smiEnSenal.toFixed(2) : '—'}</td>
                   <td>
