@@ -187,7 +187,7 @@ export default async function Home() {
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
         Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
-        recomendación de inversión.
+        recomendación de inversión .
       </p>
     </main>
   );
