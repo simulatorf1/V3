@@ -67,8 +67,7 @@ export async function GET(request) {
 
   const { data: paginas, error } = await supabaseAdmin
     .from('paginas')
-    .select('ticker, datos, ultimo_movimiento_anterior')
-    .not('ultimo_movimiento_anterior', 'is', null);
+    .select('ticker, datos, ultimo_movimiento_cron');
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
@@ -76,6 +75,7 @@ export async function GET(request) {
 
   let enviados = 0;
   let errores = 0;
+  let cambiosGuardados = 0;
 
   for (const p of paginas || []) {
     let datos = p.datos;
@@ -90,33 +90,46 @@ export async function GET(request) {
     if (!Array.isArray(senales) || senales.length === 0) continue;
 
     const movimientoActual = senales[senales.length - 1].tipo;
-    const movimientoAnterior = p.ultimo_movimiento_anterior;
+    const movimientoCron = p.ultimo_movimiento_cron;
 
-    if (movimientoActual !== movimientoAnterior) {
-      const { data: suscriptores } = await supabaseAdmin
-        .from('alertas')
-        .select('email, token_baja')
-        .eq('ticker', p.ticker)
-        .eq('confirmado', true);
-
-      for (const s of suscriptores || []) {
-        const ok = await enviarEmailAlerta(apiKey, from, siteUrl, s, p.ticker, movimientoAnterior, movimientoActual, s.token_baja);
-        if (ok) enviados++; else errores++;
-      }
-
-      // Guardar el cambio en la tabla
-      await supabaseAdmin.from('cambios_movimiento').insert({
-        ticker: p.ticker,
-        movimiento_anterior: movimientoAnterior,
-        movimiento_nuevo: movimientoActual
-      });
-
+    // Si no hay referencia (primera vez), guardarla y no hacer nada
+    if (!movimientoCron) {
       await supabaseAdmin
         .from('paginas')
-        .update({ ultimo_movimiento_anterior: movimientoActual })
+        .update({ ultimo_movimiento_cron: movimientoActual })
         .eq('ticker', p.ticker);
+      continue;
     }
+
+    // Si no ha cambiado desde la última ejecución del cron, no hacer nada
+    if (movimientoActual === movimientoCron) continue;
+
+    // Hay cambio real: enviar emails
+    const { data: suscriptores } = await supabaseAdmin
+      .from('alertas')
+      .select('email, token_baja')
+      .eq('ticker', p.ticker)
+      .eq('confirmado', true);
+
+    for (const s of suscriptores || []) {
+      const ok = await enviarEmailAlerta(apiKey, from, siteUrl, s, p.ticker, movimientoCron, movimientoActual, s.token_baja);
+      if (ok) enviados++; else errores++;
+    }
+
+    // Guardar el cambio en la tabla
+    await supabaseAdmin.from('cambios_movimiento').insert({
+      ticker: p.ticker,
+      movimiento_anterior: movimientoCron,
+      movimiento_nuevo: movimientoActual
+    });
+    cambiosGuardados++;
+
+    // Actualizar la referencia del cron
+    await supabaseAdmin
+      .from('paginas')
+      .update({ ultimo_movimiento_cron: movimientoActual })
+      .eq('ticker', p.ticker);
   }
 
-  return Response.json({ ok: true, enviados, errores });
+  return Response.json({ ok: true, enviados, errores, cambiosGuardados });
 }
