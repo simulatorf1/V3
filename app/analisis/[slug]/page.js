@@ -471,6 +471,20 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
+        {/* Sobre la empresa */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
+          <p style={{ lineHeight: 1.7 }}>
+            {empresa.nombre} ({empresa.ticker}) cotiza en{' '}
+            {empresa.mercado || 'mercado no especificado'} y pertenece al sector{' '}
+            {empresa.sector || 'sector no especificado'}. La información utilizada en este informe
+            procede de series históricas públicas de mercado y se revisa periódicamente por el
+            equipo de Equaty.
+          </p>
+        </section>
+
+        <ComparadorSector empresa={empresa} analisis={analisis} />
+
         {/* BLOQUE 2: Indicador propio */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Indicador propio</h2>
@@ -504,13 +518,18 @@ export default async function PaginaEmpresa({ params }) {
                 lineHeight: 1.7
               }}
             >
-              El <strong>valor</strong> mide en qué punto del rango reciente está el precio, en una
-              escala de -100 a +100. La <strong>zona</strong> indica si ese valor está en la parte
-              alta (por encima de +40), intermedia (entre -40 y +40) o baja (por debajo de -40). El{' '}
-              <strong>percentil</strong> señala la posición de ese valor dentro de las últimas 60
-              sesiones: 0 es el mínimo y 100 el máximo. La <strong>oportunidad de giro</strong>{' '}
-              combina la zona y el percentil para indicar cuándo, históricamente, los giros han
-              sido más frecuentes.
+              El <strong>indicador propio de Equaty</strong> es un algoritmo interno que combina
+              varias referencias técnicas clásicas (medias móviles, RSI, estocástico y bandas de
+              Bollinger, entre otras) para medir en qué punto del rango reciente se encuentra el
+              precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>: los
+              valores cercanos a +100 indican que el precio está en la parte alta de su rango
+              reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong> divide
+              ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y +40) y
+              baja (por debajo de -40). El <strong>percentil</strong> señala la posición exacta del
+              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. La{' '}
+              <strong>oportunidad de giro</strong> combina la zona y el percentil para indicar
+              cuándo, históricamente, los giros han sido más frecuentes. No predice el futuro:
+              describe lo que ha pasado otras veces en situaciones parecidas.
             </p>
           </div>
         </section>
@@ -553,6 +572,20 @@ export default async function PaginaEmpresa({ params }) {
                 >
                   Puedes ver todos los movimientos registrados en la tabla inferior.
                 </p>
+                <p
+                  style={{
+                    margin: '16px 0 0 0',
+                    fontSize: '13px',
+                    color: 'var(--v3-text-soft)',
+                    lineHeight: 1.6
+                  }}
+                >
+                  Este movimiento es un <strong>registro histórico</strong>: refleja lo que ha hecho
+                  el indicador en el pasado, no lo que va a hacer. Estadísticamente, el valor se
+                  encuentra en una posición parecida a la de otras ocasiones en las que el precio
+                  giró. Eso es lo que se describe aquí: <strong>lo que ocurrió antes en situaciones
+                  similares</strong>, no una recomendación de compra ni de venta.
+                </p>
               </>
             ) : (
               <p style={{ margin: 0, color: 'var(--v3-text-soft)' }}>
@@ -566,12 +599,51 @@ export default async function PaginaEmpresa({ params }) {
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
 
+          <p
+            style={{
+              margin: '0 0 12px 0',
+              fontSize: '13px',
+              color: 'var(--v3-text-soft)',
+              lineHeight: 1.6
+            }}
+          >
+            Los datos analizados anteriormente nos permiten ver qué ha pasado otras veces en
+            situaciones parecidas a la actual. Esto es lo que ha ocurrido históricamente:
+          </p>
+
           {futuro && <TarjetaFuturo futuro={futuro} />}
+
+          {futuro && (
+            <p
+              style={{
+                margin: '12px 0 0 0',
+                fontSize: '13px',
+                color: 'var(--v3-text-mute)',
+                lineHeight: 1.6
+              }}
+            >
+              Recuerda: es un dato histórico, no una predicción.
+            </p>
+          )}
 
           <div className="v3-card" style={{ padding: '20px', marginTop: '16px' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>
               Nuestros aciertos estadísticos en {empresa.nombre}
             </h3>
+
+            <p
+              style={{
+                margin: '8px 0 12px 0',
+                fontSize: '13px',
+                color: 'var(--v3-text-soft)',
+                lineHeight: 1.6
+              }}
+            >
+              Estos datos muestran <strong>cómo de bien ha funcionado el algoritmo
+              históricamente</strong> en esta empresa: cuántas veces sus movimientos han acertado
+              y cuántas no. No es una garantía de resultados futuros, pero sí una referencia de
+              cómo ha respetado los patrones del valor en el pasado.
+            </p>
 
             <div
               style={{
@@ -657,12 +729,13 @@ export default async function PaginaEmpresa({ params }) {
             <p
               style={{
                 margin: '16px 0 0 0',
-                fontSize: '12px',
-                color: 'var(--v3-text-mute)',
-                lineHeight: 1.5
+                fontSize: '13px',
+                color: 'var(--v3-text-soft)',
+                lineHeight: 1.6
               }}
             >
-              Estos datos proceden del gráfico y de la tabla de movimientos que aparecen más abajo.
+              Todos estos datos proceden del gráfico y de la tabla de movimientos que aparecen más
+              abajo. Es información histórica, no una recomendación.
             </p>
           </div>
         </section>
@@ -810,22 +883,10 @@ export default async function PaginaEmpresa({ params }) {
 
         <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
 
-        <ComparadorSector empresa={empresa} analisis={analisis} />
-
         {analisis.noticias && analisis.noticias.length > 0 && (
           <ContextoReciente noticias={analisis.noticias} />
         )}
 
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
-          <p style={{ lineHeight: 1.7 }}>
-            {empresa.nombre} ({empresa.ticker}) cotiza en{' '}
-            {empresa.mercado || 'mercado no especificado'} y pertenece al sector{' '}
-            {empresa.sector || 'sector no especificado'}. La información utilizada en este informe
-            procede de series históricas públicas de mercado y se revisa periódicamente por el
-            equipo de Equaty.
-          </p>
-        </section>
         <BotonesCompartir
           empresa={empresa}
           analisis={analisis}
