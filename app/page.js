@@ -1,5 +1,4 @@
 import Buscador from '../components/Buscador';
-import UltimaConsulta from '../components/UltimaConsulta';
 import CambiosRecientes from '../components/CambiosRecientes';
 import SectoresPrincipales from '../components/SectoresPrincipales';
 import MovimientosHoyCliente from '../components/MovimientosHoyCliente';
@@ -137,8 +136,6 @@ export default async function Home() {
 
       <Buscador />
 
-      <MovimientosHoyCliente />
-
       <div
         style={{
           marginTop: '20px',
@@ -155,7 +152,7 @@ export default async function Home() {
         </p>
       </div>
 
-      <UltimaConsulta />
+      <MovimientosHoyCliente />
 
       <CambiosRecientes cambios={datos.cambios} />
 
