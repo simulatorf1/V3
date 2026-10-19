@@ -8,8 +8,6 @@ export default function ComparadorSector({ empresa, analisis }) {
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Comparador con el sector</h2>
-
       <div className="v3-card" style={{ padding: '20px' }}>
         <p style={{ fontSize: '16px', margin: 0 }}>
           <strong>{empresa.nombre}</strong> vs media del sector <strong>{sector}</strong> en los
