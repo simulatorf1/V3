@@ -68,96 +68,6 @@ function calcularOportunidad(zona, percentil) {
   return { nivel: 'media', color: 'var(--v3-text-soft)' };
 }
 
-function calcularFuturo(smis, velas, smiActual) {
-  if (!Array.isArray(smis) || smis.length < 5) return null;
-  if (!Array.isArray(velas) || velas.length < 5) return null;
-  if (typeof smiActual !== 'number' || isNaN(smiActual)) return null;
-
-  const validos = smis.filter((v) => v !== null && v !== undefined && !isNaN(v));
-  if (validos.length < 2) return null;
-
-  const ultimo = validos[validos.length - 1];
-  const anterior = validos[validos.length - 2];
-  const direccionActual =
-    ultimo > anterior ? 'subiendo' : ultimo < anterior ? 'bajando' : 'plana';
-  if (direccionActual === 'plana') return null;
-
-  const casos = [];
-
-  for (let i = 0; i < smis.length - 2; i++) {
-    const smi = smis[i];
-    if (smi === null || smi === undefined || isNaN(smi)) continue;
-    if (Math.abs(smi - smiActual) > 10) continue;
-
-    let prevValido = null;
-    for (let k = i - 1; k >= 0; k--) {
-      if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
-        prevValido = smis[k];
-        break;
-      }
-    }
-    if (prevValido === null || prevValido === smi) continue;
-
-    const dirSesion = smi > prevValido ? 'subiendo' : 'bajando';
-    if (dirSesion !== direccionActual) continue;
-
-    let sesionesGiro = null;
-    let fechaGiro = null;
-    let direccionGiro = null;
-
-    for (let j = i + 1; j < smis.length; j++) {
-      if (smis[j] === null || smis[j] === undefined || isNaN(smis[j])) continue;
-
-      let prevJ = null;
-      for (let k = j - 1; k >= 0; k--) {
-        if (smis[k] !== null && smis[k] !== undefined && !isNaN(smis[k])) {
-          prevJ = smis[k];
-          break;
-        }
-      }
-      if (prevJ === null || prevJ === smis[j]) continue;
-
-      const dirJ = smis[j] > prevJ ? 'subiendo' : 'bajando';
-      if (dirJ !== dirSesion) {
-        if (velas[i] && velas[j] && velas[i].date && velas[j].date) {
-          sesionesGiro = j - i;
-          fechaGiro = velas[j].date;
-          direccionGiro = dirJ;
-        }
-        break;
-      }
-    }
-
-    if (sesionesGiro !== null) {
-      casos.push({
-        fecha: velas[i]?.date || '',
-        fechaGiro,
-        smi,
-        sesiones: sesionesGiro,
-        direccionGiro
-      });
-    }
-  }
-
-  if (casos.length === 0) {
-    return {
-      direccionActual,
-      casos: [],
-      ultimoCaso: null,
-      mediaSesiones: null
-    };
-  }
-
-  const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
-
-  return {
-    direccionActual,
-    casos,
-    ultimoCaso: casos[casos.length - 1],
-    mediaSesiones
-  };
-}
-
 async function cargarConsenso(ticker) {
   try {
     const { data } = await supabaseAdmin
@@ -356,12 +266,10 @@ export default async function PaginaEmpresa({ params }) {
       : 'var(--v3-text-soft)';
 
   const oportunidad = calcularOportunidad(analisis.zona, percentil);
-  const futuro = calcularFuturo(smis, velas, analisis.smiActual);
   const consenso = await cargarConsenso(empresa.ticker);
 
   const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
-  const ultimaSenalAbierta = analisis.posicionAbierta;
 
   const colorUltimoMovimiento =
     ultimaSenal?.tipo === 'compra' ? 'var(--v3-positive)' : 'var(--v3-negative)';
@@ -396,13 +304,6 @@ export default async function PaginaEmpresa({ params }) {
     else enMedia++;
   }
   const totalSesiones = enAlta + enMedia + enBaja;
-
-  const tipoGiroTexto =
-    futuro && futuro.ultimoCaso
-      ? futuro.ultimoCaso.direccionGiro === 'subiendo'
-        ? 'compra'
-        : 'venta'
-      : null;
 
   return (
     <div className="v3-grid-analisis">
@@ -484,9 +385,9 @@ export default async function PaginaEmpresa({ params }) {
           <ComparadorSector empresa={empresa} analisis={analisis} />
         </section>
 
-        {/* BLOQUE 3: Último movimiento */}
+        {/* BLOQUE 3: Último movimiento (solo hecho histórico, sin "en curso") */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Último movimiento estadístico</h2>
+          <h2 className="v3-seccion-titulo">Último movimiento estadístico registrado</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             {ultimaSenal ? (
               <>
@@ -509,29 +410,29 @@ export default async function PaginaEmpresa({ params }) {
                     {ultimaSenal.tipo}
                   </div>
                   <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
-                    {ultimaSenal.fecha}
-                    {ultimaSenalAbierta && ' · en curso'}
+                    Registrado el {ultimaSenal.fecha}
                   </div>
                 </div>
                 <p
                   style={{
                     margin: '12px 0 0 0',
-                    fontSize: '12px',
-                    color: 'var(--v3-text-mute)'
-                  }}
-                >
-                  Puedes ver todos los movimientos registrados en la tabla inferior.
-                </p>
-                <p
-                  style={{
-                    margin: '16px 0 0 0',
                     fontSize: '13px',
                     color: 'var(--v3-text-soft)',
                     lineHeight: 1.6
                   }}
                 >
-                  Este movimiento es un <strong>reflejo estadístico del pasado</strong> lo que ocurrió antes en situaciones
-                  similares, no una recomendación de compra ni de venta.
+                  Este es un <strong>registro histórico cerrado</strong>: refleja el movimiento que
+                  el algoritmo registró en esa fecha concreta. No describe la situación actual ni
+                  constituye una recomendación de compra o de venta.
+                </p>
+                <p
+                  style={{
+                    margin: '8px 0 0 0',
+                    fontSize: '12px',
+                    color: 'var(--v3-text-mute)'
+                  }}
+                >
+                  Puedes ver todos los movimientos registrados en la tabla inferior.
                 </p>
               </>
             ) : (
@@ -544,7 +445,7 @@ export default async function PaginaEmpresa({ params }) {
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
-        {/* Interpretación del gráfico: párrafos cortos, datos en negrita */}
+        {/* Interpretación del gráfico (sin comparaciones pasado-presente) */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
@@ -584,49 +485,19 @@ export default async function PaginaEmpresa({ params }) {
 
             {ultimaSenal && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                El último movimiento registrado fue de{' '}
+                El último movimiento estadístico registrado fue de{' '}
                 <strong style={{ color: colorUltimoMovimiento }}>{ultimaSenal.tipo}</strong> el{' '}
-                <strong>{ultimaSenal.fecha}</strong>
-                {ultimaSenalAbierta ? ', y sigue en curso' : ''}.
-              </p>
-            )}
-
-            {futuro && futuro.ultimoCaso && tipoGiroTexto && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                La última vez que el indicador estuvo en un valor similar (±10 puntos) mientras{' '}
-                {futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'} fue el{' '}
-                <strong>
-                  {new Date(futuro.ultimoCaso.fecha).toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    timeZone: 'Europe/Madrid'
-                  })}
-                </strong>
-                , y tardó{' '}
-                <strong style={{ color: 'var(--v3-negative)' }}>
-                  {futuro.ultimoCaso.sesiones}{' '}
-                  {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
-                </strong>{' '}
-                en dar <strong>{tipoGiroTexto}</strong> de nuevo. La media de las{' '}
-                <strong>{futuro.casos.length}</strong>{' '}
-                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
-                sesiones es de{' '}
-                <strong>
-                  {futuro.mediaSesiones.toFixed(1)}{' '}
-                  {futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'}
-                </strong>
-                .
+                <strong>{ultimaSenal.fecha}</strong>.
               </p>
             )}
 
             {(statsCompras.muestra > 0 || statsVentas.muestra > 0) && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                En cuanto a nuestros aciertos estadísticos,
+                En cuanto a las tasas de acierto históricas de las señales,
                 {statsCompras.muestra > 0 && (
                   <>
                     {' '}
-                    en los movimientos de compra el porcentaje de acierto es del{' '}
+                    en los movimientos de compra el porcentaje de acierto histórico es del{' '}
                     <strong
                       style={{
                         color:
@@ -646,7 +517,7 @@ export default async function PaginaEmpresa({ params }) {
                 {statsVentas.muestra > 0 && (
                   <>
                     {' '}
-                    en los movimientos de venta el porcentaje de acierto es del{' '}
+                    en los movimientos de venta el porcentaje de acierto histórico es del{' '}
                     <strong
                       style={{
                         color:
@@ -727,40 +598,13 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* BLOQUE 4: Futuro estadístico + aciertos */}
+        {/* BLOQUE 4: Aciertos estadísticos (solo datos históricos) */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
+          <h2 className="v3-seccion-titulo">Tasas de acierto históricas del algoritmo</h2>
 
-          <p
-            style={{
-              margin: '0 0 12px 0',
-              fontSize: '13px',
-              color: 'var(--v3-text-soft)',
-              lineHeight: 1.6
-            }}
-          >
-            Los datos analizados anteriormente nos permiten ver qué ha pasado otras veces en
-            situaciones parecidas a la actual. Esto es lo que ha ocurrido históricamente:
-          </p>
-
-          {futuro && <TarjetaFuturo futuro={futuro} />}
-
-          {futuro && (
-            <p
-              style={{
-                margin: '12px 0 0 0',
-                fontSize: '13px',
-                color: 'var(--v3-text-mute)',
-                lineHeight: 1.6
-              }}
-            >
-              Recuerda: es un dato histórico, no una predicción.
-            </p>
-          )}
-
-          <div className="v3-card" style={{ padding: '20px', marginTop: '16px' }}>
+          <div className="v3-card" style={{ padding: '20px' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>
-              Nuestros aciertos estadísticos en {empresa.nombre}
+              Histórico de aciertos en {empresa.nombre}
             </h3>
 
             <p
@@ -771,10 +615,9 @@ export default async function PaginaEmpresa({ params }) {
                 lineHeight: 1.6
               }}
             >
-              Estos datos muestran <strong>cómo de bien ha funcionado el algoritmo
-              históricamente</strong> en esta empresa: cuántas veces sus movimientos han acertado
-              y cuántas no. No es una garantía de resultados futuros, pero sí una referencia de
-              cómo ha respetado los patrones del valor en el pasado.
+              Estos datos muestran el <strong>porcentaje de acierto histórico</strong> de las
+              señales del algoritmo en esta empresa: cuántas veces acertaron y cuántas no. No es
+              una garantía de resultados futuros ni una recomendación.
             </p>
 
             <div
@@ -889,7 +732,7 @@ export default async function PaginaEmpresa({ params }) {
           empresa={empresa}
           analisis={analisis}
           url={canonical}
-          futuro={futuro}
+          futuro={null}
         />
 
         <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
@@ -941,111 +784,6 @@ function Dato({ etiqueta, valor, extra, colorValor, colorExtra }) {
         >
           {extra}
         </div>
-      )}
-    </div>
-  );
-}
-
-function TarjetaFuturo({ futuro }) {
-  const { direccionActual, casos, ultimoCaso, mediaSesiones } = futuro;
-
-  if (!casos || casos.length === 0) {
-    return (
-      <div
-        className="v3-card"
-        style={{
-          padding: '16px',
-          borderLeft: '4px solid var(--v3-border-strong)'
-        }}
-      >
-        <div
-          style={{
-            color: 'var(--v3-text-mute)',
-            fontSize: '12px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            fontWeight: 600,
-            marginBottom: '6px'
-          }}
-        >
-          Última situación similar
-        </div>
-        <p style={{ margin: 0, color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-          Sin datos suficientes en las últimas 60 sesiones. El indicador no ha pasado antes por un
-          valor similar (±10 puntos) mientras{' '}
-          {direccionActual === 'subiendo' ? 'subía' : 'bajaba'}.
-        </p>
-      </div>
-    );
-  }
-
-  const fechaUltimo = new Date(ultimoCaso.fecha).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Europe/Madrid'
-  });
-
-  const tipoGiro = ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
-
-  return (
-    <div
-      className="v3-card"
-      style={{
-        padding: '20px',
-        borderLeft: '4px solid var(--v3-negative)'
-      }}
-    >
-      <div
-        style={{
-          color: 'var(--v3-text-mute)',
-          fontSize: '12px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          fontWeight: 600,
-          marginBottom: '8px'
-        }}
-      >
-        Última situación similar
-      </div>
-
-      <p style={{ margin: 0, fontSize: '14px', color: 'var(--v3-text-soft)', lineHeight: 1.6 }}>
-        El indicador está ahora <strong>{direccionActual}</strong>. En las últimas 60 sesiones ha
-        estado en un valor similar (±10 puntos) mientras iba en la misma dirección en{' '}
-        <strong>{casos.length}</strong> {casos.length === 1 ? 'ocasión' : 'ocasiones'}.
-      </p>
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: '8px',
-          marginTop: '12px',
-          flexWrap: 'wrap'
-        }}
-      >
-        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          La última vez ({fechaUltimo}), tardó
-        </span>
-        <span style={{ fontSize: '32px', fontWeight: 800, color: 'var(--v3-negative)' }}>
-          {ultimoCaso.sesiones}
-        </span>
-        <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--v3-negative)' }}>
-          {ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
-        </span>
-        <span style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          en dar <strong>{tipoGiro}</strong> de nuevo.
-        </span>
-      </div>
-
-      {casos.length > 1 && (
-        <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-          Media de las {casos.length} ocasiones:{' '}
-          <strong>
-            {mediaSesiones.toFixed(1)} {mediaSesiones === 1 ? 'sesión' : 'sesiones'}
-          </strong>
-          .
-        </p>
       )}
     </div>
   );
