@@ -6,58 +6,51 @@ import { supabase } from '../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-function calcularAciertos(senales, velas) {
+function calcularCiclos(senales, precioActual) {
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const velasOrdenadas = [...velas].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const limitada = lista.slice(-100);
 
-  const ciclos = lista.map((s, i) => {
-    const siguiente = lista[i + 1];
-    const fechaInicio = s.fecha;
-    const fechaFin = siguiente ? siguiente.fecha : null;
-
-    let extremo = null;
-    for (const v of velasOrdenadas) {
-      if (v.date < fechaInicio) continue;
-      if (fechaFin && v.date >= fechaFin) break;
-      if (s.tipo === 'compra') {
-        if (extremo === null || v.high > extremo) extremo = v.high;
-      } else {
-        if (extremo === null || v.low < extremo) extremo = v.low;
-      }
-    }
+  return limitada.map((s, i) => {
+    const siguiente = limitada[i + 1];
+    const precioCierre = siguiente ? siguiente.precio : precioActual;
+    const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
 
     let acierto = null;
-    if (extremo !== null) {
-      if (s.tipo === 'compra') {
-        const variacion = ((extremo - s.precio) / s.precio) * 100;
-        acierto = variacion > 0;
-      } else {
-        const variacion = ((s.precio - extremo) / s.precio) * 100;
-        acierto = variacion > 0;
-      }
+    if (variacion !== 0) {
+      if (s.tipo === 'compra') acierto = variacion > 0;
+      else if (s.tipo === 'venta') acierto = variacion < 0;
     }
 
     return { tipo: s.tipo, acierto };
   });
+}
 
-  function stats(tipo) {
-    const filtrados = ciclos.filter((c) => c.tipo === tipo);
+function analizarEstadistica(senales, precioActual) {
+  const ciclos = calcularCiclos(senales, precioActual);
+  const compras = ciclos.filter((c) => c.tipo === 'compra');
+  const ventas = ciclos.filter((c) => c.tipo === 'venta');
+
+  function analizar(lista) {
     let aciertos = 0;
     let total = 0;
-    for (const c of filtrados) {
+    for (const c of lista) {
       if (c.acierto === null) continue;
       total++;
       if (c.acierto) aciertos++;
     }
+    const porcentaje = total > 0 ? (aciertos / total) * 100 : 0;
     return {
-      muestra: filtrados.length,
+      muestra: lista.length,
       aciertos,
       fallos: total - aciertos,
-      porcentajeAcierto: total > 0 ? (aciertos / total) * 100 : 0
+      porcentajeAcierto: porcentaje
     };
   }
 
-  return { compras: stats('compra'), ventas: stats('venta') };
+  return {
+    compras: analizar(compras),
+    ventas: analizar(ventas)
+  };
 }
 
 async function cargarDatos() {
@@ -99,16 +92,7 @@ async function cargarDatos() {
         }
       }
 
-      let senales = datos.senales;
-      if (typeof senales === 'string') {
-        try { senales = JSON.parse(senales); } catch (e) { senales = []; }
-      }
-      let velas = datos.velasUltimos60;
-      if (typeof velas === 'string') {
-        try { velas = JSON.parse(velas); } catch (e) { velas = []; }
-      }
-
-      const stats = calcularAciertos(senales || [], velas || []);
+      const stats = analizarEstadistica(datos.senales || [], datos.precioActual);
 
       cambios.push({
         ticker: p.ticker,
