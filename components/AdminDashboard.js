@@ -478,6 +478,53 @@ function SeccionEstadisticas({ datos, periodo, onRecargar }) {
 }
 
 function SeccionPaginas({ paginas, onRegenerar, regenerando }) {
+  const [regenerandoTodas, setRegenerandoTodas] = useState(false);
+  const [progreso, setProgreso] = useState(null);
+  const [resultado, setResultado] = useState(null);
+
+  async function regenerarTodas() {
+    if (!paginas || paginas.length === 0) return;
+    if (!confirm(`¿Regenerar las ${paginas.length} páginas? Esto puede tardar varios minutos.`)) return;
+
+    setRegenerandoTodas(true);
+    setResultado(null);
+
+    const tickers = paginas.map((p) => p.ticker);
+    const LOTE = 3;
+    let okCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < tickers.length; i += LOTE) {
+      const lote = tickers.slice(i, i + LOTE);
+      setProgreso({ actual: i + lote.length, total: tickers.length });
+
+      try {
+        const res = await fetch('/api/admin/regenerar-todas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tickers: lote })
+        });
+        const data = await res.json();
+        if (data.resultados) {
+          for (const r of data.resultados) {
+            if (r.ok) okCount++;
+            else errorCount++;
+          }
+        }
+      } catch (e) {
+        errorCount += lote.length;
+      }
+    }
+
+    setProgreso(null);
+    setRegenerandoTodas(false);
+    setResultado({ ok: okCount, error: errorCount });
+
+    if (typeof window !== 'undefined') {
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  }
+
   if (!paginas || paginas.length === 0) {
     return (
       <div>
@@ -489,7 +536,73 @@ function SeccionPaginas({ paginas, onRegenerar, regenerando }) {
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Páginas generadas ({paginas.length})</h2>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          marginBottom: '16px'
+        }}
+      >
+        <h2 style={{ marginTop: 0, marginBottom: 0 }}>
+          Páginas generadas ({paginas.length})
+        </h2>
+        <button
+          onClick={regenerarTodas}
+          disabled={regenerandoTodas}
+          className="v3-btn"
+          style={{
+            background: regenerandoTodas ? '#9ca3af' : '#ea580c',
+            borderColor: regenerandoTodas ? '#9ca3af' : '#ea580c',
+            padding: '8px 16px',
+            fontSize: '14px',
+            cursor: regenerandoTodas ? 'wait' : 'pointer'
+          }}
+        >
+          {regenerandoTodas ? 'Regenerando…' : 'Regenerar todas'}
+        </button>
+      </div>
+
+      {progreso && (
+        <div
+          className="v3-card"
+          style={{
+            padding: '12px 16px',
+            marginBottom: '16px',
+            background: '#fff7ed',
+            border: '1px solid #fdba74'
+          }}
+        >
+          <p style={{ margin: 0, fontSize: '14px', color: '#9a3412' }}>
+            Regenerando {progreso.actual} de {progreso.total}…
+          </p>
+        </div>
+      )}
+
+      {resultado && (
+        <div
+          className="v3-card"
+          style={{
+            padding: '12px 16px',
+            marginBottom: '16px',
+            background: resultado.error > 0 ? '#fef2f2' : '#f0fdf4',
+            border: resultado.error > 0 ? '1px solid #fca5a5' : '1px solid #86efac'
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: '14px',
+              color: resultado.error > 0 ? '#991b1b' : '#166534'
+            }}
+          >
+            Terminado: {resultado.ok} correctas, {resultado.error} errores.
+          </p>
+        </div>
+      )}
+
       <div style={{ overflowX: 'auto' }}>
         <table className="v3-table">
           <thead>
