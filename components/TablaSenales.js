@@ -1,22 +1,49 @@
-export default function TablaSenales({ senales, precioActual }) {
+export default function TablaSenales({ senales, precioActual, velas }) {
   if (!senales) return null;
 
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const velasOrdenadas = Array.isArray(velas)
+    ? [...velas].sort((a, b) => (a.date < b.date ? -1 : 1))
+    : [];
 
+  // Calcular para cada señal el extremo (máximo para compras, mínimo para ventas)
+  // entre esa señal y la siguiente
   const filas = lista.map((s, i) => {
     const siguiente = lista[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : precioActual;
-    const variacion = precioCierre
-      ? ((precioCierre - s.precio) / s.precio) * 100
-      : null;
+    const fechaInicio = s.fecha;
+    const fechaFin = siguiente ? siguiente.fecha : null;
 
-    let acierto = null;
-    if (variacion !== null && variacion !== 0) {
-      if (s.tipo === 'compra') acierto = variacion > 0;
-      else if (s.tipo === 'venta') acierto = variacion < 0;
+    let extremo = null;
+    for (const v of velasOrdenadas) {
+      if (v.date < fechaInicio) continue;
+      if (fechaFin && v.date >= fechaFin) break;
+      if (s.tipo === 'compra') {
+        if (extremo === null || v.high > extremo) extremo = v.high;
+      } else {
+        if (extremo === null || v.low < extremo) extremo = v.low;
+      }
     }
 
-    return { ...s, precioCierre, variacion, acierto, cierreEsActual: !siguiente };
+    let variacion = null;
+    let acierto = null;
+
+    if (extremo !== null) {
+      if (s.tipo === 'compra') {
+        variacion = ((extremo - s.precio) / s.precio) * 100;
+        acierto = variacion > 0;
+      } else {
+        variacion = ((s.precio - extremo) / s.precio) * 100;
+        acierto = variacion > 0;
+      }
+    }
+
+    return {
+      ...s,
+      extremo,
+      variacion,
+      acierto,
+      cierreEsActual: !siguiente
+    };
   });
 
   const mostrar = filas.slice(-100).reverse();
@@ -53,7 +80,7 @@ export default function TablaSenales({ senales, precioActual }) {
                 <th>Tipo</th>
                 <th>Precio señal</th>
                 <th>Indicador en la señal</th>
-                <th>Precio cierre</th>
+                <th>Máx/Mín alcanzado</th>
                 <th>Variación del ciclo</th>
                 <th>Resultado</th>
               </tr>
@@ -66,7 +93,7 @@ export default function TablaSenales({ senales, precioActual }) {
                   <td>{s.precio.toFixed(2)}</td>
                   <td>{s.smiEnSenal !== undefined ? s.smiEnSenal.toFixed(2) : '—'}</td>
                   <td>
-                    {s.precioCierre ? s.precioCierre.toFixed(2) : '—'}
+                    {s.extremo !== null ? s.extremo.toFixed(2) : '—'}
                     {s.cierreEsActual && (
                       <span
                         style={{
@@ -100,8 +127,9 @@ export default function TablaSenales({ senales, precioActual }) {
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '12px' }}>
         <strong>Criterio de acierto:</strong> un movimiento de compra se considera acertado si el
-        precio sube hasta el movimiento contrario siguiente o hasta el día actual. Un movimiento
-        de venta se considera acertado si el precio baja en el mismo intervalo.
+        precio alcanza un máximo superior al precio de la señal en algún momento antes de la
+        siguiente señal. Un movimiento de venta se considera acertado si el precio alcanza un
+        mínimo inferior al precio de la señal en el mismo intervalo.
       </p>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
