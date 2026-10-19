@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import MovimientosHoy from './MovimientosHoy';
+import MovimientosHoyCliente from './MovimientosHoyCliente';
 
 function slugEmpresa(e) {
   const nombreLimpio = (e.nombre || e.ticker)
@@ -15,7 +15,7 @@ function slugEmpresa(e) {
 }
 
 export default function BarraLateral({ ticker }) {
-  const [datos, setDatos] = useState({ relacionados: [], top: [], noticias: [], movimientos: [] });
+  const [datos, setDatos] = useState({ relacionados: [], top: [], noticias: [] });
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -46,11 +46,9 @@ export default function BarraLateral({ ticker }) {
 
   return (
     <aside style={{ fontSize: '14px' }}>
-      {datos.movimientos && datos.movimientos.length > 0 && (
-        <MovimientosHoy cambios={datos.movimientos} variante="sidebar" />
-      )}
+      <MovimientosHoyCliente variante="sidebar" />
 
-      {datos.relacionados.length > 0 && (
+      {datos.relacionados && datos.relacionados.length > 0 && (
         <section style={{ marginBottom: '28px' }}>
           <h3 style={tituloSeccion}>Del mismo sector</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -69,7 +67,7 @@ export default function BarraLateral({ ticker }) {
         </section>
       )}
 
-      {datos.top.length > 0 && (
+      {datos.top && datos.top.length > 0 && (
         <section style={{ marginBottom: '28px' }}>
           <h3 style={tituloSeccion}>Más consultados esta semana</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -88,7 +86,7 @@ export default function BarraLateral({ ticker }) {
         </section>
       )}
 
-      {datos.noticias.length > 0 && (
+      {datos.noticias && datos.noticias.length > 0 && (
         <section style={{ marginBottom: '28px' }}>
           <h3 style={tituloSeccion}>Noticias relacionadas</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -118,7 +116,6 @@ export default function BarraLateral({ ticker }) {
         </section>
       )}
 
-        
       <section
         style={{
           border: '1px dashed var(--v3-border-strong)',
