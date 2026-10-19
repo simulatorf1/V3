@@ -471,7 +471,7 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* Sobre la empresa */}
+        {/* Sobre la empresa (incluye comparador sectorial) */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
           <p style={{ lineHeight: 1.7 }}>
@@ -481,57 +481,7 @@ export default async function PaginaEmpresa({ params }) {
             procede de series históricas públicas de mercado y se revisa periódicamente por el
             equipo de Equaty.
           </p>
-        </section>
-
-        <ComparadorSector empresa={empresa} analisis={analisis} />
-
-        {/* BLOQUE 2: Indicador propio */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Indicador propio</h2>
-          <div className="v3-card" style={{ padding: '20px' }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '16px'
-              }}
-            >
-              <Dato
-                etiqueta="Valor"
-                valor={analisis.smiActual?.toFixed(2) ?? '—'}
-                extra="Escala -100 a +100"
-              />
-              <Dato etiqueta="Zona" valor={analisis.zona} colorValor={colorZona} />
-              <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
-              <Dato
-                etiqueta="Oportunidad de giro"
-                valor={oportunidad.nivel}
-                colorValor={oportunidad.color}
-              />
-            </div>
-
-            <p
-              style={{
-                margin: '20px 0 0 0',
-                fontSize: '14px',
-                color: 'var(--v3-text)',
-                lineHeight: 1.7
-              }}
-            >
-              El <strong>indicador propio de Equaty</strong> es un algoritmo interno que combina
-              varias referencias técnicas clásicas (medias móviles, RSI, estocástico y bandas de
-              Bollinger, entre otras) para medir en qué punto del rango reciente se encuentra el
-              precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>: los
-              valores cercanos a +100 indican que el precio está en la parte alta de su rango
-              reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong> divide
-              ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y +40) y
-              baja (por debajo de -40). El <strong>percentil</strong> señala la posición exacta del
-              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. La{' '}
-              <strong>oportunidad de giro</strong> combina la zona y el percentil para indicar
-              cuándo, históricamente, los giros han sido más frecuentes. No predice el futuro:
-              describe lo que ha pasado otras veces en situaciones parecidas.
-            </p>
-          </div>
+          <ComparadorSector empresa={empresa} analisis={analisis} />
         </section>
 
         {/* BLOQUE 3: Último movimiento */}
@@ -594,7 +544,192 @@ export default async function PaginaEmpresa({ params }) {
             )}
           </div>
         </section>
+
+        <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+
+        {/* Interpretación del gráfico: párrafos cortos, datos en negrita */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
+          <div className="v3-card" style={{ lineHeight: 1.75 }}>
+            <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
+              En las últimas 60 sesiones, <strong>{empresa.nombre}</strong> ha pasado de{' '}
+              <strong>{primerCierre?.toFixed(2)}</strong> a{' '}
+              <strong>{ultimoCierre?.toFixed(2)}</strong>, con una variación del{' '}
+              <strong
+                style={{
+                  color: variacion60 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'
+                }}
+              >
+                {variacion60 >= 0 ? '+' : ''}
+                {variacion60.toFixed(2)}%
+              </strong>
+              . El rango de cotización se ha movido entre un mínimo de{' '}
+              <strong>{minimo.toFixed(2)}</strong> y un máximo de{' '}
+              <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha sido del{' '}
+              <strong>{volatilidad.toFixed(2)}%</strong>.
+            </p>
+
+            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
+              De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador ha estado{' '}
+              <strong>{enAlta}</strong> en zona alta, <strong>{enMedia}</strong> en zona
+              intermedia y <strong>{enBaja}</strong> en zona baja. Estas son las zonas en las que,
+              estadísticamente, el precio ha cotizado más caro o más barato de lo habitual dentro
+              de su propio rango reciente.
+            </p>
+
+            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
+              Actualmente el indicador se encuentra en un valor de{' '}
+              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro de la{' '}
+              <strong style={{ color: colorZona }}>zona {analisis.zona}</strong>, con un percentil{' '}
+              <strong>{percentil}</strong> sobre las últimas 60 sesiones y una oportunidad de giro{' '}
+              <strong style={{ color: oportunidad.color }}>{oportunidad.nivel}</strong>.
+            </p>
+
+            {ultimaSenal && (
+              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
+                El último movimiento registrado fue de{' '}
+                <strong style={{ color: colorUltimoMovimiento }}>{ultimaSenal.tipo}</strong> el{' '}
+                <strong>{ultimaSenal.fecha}</strong>
+                {ultimaSenalAbierta ? ', y sigue en curso' : ''}.
+              </p>
+            )}
+
+            {futuro && futuro.ultimoCaso && tipoGiroTexto && (
+              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
+                La última vez que el indicador estuvo en un valor similar (±10 puntos) mientras{' '}
+                {futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'} fue el{' '}
+                <strong>
+                  {new Date(futuro.ultimoCaso.fecha).toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                    timeZone: 'Europe/Madrid'
+                  })}
+                </strong>
+                , y tardó{' '}
+                <strong style={{ color: 'var(--v3-negative)' }}>
+                  {futuro.ultimoCaso.sesiones}{' '}
+                  {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
+                </strong>{' '}
+                en dar <strong>{tipoGiroTexto}</strong> de nuevo. La media de las{' '}
+                <strong>{futuro.casos.length}</strong>{' '}
+                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
+                sesiones es de{' '}
+                <strong>
+                  {futuro.mediaSesiones.toFixed(1)}{' '}
+                  {futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'}
+                </strong>
+                .
+              </p>
+            )}
+
+            {(statsCompras.muestra > 0 || statsVentas.muestra > 0) && (
+              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
+                En cuanto a nuestros aciertos estadísticos,
+                {statsCompras.muestra > 0 && (
+                  <>
+                    {' '}
+                    en los movimientos de compra el porcentaje de acierto es del{' '}
+                    <strong
+                      style={{
+                        color:
+                          statsCompras.porcentajeAcierto >= 50
+                            ? 'var(--v3-positive)'
+                            : 'var(--v3-negative)'
+                      }}
+                    >
+                      {statsCompras.porcentajeAcierto.toFixed(1)}%
+                    </strong>{' '}
+                    (<strong>{statsCompras.aciertos}</strong> aciertos y{' '}
+                    <strong>{statsCompras.fallos}</strong> fallos sobre{' '}
+                    <strong>{statsCompras.muestra}</strong> ciclos)
+                  </>
+                )}
+                {statsCompras.muestra > 0 && statsVentas.muestra > 0 && ';'}
+                {statsVentas.muestra > 0 && (
+                  <>
+                    {' '}
+                    en los movimientos de venta el porcentaje de acierto es del{' '}
+                    <strong
+                      style={{
+                        color:
+                          statsVentas.porcentajeAcierto >= 50
+                            ? 'var(--v3-positive)'
+                            : 'var(--v3-negative)'
+                      }}
+                    >
+                      {statsVentas.porcentajeAcierto.toFixed(1)}%
+                    </strong>{' '}
+                    (<strong>{statsVentas.aciertos}</strong> aciertos y{' '}
+                    <strong>{statsVentas.fallos}</strong> fallos sobre{' '}
+                    <strong>{statsVentas.muestra}</strong> ciclos)
+                  </>
+                )}
+                .
+              </p>
+            )}
+
+            {consenso && consenso.total > 0 && (
+              <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
+                El consenso de la comunidad muestra <strong>{consenso.total}</strong>{' '}
+                {consenso.total === 1 ? 'voto' : 'votos'} registrados, con un sentimiento{' '}
+                <strong>{consenso.sentimiento}</strong>.
+              </p>
+            )}
+          </div>
+        </section>
+
         <FormularioAlerta empresa={empresa} />
+
+        {/* BLOQUE 2: Indicador propio */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Indicador propio</h2>
+          <div className="v3-card" style={{ padding: '20px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '16px'
+              }}
+            >
+              <Dato
+                etiqueta="Valor"
+                valor={analisis.smiActual?.toFixed(2) ?? '—'}
+                extra="Escala -100 a +100"
+              />
+              <Dato etiqueta="Zona" valor={analisis.zona} colorValor={colorZona} />
+              <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
+              <Dato
+                etiqueta="Oportunidad de giro"
+                valor={oportunidad.nivel}
+                colorValor={oportunidad.color}
+              />
+            </div>
+
+            <p
+              style={{
+                margin: '20px 0 0 0',
+                fontSize: '14px',
+                color: 'var(--v3-text)',
+                lineHeight: 1.7
+              }}
+            >
+              El <strong>indicador propio de Equaty</strong> es un algoritmo interno que combina
+              varias referencias técnicas clásicas (medias móviles, RSI, estocástico y bandas de
+              Bollinger, entre otras) para medir en qué punto del rango reciente se encuentra el
+              precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>: los
+              valores cercanos a +100 indican que el precio está en la parte alta de su rango
+              reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong> divide
+              ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y +40) y
+              baja (por debajo de -40). El <strong>percentil</strong> señala la posición exacta del
+              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. La{' '}
+              <strong>oportunidad de giro</strong> combina la zona y el percentil para indicar
+              cuándo, históricamente, los giros han sido más frecuentes. No predice el futuro:
+              describe lo que ha pasado otras veces en situaciones parecidas.
+            </p>
+          </div>
+        </section>
+
         {/* BLOQUE 4: Futuro estadístico + aciertos */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Futuro estadístico</h2>
@@ -746,140 +881,6 @@ export default async function PaginaEmpresa({ params }) {
         </p>
 
         <ConsensoComunidad ticker={empresa.ticker} />
-
-        <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
-
-        {/* Interpretación del gráfico: párrafos cortos, datos en negrita */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
-          <div className="v3-card" style={{ lineHeight: 1.75 }}>
-            <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
-              En las últimas 60 sesiones, <strong>{empresa.nombre}</strong> ha pasado de{' '}
-              <strong>{primerCierre?.toFixed(2)}</strong> a{' '}
-              <strong>{ultimoCierre?.toFixed(2)}</strong>, con una variación del{' '}
-              <strong
-                style={{
-                  color: variacion60 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'
-                }}
-              >
-                {variacion60 >= 0 ? '+' : ''}
-                {variacion60.toFixed(2)}%
-              </strong>
-              . El rango de cotización se ha movido entre un mínimo de{' '}
-              <strong>{minimo.toFixed(2)}</strong> y un máximo de{' '}
-              <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha sido del{' '}
-              <strong>{volatilidad.toFixed(2)}%</strong>.
-            </p>
-
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador ha estado{' '}
-              <strong>{enAlta}</strong> en zona alta, <strong>{enMedia}</strong> en zona
-              intermedia y <strong>{enBaja}</strong> en zona baja. Estas son las zonas en las que,
-              estadísticamente, el precio ha cotizado más caro o más barato de lo habitual dentro
-              de su propio rango reciente.
-            </p>
-
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              Actualmente el indicador se encuentra en un valor de{' '}
-              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro de la{' '}
-              <strong style={{ color: colorZona }}>zona {analisis.zona}</strong>, con un percentil{' '}
-              <strong>{percentil}</strong> sobre las últimas 60 sesiones y una oportunidad de giro{' '}
-              <strong style={{ color: oportunidad.color }}>{oportunidad.nivel}</strong>.
-            </p>
-
-            {ultimaSenal && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                El último movimiento registrado fue de{' '}
-                <strong style={{ color: colorUltimoMovimiento }}>{ultimaSenal.tipo}</strong> el{' '}
-                <strong>{ultimaSenal.fecha}</strong>
-                {ultimaSenalAbierta ? ', y sigue en curso' : ''}.
-              </p>
-            )}
-
-            {futuro && futuro.ultimoCaso && tipoGiroTexto && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                La última vez que el indicador estuvo en un valor similar (±10 puntos) mientras{' '}
-                {futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'} fue el{' '}
-                <strong>
-                  {new Date(futuro.ultimoCaso.fecha).toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    timeZone: 'Europe/Madrid'
-                  })}
-                </strong>
-                , y tardó{' '}
-                <strong style={{ color: 'var(--v3-negative)' }}>
-                  {futuro.ultimoCaso.sesiones}{' '}
-                  {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
-                </strong>{' '}
-                en dar <strong>{tipoGiroTexto}</strong> de nuevo. La media de las{' '}
-                <strong>{futuro.casos.length}</strong>{' '}
-                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
-                sesiones es de{' '}
-                <strong>
-                  {futuro.mediaSesiones.toFixed(1)}{' '}
-                  {futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'}
-                </strong>
-                .
-              </p>
-            )}
-
-            {(statsCompras.muestra > 0 || statsVentas.muestra > 0) && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                En cuanto a nuestros aciertos estadísticos,
-                {statsCompras.muestra > 0 && (
-                  <>
-                    {' '}
-                    en los movimientos de compra el porcentaje de acierto es del{' '}
-                    <strong
-                      style={{
-                        color:
-                          statsCompras.porcentajeAcierto >= 50
-                            ? 'var(--v3-positive)'
-                            : 'var(--v3-negative)'
-                      }}
-                    >
-                      {statsCompras.porcentajeAcierto.toFixed(1)}%
-                    </strong>{' '}
-                    (<strong>{statsCompras.aciertos}</strong> aciertos y{' '}
-                    <strong>{statsCompras.fallos}</strong> fallos sobre{' '}
-                    <strong>{statsCompras.muestra}</strong> ciclos)
-                  </>
-                )}
-                {statsCompras.muestra > 0 && statsVentas.muestra > 0 && ';'}
-                {statsVentas.muestra > 0 && (
-                  <>
-                    {' '}
-                    en los movimientos de venta el porcentaje de acierto es del{' '}
-                    <strong
-                      style={{
-                        color:
-                          statsVentas.porcentajeAcierto >= 50
-                            ? 'var(--v3-positive)'
-                            : 'var(--v3-negative)'
-                      }}
-                    >
-                      {statsVentas.porcentajeAcierto.toFixed(1)}%
-                    </strong>{' '}
-                    (<strong>{statsVentas.aciertos}</strong> aciertos y{' '}
-                    <strong>{statsVentas.fallos}</strong> fallos sobre{' '}
-                    <strong>{statsVentas.muestra}</strong> ciclos)
-                  </>
-                )}
-                .
-              </p>
-            )}
-
-            {consenso && consenso.total > 0 && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
-                El consenso de la comunidad muestra <strong>{consenso.total}</strong>{' '}
-                {consenso.total === 1 ? 'voto' : 'votos'} registrados, con un sentimiento{' '}
-                <strong>{consenso.sentimiento}</strong>.
-              </p>
-            )}
-          </div>
-        </section>
 
         <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
 
