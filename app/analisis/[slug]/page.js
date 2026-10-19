@@ -44,11 +44,12 @@ function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
 
   return limitada.map((s, i) => {
     const siguiente = limitada[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : precioActual;
-    const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
+    const precioCierre = siguiente ? siguiente.precio : null; // ciclo abierto -> null
+    const variacion =
+      precioCierre && s.precio ? ((precioCierre - s.precio) / s.precio) * 100 : null;
 
     let acierto = null;
-    if (variacion !== 0) {
+    if (variacion !== null) {
       if (s.tipo === 'compra') acierto = variacion > 0;
       else if (s.tipo === 'venta') acierto = variacion < 0;
     }
@@ -217,7 +218,7 @@ export default async function PaginaEmpresa({ params }) {
   };
 
   // Cálculos
-  const ciclos = calcularCiclos(analisis.senales || [], analisis.precioActual);
+  const ciclos = calcularCiclos(analisis.senales || [], null);
   const compras = ciclos.filter((c) => c.tipo === 'compra');
   const ventas = ciclos.filter((c) => c.tipo === 'venta');
 
@@ -445,7 +446,7 @@ export default async function PaginaEmpresa({ params }) {
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
-        {/* Interpretación del gráfico (sin comparaciones pasado-presente) */}
+        {/* Interpretación del gráfico (sin comparaciones pasado-presente, sin "oportunidad") */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
@@ -476,11 +477,10 @@ export default async function PaginaEmpresa({ params }) {
             </p>
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              Actualmente el indicador se encuentra en un valor de{' '}
+              En la última sesión registrada, el indicador se sitúa en un valor de{' '}
               <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro de la{' '}
               <strong style={{ color: colorZona }}>zona {analisis.zona}</strong>, con un percentil{' '}
-              <strong>{percentil}</strong> sobre las últimas 60 sesiones y una oportunidad de giro{' '}
-              <strong style={{ color: oportunidad.color }}>{oportunidad.nivel}</strong>.
+              <strong>{percentil}</strong> sobre las últimas 60 sesiones.
             </p>
 
             {ultimaSenal && (
@@ -568,7 +568,7 @@ export default async function PaginaEmpresa({ params }) {
               <Dato etiqueta="Zona" valor={analisis.zona} colorValor={colorZona} />
               <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
               <Dato
-                etiqueta="Oportunidad de giro"
+                etiqueta="Frecuencia histórica de giro"
                 valor={oportunidad.nivel}
                 colorValor={oportunidad.color}
               />
@@ -591,9 +591,9 @@ export default async function PaginaEmpresa({ params }) {
               ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y +40) y
               baja (por debajo de -40). El <strong>percentil</strong> señala la posición exacta del
               valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. La{' '}
-              <strong>oportunidad de giro</strong> combina la zona y el percentil para indicar
-              cuándo, históricamente, los giros han sido más frecuentes. No predice el futuro:
-              describe lo que ha pasado otras veces en situaciones parecidas.
+              <strong>frecuencia histórica de giro</strong> combina la zona y el percentil para
+              indicar cuándo, históricamente, los giros han sido más frecuentes. No predice el
+              futuro: describe lo que ha pasado otras veces en situaciones parecidas.
             </p>
           </div>
         </section>
@@ -722,7 +722,7 @@ export default async function PaginaEmpresa({ params }) {
 
         <ConsensoComunidad ticker={empresa.ticker} />
 
-        <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
+        <TablaSenales senales={analisis.senales} precioActual={null} />
 
         {analisis.noticias && analisis.noticias.length > 0 && (
           <ContextoReciente noticias={analisis.noticias} />
