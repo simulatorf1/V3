@@ -9,8 +9,8 @@ import RegistrarVisita from '../../../components/RegistrarVisita';
 import BarraLateral from '../../../components/BarraLateral';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import FormularioAlerta from '../../../components/FormularioAlerta';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -38,34 +38,106 @@ function fechaMadrid(fecha = new Date()) {
   });
 }
 
-function calcularCiclos(senales, precioActual, limite = MAX_SENALES_TABLA) {
+function calcularCiclosConExtremos(senales, velas) {
   const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const limitada = lista.slice(-limite);
+  const velasMap = {};
+  for (const v of velas) {
+    velasMap[v.date] = v;
+  }
 
-  return limitada.map((s, i) => {
-    const siguiente = limitada[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : precioActual;
-    const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
+  const velasOrdenadas = [...velas].sort((a, b) => (a.date < b.date ? -1 : 1));
 
-    let acierto = null;
-    if (variacion !== 0) {
-      if (s.tipo === 'compra') acierto = variacion > 0;
-      else if (s.tipo === 'venta') acierto = variacion < 0;
+  return lista.map((s, i) => {
+    const siguiente = lista[i + 1];
+    const fechaInicio = s.fecha;
+    const fechaFin = siguiente ? siguiente.fecha : null;
+
+    let extremo = null;
+
+    if (s.tipo === 'compra') {
+      // Máximo high entre fechaInicio y fechaFin (sin incluir fechaFin)
+      let max = null;
+      for (const v of velasOrdenadas) {
+        if (v.date < fechaInicio) continue;
+        if (fechaFin && v.date >= fechaFin) break;
+        if (max === null || v.high > max) max = v.high;
+      }
+      extremo = max;
+    } else {
+      // Mínimo low entre fechaInicio y fechaFin (sin incluir fechaFin)
+      let min = null;
+      for (const v of velasOrdenadas) {
+        if (v.date < fechaInicio) continue;
+        if (fechaFin && v.date >= fechaFin) break;
+        if (min === null || v.low < min) min = v.low;
+      }
+      extremo = min;
     }
 
-    return { tipo: s.tipo, variacion, acierto };
+    // Si no hay siguiente señal, usar el extremo hasta el final de las velas
+    if (extremo === null) {
+      for (const v of velasOrdenadas) {
+        if (v.date < fechaInicio) continue;
+        if (s.tipo === 'compra') {
+          if (extremo === null || v.high > extremo) extremo = v.high;
+        } else {
+          if (extremo === null || v.low < extremo) extremo = v.low;
+        }
+      }
+    }
+
+    let variacion = 0;
+    let acierto = null;
+
+    if (extremo !== null) {
+      if (s.tipo === 'compra') {
+        variacion = ((extremo - s.precio) / s.precio) * 100;
+        acierto = variacion > 0;
+      } else {
+        variacion = ((s.precio - extremo) / s.precio) * 100;
+        acierto = variacion > 0;
+      }
+    }
+
+    return {
+      tipo: s.tipo,
+      fecha: s.fecha,
+      precio: s.precio,
+      extremo,
+      variacion,
+      acierto,
+      abierto: !siguiente
+    };
   });
 }
 
-function calcularOportunidad(zona, percentil) {
-  if (zona === 'intermedia') {
-    return { nivel: 'baja', color: 'var(--v3-text-soft)' };
+function analizarEstadisticaCiclos(ciclos) {
+  const compras = ciclos.filter((c) => c.tipo === 'compra');
+  const ventas = ciclos.filter((c) => c.tipo === 'venta');
+
+  function analizar(lista) {
+    let aciertos = 0;
+    let total = 0;
+    let sumaVariacion = 0;
+    for (const c of lista) {
+      if (c.acierto === null) continue;
+      total++;
+      if (c.acierto) aciertos++;
+      sumaVariacion += c.variacion;
+    }
+    return {
+      muestra: lista.length,
+      aciertos,
+      fallos: total - aciertos,
+      porcentajeAcierto: total > 0 ? (aciertos / total) * 100 : 0,
+      variacionMedia: lista.length > 0 ? sumaVariacion / lista.length : 0
+    };
   }
-  const extremoBajo = percentil <= 5 || percentil >= 95;
-  const extremo = percentil <= 15 || percentil >= 85;
-  if (extremoBajo) return { nivel: 'muy alta', color: 'var(--v3-negative)' };
-  if (extremo) return { nivel: 'alta', color: 'var(--v3-warn)' };
-  return { nivel: 'media', color: 'var(--v3-text-soft)' };
+
+  return {
+    compras: analizar(compras),
+    ventas: analizar(ventas)
+  };
 }
 
 function calcularFuturo(smis, velas, smiActual) {
@@ -102,7 +174,6 @@ function calcularFuturo(smis, velas, smiActual) {
     if (dirSesion !== direccionActual) continue;
 
     let sesionesGiro = null;
-    let fechaGiro = null;
     let direccionGiro = null;
 
     for (let j = i + 1; j < smis.length; j++) {
@@ -121,7 +192,6 @@ function calcularFuturo(smis, velas, smiActual) {
       if (dirJ !== dirSesion) {
         if (velas[i] && velas[j] && velas[i].date && velas[j].date) {
           sesionesGiro = j - i;
-          fechaGiro = velas[j].date;
           direccionGiro = dirJ;
         }
         break;
@@ -129,27 +199,15 @@ function calcularFuturo(smis, velas, smiActual) {
     }
 
     if (sesionesGiro !== null) {
-      casos.push({
-        fecha: velas[i]?.date || '',
-        fechaGiro,
-        smi,
-        sesiones: sesionesGiro,
-        direccionGiro
-      });
+      casos.push({ smi, sesiones: sesionesGiro, direccionGiro });
     }
   }
 
   if (casos.length === 0) {
-    return {
-      direccionActual,
-      casos: [],
-      ultimoCaso: null,
-      mediaSesiones: null
-    };
+    return { direccionActual, casos: [], ultimoCaso: null, mediaSesiones: null };
   }
 
   const mediaSesiones = casos.reduce((a, c) => a + c.sesiones, 0) / casos.length;
-
   return {
     direccionActual,
     casos,
@@ -306,32 +364,13 @@ export default async function PaginaEmpresa({ params }) {
     }
   };
 
-  // Cálculos
-  const ciclos = calcularCiclos(analisis.senales || [], analisis.precioActual);
-  const compras = ciclos.filter((c) => c.tipo === 'compra');
-  const ventas = ciclos.filter((c) => c.tipo === 'venta');
+  // Cálculos con extremos (high/low)
+  const ciclos = calcularCiclosConExtremos(analisis.senales || [], analisis.velasUltimos60 || []);
+  const stats = analizarEstadisticaCiclos(ciclos);
+  const statsCompras = stats.compras;
+  const statsVentas = stats.ventas;
 
-  function analizarEstadistica(lista) {
-    let aciertos = 0;
-    let total = 0;
-    for (const c of lista) {
-      if (c.acierto === null) continue;
-      total++;
-      if (c.acierto) aciertos++;
-    }
-    const porcentaje = total > 0 ? (aciertos / total) * 100 : 0;
-    return {
-      muestra: lista.length,
-      aciertos,
-      fallos: total - aciertos,
-      porcentajeAcierto: porcentaje
-    };
-  }
-
-  const statsCompras = analizarEstadistica(compras);
-  const statsVentas = analizarEstadistica(ventas);
-
-  const velas = analisis.velasUltimas60 || [];
+  const velas = analisis.velasUltimos60 || [];
   const smis = analisis.smisUltimos60 || [];
 
   const precioActual = analisis.precioActual;
@@ -355,6 +394,15 @@ export default async function PaginaEmpresa({ params }) {
       ? 'var(--v3-positive)'
       : 'var(--v3-text-soft)';
 
+  function calcularOportunidad(zona, p) {
+    if (zona === 'intermedia') return { nivel: 'baja', color: 'var(--v3-text-soft)' };
+    const extremoBajo = p <= 5 || p >= 95;
+    const extremo = p <= 15 || p >= 85;
+    if (extremoBajo) return { nivel: 'muy alta', color: 'var(--v3-negative)' };
+    if (extremo) return { nivel: 'alta', color: 'var(--v3-warn)' };
+    return { nivel: 'media', color: 'var(--v3-text-soft)' };
+  }
+
   const oportunidad = calcularOportunidad(analisis.zona, percentil);
   const futuro = calcularFuturo(smis, velas, analisis.smiActual);
   const consenso = await cargarConsenso(empresa.ticker);
@@ -362,11 +410,9 @@ export default async function PaginaEmpresa({ params }) {
   const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
   const ultimaSenalAbierta = analisis.posicionAbierta;
-
   const colorUltimoMovimiento =
     ultimaSenal?.tipo === 'compra' ? 'var(--v3-positive)' : 'var(--v3-negative)';
 
-  // Interpretación del gráfico
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre
@@ -396,13 +442,6 @@ export default async function PaginaEmpresa({ params }) {
     else enMedia++;
   }
   const totalSesiones = enAlta + enMedia + enBaja;
-
-  const tipoGiroTexto =
-    futuro && futuro.ultimoCaso
-      ? futuro.ultimoCaso.direccionGiro === 'subiendo'
-        ? 'compra'
-        : 'venta'
-      : null;
 
   return (
     <div className="v3-grid-analisis">
@@ -674,34 +713,28 @@ export default async function PaginaEmpresa({ params }) {
 
         <ConsensoComunidad ticker={empresa.ticker} />
 
-        <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+        <Grafico velas={analisis.velasUltimos60} smis={analisis.smisUltimos60} />
 
-        {/* Interpretación del gráfico: párrafos cortos, datos en negrita */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
             <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
               En las últimas 60 sesiones, <strong>{empresa.nombre}</strong> ha pasado de{' '}
-              <strong>{primerCierre?.toFixed(2)}</strong> a{' '}
-              <strong>{ultimoCierre?.toFixed(2)}</strong>, con una variación del{' '}
-              <strong
-                style={{
-                  color: variacion60 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'
-                }}
-              >
+              <strong>{primerCierre?.toFixed(2)}</strong> a <strong>{ultimoCierre?.toFixed(2)}</strong>,
+              con una variación del{' '}
+              <strong style={{ color: variacion60 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)' }}>
                 {variacion60 >= 0 ? '+' : ''}
                 {variacion60.toFixed(2)}%
               </strong>
-              . El rango de cotización se ha movido entre un mínimo de{' '}
-              <strong>{minimo.toFixed(2)}</strong> y un máximo de{' '}
-              <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha sido del{' '}
-              <strong>{volatilidad.toFixed(2)}%</strong>.
+              . El rango de cotización se ha movido entre un mínimo de <strong>{minimo.toFixed(2)}</strong>{' '}
+              y un máximo de <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha
+              sido del <strong>{volatilidad.toFixed(2)}%</strong>.
             </p>
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador ha estado{' '}
-              <strong>{enAlta}</strong> en zona alta, <strong>{enMedia}</strong> en zona
-              intermedia y <strong>{enBaja}</strong> en zona baja. Estas son las zonas en las que,
+              <strong>{enAlta}</strong> en zona alta, <strong>{enMedia}</strong> en zona intermedia y{' '}
+              <strong>{enBaja}</strong> en zona baja. Estas son las zonas en las que,
               estadísticamente, el precio ha cotizado más caro o más barato de lo habitual dentro
               de su propio rango reciente.
             </p>
@@ -723,7 +756,7 @@ export default async function PaginaEmpresa({ params }) {
               </p>
             )}
 
-            {futuro && futuro.ultimoCaso && tipoGiroTexto && (
+            {futuro && futuro.ultimoCaso && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
                 La última vez que el indicador estuvo en un valor similar (±10 puntos) mientras{' '}
                 {futuro.direccionActual === 'subiendo' ? 'subía' : 'bajaba'} fue el{' '}
@@ -740,10 +773,12 @@ export default async function PaginaEmpresa({ params }) {
                   {futuro.ultimoCaso.sesiones}{' '}
                   {futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'}
                 </strong>{' '}
-                en dar <strong>{tipoGiroTexto}</strong> de nuevo. La media de las{' '}
-                <strong>{futuro.casos.length}</strong>{' '}
-                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares en las últimas 60
-                sesiones es de{' '}
+                en dar{' '}
+                <strong>
+                  {futuro.ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta'}
+                </strong>{' '}
+                de nuevo. La media de las <strong>{futuro.casos.length}</strong>{' '}
+                {futuro.casos.length === 1 ? 'ocasión' : 'ocasiones'} similares es de{' '}
                 <strong>
                   {futuro.mediaSesiones.toFixed(1)}{' '}
                   {futuro.mediaSesiones === 1 ? 'sesión' : 'sesiones'}
@@ -808,7 +843,11 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        <TablaSenales senales={analisis.senales} precioActual={analisis.precioActual} />
+        <TablaSenales
+          senales={analisis.senales}
+          precioActual={analisis.precioActual}
+          velas={analisis.velasUltimos60}
+        />
 
         <ComparadorSector empresa={empresa} analisis={analisis} />
 
@@ -826,7 +865,9 @@ export default async function PaginaEmpresa({ params }) {
             equipo de Equaty.
           </p>
         </section>
+
         <FormularioAlerta empresa={empresa} />
+
         <BotonesCompartir
           empresa={empresa}
           analisis={analisis}
