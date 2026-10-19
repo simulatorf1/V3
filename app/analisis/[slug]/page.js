@@ -486,7 +486,7 @@ export default async function PaginaEmpresa({ params }) {
 
         {/* BLOQUE 3: Último movimiento */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Último movimiento realizado por Equaty</h2>
+          <h2 className="v3-seccion-titulo">Último movimiento estadístico</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             {ultimaSenal ? (
               <>
@@ -530,10 +530,7 @@ export default async function PaginaEmpresa({ params }) {
                     lineHeight: 1.6
                   }}
                 >
-                  Este movimiento es un <strong>reflejo estadístico del pasado</strong>: a partir de lo que ha hecho
-                  en el historicamente en el pasado, podemos apoyarnos para tomar futuras decisiones. Estadísticamente, el valor se
-                  encuentra en una posición similar a la de otras ocasiones en las que el precio
-                  giró. Eso es lo que se describe aquí: <strong>lo que ocurrió antes en situaciones
+                  Este movimiento es un <strong>reflejo estadístico del pasado</strong> lo que ocurrió antes en situaciones
                   similares</strong>, no una recomendación de compra ni de venta.
                 </p>
               </>
