@@ -5,10 +5,11 @@ export default function TablaSenales({ senales, precioActual }) {
 
   const filas = lista.map((s, i) => {
     const siguiente = lista[i + 1];
-    const precioCierre = siguiente ? siguiente.precio : precioActual;
-    const variacion = precioCierre
-      ? ((precioCierre - s.precio) / s.precio) * 100
-      : null;
+    const precioCierre = siguiente ? siguiente.precio : null; // ciclo abierto -> null
+    const variacion =
+      precioCierre !== null && precioCierre !== undefined
+        ? ((precioCierre - s.precio) / s.precio) * 100
+        : null;
 
     let acierto = null;
     if (variacion !== null && variacion !== 0) {
@@ -16,7 +17,13 @@ export default function TablaSenales({ senales, precioActual }) {
       else if (s.tipo === 'venta') acierto = variacion < 0;
     }
 
-    return { ...s, precioCierre, variacion, acierto, cierreEsActual: !siguiente };
+    return {
+      ...s,
+      precioCierre,
+      variacion,
+      acierto,
+      cierreEsActual: !siguiente
+    };
   });
 
   const mostrar = filas.slice(-100).reverse();
@@ -56,6 +63,7 @@ export default function TablaSenales({ senales, precioActual }) {
                 <th>Precio cierre</th>
                 <th>Variación del ciclo</th>
                 <th>Resultado</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -65,21 +73,8 @@ export default function TablaSenales({ senales, precioActual }) {
                   <td>{s.tipo}</td>
                   <td>{s.precio.toFixed(2)}</td>
                   <td>{s.smiEnSenal !== undefined ? s.smiEnSenal.toFixed(2) : '—'}</td>
-                  <td>
-                    {s.precioCierre ? s.precioCierre.toFixed(2) : '—'}
-                    {s.cierreEsActual && (
-                      <span
-                        style={{
-                          color: 'var(--v3-text-mute)',
-                          fontSize: '11px',
-                          marginLeft: '4px'
-                        }}
-                      >
-                        (abierta)
-                      </span>
-                    )}
-                  </td>
-                  <td className={s.variacion >= 0 ? 'v3-pos' : 'v3-neg'}>
+                  <td>{s.precioCierre !== null && s.precioCierre !== undefined ? s.precioCierre.toFixed(2) : '—'}</td>
+                  <td className={s.variacion !== null && s.variacion >= 0 ? 'v3-pos' : s.variacion !== null ? 'v3-neg' : ''}>
                     {s.variacion !== null
                       ? `${s.variacion >= 0 ? '+' : ''}${s.variacion.toFixed(2)}%`
                       : '—'}
@@ -91,6 +86,15 @@ export default function TablaSenales({ senales, precioActual }) {
                       <span style={{ color: 'var(--v3-text-mute)' }}>—</span>
                     )}
                   </td>
+                  <td>
+                    {s.cierreEsActual ? (
+                      <span style={{ color: 'var(--v3-text-mute)' }}>
+                        Pendiente de cierre
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--v3-text-soft)' }}>Cerrado</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -100,8 +104,10 @@ export default function TablaSenales({ senales, precioActual }) {
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '12px' }}>
         <strong>Criterio de acierto:</strong> un movimiento de compra se considera acertado si el
-        precio sube hasta el movimiento contrario siguiente o hasta el día actual. Un movimiento
-        de venta se considera acertado si el precio baja en el mismo intervalo.
+        precio sube hasta el cierre del ciclo (el movimiento contrario siguiente). Un movimiento de
+        venta se considera acertado si el precio baja en el mismo intervalo. Si el ciclo no ha
+        cerrado todavía, se muestra como <strong>pendiente de cierre</strong> y no se computa como
+        acierto ni fallo.
       </p>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
