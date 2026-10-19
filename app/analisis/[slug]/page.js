@@ -531,7 +531,7 @@ export default async function PaginaEmpresa({ params }) {
                   }}
                 >
                   Este movimiento es un <strong>reflejo estadístico del pasado</strong> lo que ocurrió antes en situaciones
-                  similares</strong>, no una recomendación de compra ni de venta.
+                  similares, no una recomendación de compra ni de venta.
                 </p>
               </>
             ) : (
