@@ -33,7 +33,8 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
   return (
     <section
       className={esSidebar ? '' : 'v3-seccion'}
-      style={{ marginTop: esSidebar ? '0' : '30px', marginBottom: esSidebar ? '28px' : '0' }}
+      style={{ marginTop: esSidebar ? '0' : '30px', marginBottom:
+esSidebar ? '28px' : '0' }}
     >
       {!esSidebar && <h2 className="v3-seccion-titulo">Movimientos de hoy</h2>}
       {esSidebar && (
@@ -80,7 +81,8 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
                 lineHeight: 1.5
               }}
             >
-              ¿Quieres recibir un aviso cuando cambie el movimiento de tu empresa? Entra en su
+              ¿Quieres recibir un aviso cuando cambie el movimiento de
+tu empresa? Entra en su
               ficha y suscríbete. Es gratis.
             </p>
           </>
@@ -100,12 +102,15 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
           </p>
         )}
 
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '8px' }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0,
+display: 'grid', gap: '8px' }}>
           {cambios.slice(0, esSidebar ? 5 : 8).map((c) => {
             const colorNuevo =
-              c.movimientoNuevo === 'compra' ? 'var(--v3-positive)' : 'var(--v3-negative)';
+              c.movimientoNuevo === 'compra' ? 'var(--v3-positive)' :
+'var(--v3-negative)';
             const colorAnterior =
-              c.movimientoAnterior === 'compra' ? 'var(--v3-positive)' : 'var(--v3-negative)';
+              c.movimientoAnterior === 'compra' ? 'var(--v3-positive)'
+: 'var(--v3-negative)';
 
             return (
               <li key={c.ticker}>
@@ -155,9 +160,11 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    <span style={{ color: colorAnterior }}>{c.movimientoAnterior}</span>
+                    <span style={{ color: colorAnterior
+}}>{c.movimientoAnterior}</span>
                     {' → '}
-                    <span style={{ color: colorNuevo }}>{c.movimientoNuevo}</span>
+                    <span style={{ color: colorNuevo
+}}>{c.movimientoNuevo}</span>
                   </div>
                 </Link>
               </li>
