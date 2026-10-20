@@ -21,7 +21,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
       return;
     }
     if (!acepta) {
-      setError('Debes aceptar recibir las alertas.');
+      setError('Debes aceptar recibir las actualizaciones estadísticas.');
       return;
     }
 
@@ -58,8 +58,8 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
       <div
         style={{
           padding: esSidebar ? '16px' : '20px',
-          borderLeft: '4px solid var(--v3-positive)',
-          background: '#f0fdf4',
+          borderLeft: '4px solid #2563eb',
+          background: '#eff6ff',
           borderRadius: 'var(--v3-radius-sm)',
           marginTop: esSidebar ? '0' : '30px'
         }}
@@ -68,7 +68,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           style={{
             fontSize: '13px',
             fontWeight: 700,
-            color: 'var(--v3-positive)',
+            color: '#1e40af',
             marginBottom: '6px',
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
@@ -78,7 +78,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
         </div>
         <p style={{ margin: 0, fontSize: '13px', color: 'var(--v3-text)', lineHeight: 1.5 }}>
           Revisa tu correo y pulsa el enlace de confirmación. Hasta que no lo hagas, no recibirás
-          avisos.
+          notificaciones.
         </p>
       </div>
     );
@@ -89,12 +89,12 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
       <style jsx global>{`
         @keyframes v3-parpadeo-gratis {
           0%, 100% {
-            background-color: #dc2626;
-            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            background-color: #2563eb;
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
           }
           50% {
-            background-color: #991b1b;
-            box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+            background-color: #1e40af;
+            box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
           }
         }
         .v3-gratis-badge {
@@ -104,8 +104,8 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
 
       <div
         style={{
-          background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
-          border: '2px solid #f97316',
+          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+          border: '2px solid #3b82f6',
           borderRadius: 'var(--v3-radius)',
           padding: esSidebar ? '16px' : '20px',
           marginTop: esSidebar ? '0' : '30px',
@@ -125,10 +125,12 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
             style={{
               fontSize: esSidebar ? '14px' : '16px',
               fontWeight: 800,
-              color: '#9a3412'
+              color: '#1e3a8a'
             }}
           >
-            {esSidebar ? 'Avisos informativos' : 'Avisos informativos por email'}
+            {esSidebar
+              ? 'Actualizaciones estadísticas'
+              : 'Actualizaciones estadísticas por email'}
           </div>
           <span
             className="v3-gratis-badge"
@@ -150,13 +152,13 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           style={{
             margin: '0 0 12px 0',
             fontSize: esSidebar ? '12.5px' : '14px',
-            color: '#7c2d12',
+            color: '#1e40af',
             lineHeight: 1.5
           }}
         >
           {esSidebar
-            ? `Aviso técnico informativo: Recibirás una actualización cuando se registre un nuevo evento estadístico en la ficha de ${empresa.nombre} .`
-            : `Aviso técnico informativo: Recibirás una actualización cuando se registre un nuevo evento estadístico en la ficha de ${empresa.nombre} . Este aviso es informativo y no constituye una señal ni recomendación de inversión.`}
+            ? `Recibirás una notificación cuando se incorpore un nuevo registro estadístico histórico en la ficha de ${empresa.nombre}.`
+            : `Recibirás una notificación cuando se incorpore un nuevo registro estadístico histórico en la ficha de ${empresa.nombre}. Esta notificación es informativa y no constituye una señal ni recomendación de inversión.`}
         </p>
 
         <form onSubmit={enviar}>
@@ -169,7 +171,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               width: '100%',
               padding: '10px 12px',
               fontSize: '14px',
-              border: '2px solid #fdba74',
+              border: '2px solid #93c5fd',
               borderRadius: 'var(--v3-radius-sm)',
               outline: 'none',
               boxSizing: 'border-box',
@@ -186,13 +188,13 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               fontSize: '14px',
               fontWeight: 700,
               color: '#fff',
-              background: estado === 'enviando' ? '#9ca3af' : '#ea580c',
+              background: estado === 'enviando' ? '#9ca3af' : '#2563eb',
               border: 'none',
               borderRadius: 'var(--v3-radius-sm)',
               cursor: estado === 'enviando' ? 'wait' : 'pointer'
             }}
           >
-            {estado === 'enviando' ? 'Enviando…' : 'Quiero recibirlos gratis'}
+            {estado === 'enviando' ? 'Enviando…' : 'Quiero recibirlas gratis'}
           </button>
 
           <label
@@ -202,7 +204,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               alignItems: 'flex-start',
               marginTop: '10px',
               fontSize: '11.5px',
-              color: '#7c2d12',
+              color: '#1e40af',
               cursor: 'pointer'
             }}
           >
@@ -214,8 +216,9 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               disabled={estado === 'enviando'}
             />
             <span>
-              Acepto recibir avisos por email. Puedo darme de baja cuando quiera. He leído la{' '}
-              <a href="/privacidad" style={{ color: '#9a3412', fontWeight: 600 }}>
+              Acepto recibir actualizaciones estadísticas por email. Puedo darme de baja cuando
+              quiera. He leído la{' '}
+              <a href="/privacidad" style={{ color: '#1e3a8a', fontWeight: 600 }}>
                 Política de Privacidad
               </a>
               .
@@ -229,16 +232,16 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
 
         <p
           style={{
-            color: '#9a3412',
+            color: '#1e40af',
             fontSize: '11px',
             marginTop: '10px',
             marginBottom: 0,
             lineHeight: 1.4
           }}
         >
-          Recibirás únicamente avisos informativos sobre esta empresa. Puedes darte de baja en
-          cualquier momento con un clic. Estos avisos no constituyen una señal ni recomendación de
-          inversión.
+          Recibirás únicamente notificaciones informativas sobre actualizaciones del registro
+          estadístico de esta empresa. Puedes darte de baja en cualquier momento con un clic.
+          Estas notificaciones no constituyen una señal ni recomendación de inversión.
         </p>
       </div>
     </>
