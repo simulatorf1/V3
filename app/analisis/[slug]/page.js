@@ -17,10 +17,42 @@ export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
 
-function etiquetaParteRango(tipo) {
+// Traduce el valor interno (compra/venta) a lenguaje humano
+function situacionDesdeTipo(tipo) {
   if (tipo === 'compra') return 'parte baja del rango';
   if (tipo === 'venta') return 'parte alta del rango';
   return 'parte intermedia del rango';
+}
+
+// Traduce la zona interna (alta/baja) a lenguaje humano
+function situacionDesdeZona(zona) {
+  if (zona === 'alta') return 'parte alta del rango';
+  if (zona === 'baja') return 'parte baja del rango';
+  return 'parte intermedia del rango';
+}
+
+// Categoría técnica (secundaria)
+function categoriaDesdeZona(zona) {
+  if (zona === 'alta') return 'A';
+  if (zona === 'baja') return 'C';
+  return 'B';
+}
+
+// Explicación humana del percentil
+function explicacionPercentil(percentil) {
+  if (percentil >= 80) {
+    return `Percentil ${percentil}: el precio está en la zona alta de su rango de las últimas 60 sesiones.`;
+  }
+  if (percentil >= 60) {
+    return `Percentil ${percentil}: el precio está en la zona media-alta de su rango de las últimas 60 sesiones.`;
+  }
+  if (percentil >= 40) {
+    return `Percentil ${percentil}: el precio está aproximadamente en la zona central de su rango de las últimas 60 sesiones.`;
+  }
+  if (percentil >= 20) {
+    return `Percentil ${percentil}: el precio está en la zona media-baja de su rango de las últimas 60 sesiones.`;
+  }
+  return `Percentil ${percentil}: el precio está en la zona baja de su rango de las últimas 60 sesiones.`;
 }
 
 function slugSector(s) {
@@ -83,7 +115,7 @@ export async function generateMetadata({ params }) {
     if (!empresa) return { title: 'Empresa — Equaty' };
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
-    const titulo = `Registro estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
+    const titulo = `Ficha estadística de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
     const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): precio, evolución reciente, comparación sectorial e indicador descriptivo. No es recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
@@ -177,7 +209,7 @@ export default async function PaginaEmpresa({ params }) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: `Registro estadístico de ${empresa.nombre} (${empresa.ticker})`,
+    headline: `Ficha estadística de ${empresa.nombre} (${empresa.ticker})`,
     description: `Ficha informativa y estadística de ${empresa.nombre}`,
     url: canonical,
     datePublished: analisis.generado_at,
@@ -208,20 +240,9 @@ export default async function PaginaEmpresa({ params }) {
     percentil = Math.round((menores / smisOrdenados.length) * 100);
   }
 
-  // Etiquetas legibles: frase principal + etiqueta secundaria
-  const parteRangoPrincipal =
-    analisis.zona === 'alta'
-      ? 'parte alta'
-      : analisis.zona === 'baja'
-      ? 'parte baja'
-      : 'parte intermedia';
-
-  const etiquetaCategoria =
-    analisis.zona === 'alta'
-      ? 'Categoría A'
-      : analisis.zona === 'baja'
-      ? 'Categoría C'
-      : 'Categoría B';
+  // CAMBIO 1 + 8: situación humana primero, técnica después
+  const situacionActual = situacionDesdeZona(analisis.zona);
+  const categoriaTecnica = categoriaDesdeZona(analisis.zona);
 
   const consenso = await cargarConsenso(empresa.ticker);
 
@@ -252,23 +273,20 @@ export default async function PaginaEmpresa({ params }) {
       ? analisis.sectorInfo.variacionSector60
       : null;
 
-  // FRASE DE RESUMEN (conclusión primero)
-  let resumenFrase = `En las últimas 60 sesiones, el precio ha `;
-  if (variacion60 > 0.05) resumenFrase += `subido un ${variacion60.toFixed(1)}%`;
-  else if (variacion60 < -0.05) resumenFrase += `bajado un ${Math.abs(variacion60).toFixed(1)}%`;
-  else resumenFrase += `permanecido prácticamente estable`;
+  // CAMBIO 6: resumen humano en 2 líneas
+  const variacionTexto =
+    variacion60 > 0.05
+      ? `ha subido un ${variacion60.toFixed(1)}%`
+      : variacion60 < -0.05
+      ? `ha bajado un ${Math.abs(variacion60).toFixed(1)}%`
+      : `se ha mantenido prácticamente estable`;
 
-  resumenFrase += ` y se sitúa en la ${parteRangoPrincipal} de su rango reciente.`;
-
+  let comparacionTexto = '';
   if (variacionSector60 !== null) {
     const diff = variacion60 - variacionSector60;
-    if (Math.abs(diff) < 2) {
-      resumenFrase += ` La evolución es similar a la de su sector.`;
-    } else if (diff > 0) {
-      resumenFrase += ` La evolución es algo mejor que la de su sector.`;
-    } else {
-      resumenFrase += ` La evolución es algo peor que la de su sector.`;
-    }
+    if (Math.abs(diff) < 2) comparacionTexto = 'Su evolución es similar a la de su sector.';
+    else if (diff > 0) comparacionTexto = 'Su evolución es algo mejor que la de su sector.';
+    else comparacionTexto = 'Su evolución es algo peor que la de su sector.';
   }
 
   return (
@@ -282,7 +300,6 @@ export default async function PaginaEmpresa({ params }) {
 
         <RegistrarVisita ticker={empresa.ticker} ruta={`/analisis/${slug}`} />
 
-        {/* MIGAS DE PAN */}
         <nav
           aria-label="Migas de pan"
           style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginBottom: '12px' }}
@@ -301,7 +318,7 @@ export default async function PaginaEmpresa({ params }) {
           <span style={{ color: 'var(--v3-text)' }}>{empresa.nombre}</span>
         </nav>
 
-        {/* BLOQUE 1: CABECERA DE CONTEXTO */}
+        {/* CABECERA */}
         <h1 style={{ marginBottom: '4px' }}>
           {empresa.nombre} ({empresa.ticker})
         </h1>
@@ -312,24 +329,27 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        {/* BLOQUE 2: RESUMEN EN UNA FRASE */}
+        {/* CAMBIO 6: ¿Qué estoy viendo? — resumen humano en 2 líneas */}
         <section
           className="v3-card"
           style={{
             marginTop: '16px',
             padding: '20px',
             background: 'var(--v3-bg-soft)',
-            fontSize: '16px',
-            lineHeight: 1.6
+            fontSize: '15px',
+            lineHeight: 1.7
           }}
           aria-label="Resumen de la situación actual"
         >
           <p style={{ margin: 0 }}>
-            <strong>{resumenFrase}</strong>
+            Durante los últimos 60 días, <strong>{empresa.nombre}</strong> {variacionTexto}.
+            Actualmente el precio se encuentra en una{' '}
+            <strong>{situacionActual}</strong> respecto a su propio comportamiento reciente.
+            {comparacionTexto && ` ${comparacionTexto}`}
           </p>
         </section>
 
-        {/* BLOQUE 3: DATOS CLAVE */}
+        {/* DATOS CLAVE */}
         <section className="v3-seccion" style={{ marginTop: '24px' }}>
           <h2 className="v3-seccion-titulo">Datos clave</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
@@ -340,10 +360,7 @@ export default async function PaginaEmpresa({ params }) {
                 gap: '20px'
               }}
             >
-              <Dato
-                etiqueta="Precio actual"
-                valor={`${precioActual?.toFixed(2) ?? '—'} €`}
-              />
+              <Dato etiqueta="Precio actual" valor={`${precioActual?.toFixed(2) ?? '—'} €`} />
               <Dato
                 etiqueta="Variación en 5 sesiones"
                 valor={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}%`}
@@ -364,54 +381,32 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* BLOQUE 4: QUÉ MIDE EL INDICADOR (antes de mostrarlo) */}
+        {/* CAMBIO 1: Situación humana como protagonista, técnica después */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">¿Qué mide el indicador?</h2>
-          <div className="v3-card" style={{ padding: '20px', lineHeight: 1.7 }}>
-            <p style={{ marginTop: 0, fontSize: '15px' }}>
-              <strong>El indicador dice en qué parte de su rango reciente ha cotizado el
-              precio.</strong>{' '}
-              No dice si va a subir o bajar: solo describe dónde ha estado en las últimas 60
-              sesiones.
-            </p>
-            <ul style={{ paddingLeft: '20px', margin: '12px 0', fontSize: '14px' }}>
-              <li>
-                <strong>Parte alta del rango</strong>: el precio ha cotizado cerca de sus máximos
-                recientes.
-              </li>
-              <li>
-                <strong>Parte intermedia</strong>: el precio ha cotizado en la zona central de su
-                rango.
-              </li>
-              <li>
-                <strong>Parte baja del rango</strong>: el precio ha cotizado cerca de sus mínimos
-                recientes.
-              </li>
-            </ul>
-            <p style={{ marginBottom: 0, fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-              Es información histórica y descriptiva. No es una señal, no es una recomendación y
-              no anticipa movimientos futuros.
-            </p>
-          </div>
-        </section>
-
-        {/* BLOQUE 5: SITUACIÓN ACTUAL DEL INDICADOR (frase principal + etiqueta secundaria) */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Situación actual del indicador</h2>
+          <h2 className="v3-seccion-titulo">Situación actual</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
-            <p style={{ fontSize: '18px', lineHeight: 1.5, margin: 0 }}>
-              El precio se encuentra en la{' '}
-              <strong>{parteRangoPrincipal} de su rango</strong> de las últimas 60 sesiones.
+            <p style={{ fontSize: '20px', lineHeight: 1.5, margin: 0, fontWeight: 600 }}>
+              {situacionActual.charAt(0).toUpperCase() + situacionActual.slice(1)}
             </p>
             <p
               style={{
                 margin: '12px 0 0 0',
+                fontSize: '13px',
+                color: 'var(--v3-text-soft)',
+                lineHeight: 1.6
+              }}
+            >
+              {explicacionPercentil(percentil)}
+            </p>
+            <p
+              style={{
+                margin: '8px 0 0 0',
                 fontSize: '12px',
                 color: 'var(--v3-text-mute)',
                 letterSpacing: '0.3px'
               }}
             >
-              Etiqueta técnica: {etiquetaCategoria} · Percentil {percentil} de 60 sesiones.
+              Categoría técnica: {categoriaTecnica}
             </p>
             {ultimaSenal && (
               <p
@@ -421,14 +416,38 @@ export default async function PaginaEmpresa({ params }) {
                   color: 'var(--v3-text-mute)'
                 }}
               >
-                Último registro de cambio de parte del rango: {ultimaSenal.fecha} (
-                {etiquetaParteRango(ultimaSenal.tipo)}).
+                Último cambio de situación: {ultimaSenal.fecha} (
+                {situacionDesdeTipo(ultimaSenal.tipo)}).
               </p>
             )}
           </div>
         </section>
 
-        {/* BLOQUE 6: GRÁFICO con guía de lectura */}
+        {/* CAMBIO 3: ¿Para qué sirve este indicador? — encima del gráfico */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">¿Para qué sirve este indicador?</h2>
+          <div
+            className="v3-card"
+            style={{
+              padding: '20px',
+              background: 'var(--v3-bg-soft)',
+              lineHeight: 1.7,
+              fontSize: '14.5px'
+            }}
+          >
+            <p style={{ marginTop: 0 }}>
+              Este indicador sirve para contextualizar dónde se encuentra el precio actual
+              respecto a su comportamiento reciente.
+            </p>
+            <p>No intenta predecir el futuro.</p>
+            <p style={{ marginBottom: 0 }}>
+              Simplemente muestra si el precio actual está situado en una zona alta, intermedia o
+              baja de su rango de las últimas 60 sesiones.
+            </p>
+          </div>
+        </section>
+
+        {/* GRÁFICO con guía de lectura y aviso */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Evolución del precio y del indicador</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
@@ -456,32 +475,29 @@ export default async function PaginaEmpresa({ params }) {
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
         </section>
 
-        {/* BLOQUE 7: HISTÓRICO DE REGISTROS con contexto */}
+        {/* CAMBIO 4 + 5: Historial de cambios de rango (antes "Histórico de registros") */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Histórico de registros</h2>
+          <h2 className="v3-seccion-titulo">Historial de cambios de rango</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
-            Cada fila es una sesión en la que el indicador cambió de parte del rango. Sirve para
-            ver con qué frecuencia el precio ha estado en cada parte de su rango en el último año.
+            Cada fila muestra una sesión en la que el precio cambió de situación dentro de su
+            rango. Sirve para ver con qué frecuencia ha estado en cada zona durante el último año.
           </p>
           <TablaSenales senales={analisis.senales} precioActual={null} />
         </section>
 
-        {/* BLOQUE 7b: CONTEXTO RECIENTE (noticias) */}
         {analisis.noticias && analisis.noticias.length > 0 && (
           <ContextoReciente noticias={analisis.noticias} />
         )}
 
-        {/* BLOQUE 8: COMPARACIÓN SECTORIAL AMPLIADA (si el componente la usa) */}
         <ComparadorSector empresa={empresa} analisis={analisis} />
 
-        {/* BLOQUE 9: ALERTAS, ENCUESTA, COMPARTIR */}
         <FormularioAlerta empresa={empresa} />
 
         <ConsensoComunidad ticker={empresa.ticker} />
 
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
-        {/* BLOQUE 10: AVISOS REGULATORIOS Y CONFLICTOS DE INTERÉS */}
+        {/* AVISOS REGULATORIOS */}
         <section
           className="v3-card"
           style={{
