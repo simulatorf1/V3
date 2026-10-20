@@ -10,10 +10,10 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function etiquetaTramo(zona) {
-  if (zona === 'alta') return 'tramo superior';
-  if (zona === 'baja') return 'tramo inferior';
-  return 'tramo intermedio';
+function etiquetaCategoria(zona) {
+  if (zona === 'alta') return 'Categoría A';
+  if (zona === 'baja') return 'Categoría C';
+  return 'Categoría B';
 }
 
 export default function CambiosRecientes({ cambios }) {
@@ -40,7 +40,7 @@ export default function CambiosRecientes({ cambios }) {
         >
           {cambios.slice(0, 12).map((c) => {
             const stats = c.stats || {};
-            const tramo = stats.zona ? etiquetaTramo(stats.zona) : null;
+            const categoria = stats.zona ? etiquetaCategoria(stats.zona) : null;
             const percentil =
               stats.percentil !== undefined && stats.percentil !== null
                 ? stats.percentil
@@ -119,7 +119,7 @@ export default function CambiosRecientes({ cambios }) {
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  {tramo && (
+                  {categoria && (
                     <div style={{ flex: 1, minWidth: '100px' }}>
                       <div
                         style={{
@@ -130,7 +130,7 @@ export default function CambiosRecientes({ cambios }) {
                           fontWeight: 600
                         }}
                       >
-                        Tramo actual
+                        Categoría actual
                       </div>
                       <div
                         style={{
@@ -139,7 +139,7 @@ export default function CambiosRecientes({ cambios }) {
                           color: 'var(--v3-text)'
                         }}
                       >
-                        {tramo}
+                        {categoria}
                       </div>
                     </div>
                   )}
