@@ -30,7 +30,8 @@ export default function Pie() {
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '2px' }}>
+            <div style={{ fontWeight: 700, fontSize: '15px',
+marginBottom: '2px' }}>
               Síguenos en X
             </div>
             <div style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
@@ -68,20 +69,30 @@ export default function Pie() {
           ))}
         </div>
 
-        <p style={{ textAlign: 'center', lineHeight: '1.6', marginBottom: '12px' }}>
-          Este contenido es un registro estadístico elaborado por el equipo de Equaty a partir de
-          datos históricos de mercado. Tiene finalidad exclusivamente informativa y estadística,
-          no constituye asesoramiento financiero personalizado, recomendación de inversión,
-          oferta, solicitud o invitación para comprar o vender instrumentos financieros. La
-          información se proporciona "tal cual", sin garantía de exactitud, integridad o
-          actualidad. El usuario es el único responsable de sus decisiones de inversión. Invertir
-          conlleva riesgo de pérdida del capital invertido. La evolución pasada no garantiza
+        <p style={{ textAlign: 'center', lineHeight: '1.6',
+marginBottom: '12px' }}>
+          Este contenido es un registro estadístico elaborado por el
+equipo de Equaty a partir de
+          datos históricos de mercado. Tiene finalidad exclusivamente
+informativa y estadística,
+          no constituye asesoramiento financiero personalizado,
+recomendación de inversión,
+          oferta, solicitud o invitación para comprar o vender
+instrumentos financieros. La
+          información se proporciona "tal cual", sin garantía de
+exactitud, integridad o
+          actualidad. El usuario es el único responsable de sus
+decisiones de inversión. Invertir
+          conlleva riesgo de pérdida del capital invertido. La
+evolución pasada no garantiza
           resultados futuros.
         </p>
 
         <p style={{ textAlign: 'center', lineHeight: '1.6', margin: 0 }}>
-          El funcionamiento de este sitio web puede generar ingresos por publicidad. Los
-          anunciantes no influyen en el contenido del informe, pero puede existir un conflicto de
+          El funcionamiento de este sitio web puede generar ingresos
+por publicidad. Los
+          anunciantes no influyen en el contenido del informe, pero
+puede existir un conflicto de
           interés potencial.
         </p>
       </div>
