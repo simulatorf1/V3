@@ -17,10 +17,10 @@ export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
 
-function etiquetaLectura(tipo) {
-  if (tipo === 'compra') return 'Categoría C';
-  if (tipo === 'venta') return 'Categoría A';
-  return '—';
+function etiquetaParteRango(tipo) {
+  if (tipo === 'compra') return 'parte baja del rango';
+  if (tipo === 'venta') return 'parte alta del rango';
+  return 'parte intermedia del rango';
 }
 
 function slugSector(s) {
@@ -84,7 +84,7 @@ export async function generateMetadata({ params }) {
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const titulo = `Registro estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): indicador descriptivo, categorías estadísticas e histórico de registros. No es recomendación de inversión.`;
+    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): precio, evolución reciente, comparación sectorial e indicador descriptivo. No es recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -208,15 +208,15 @@ export default async function PaginaEmpresa({ params }) {
     percentil = Math.round((menores / smisOrdenados.length) * 100);
   }
 
-  // Colores neutrales azul/gris (sin rojo/verde)
-  const colorCategoria =
+  // Etiquetas legibles: frase principal + etiqueta secundaria
+  const parteRangoPrincipal =
     analisis.zona === 'alta'
-      ? '#2563eb'
+      ? 'parte alta'
       : analisis.zona === 'baja'
-      ? '#9ca3af'
-      : 'var(--v3-text-soft)';
+      ? 'parte baja'
+      : 'parte intermedia';
 
-  const etiquetaZona =
+  const etiquetaCategoria =
     analisis.zona === 'alta'
       ? 'Categoría A'
       : analisis.zona === 'baja'
@@ -247,16 +247,29 @@ export default async function PaginaEmpresa({ params }) {
       : 0;
   const volatilidad = Math.sqrt(varianza) * 100;
 
-  let enAlta = 0;
-  let enMedia = 0;
-  let enBaja = 0;
-  for (const s of smis) {
-    if (s === null || s === undefined) continue;
-    if (s > 40) enAlta++;
-    else if (s < -40) enBaja++;
-    else enMedia++;
+  const variacionSector60 =
+    analisis.sectorInfo && analisis.sectorInfo.variacionSector60 !== null
+      ? analisis.sectorInfo.variacionSector60
+      : null;
+
+  // FRASE DE RESUMEN (conclusión primero)
+  let resumenFrase = `En las últimas 60 sesiones, el precio ha `;
+  if (variacion60 > 0.05) resumenFrase += `subido un ${variacion60.toFixed(1)}%`;
+  else if (variacion60 < -0.05) resumenFrase += `bajado un ${Math.abs(variacion60).toFixed(1)}%`;
+  else resumenFrase += `permanecido prácticamente estable`;
+
+  resumenFrase += ` y se sitúa en la ${parteRangoPrincipal} de su rango reciente.`;
+
+  if (variacionSector60 !== null) {
+    const diff = variacion60 - variacionSector60;
+    if (Math.abs(diff) < 2) {
+      resumenFrase += ` La evolución es similar a la de su sector.`;
+    } else if (diff > 0) {
+      resumenFrase += ` La evolución es algo mejor que la de su sector.`;
+    } else {
+      resumenFrase += ` La evolución es algo peor que la de su sector.`;
+    }
   }
-  const totalSesiones = enAlta + enMedia + enBaja;
 
   return (
     <div className="v3-grid-analisis">
@@ -269,9 +282,10 @@ export default async function PaginaEmpresa({ params }) {
 
         <RegistrarVisita ticker={empresa.ticker} ruta={`/analisis/${slug}`} />
 
+        {/* MIGAS DE PAN */}
         <nav
           aria-label="Migas de pan"
-          style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginBottom: '16px' }}
+          style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginBottom: '12px' }}
         >
           <Link href="/" style={{ color: 'var(--v3-text-soft)' }}>
             Inicio
@@ -287,27 +301,198 @@ export default async function PaginaEmpresa({ params }) {
           <span style={{ color: 'var(--v3-text)' }}>{empresa.nombre}</span>
         </nav>
 
-        <h1>
-          Registro estadístico de {empresa.nombre} ({empresa.ticker})
+        {/* BLOQUE 1: CABECERA DE CONTEXTO */}
+        <h1 style={{ marginBottom: '4px' }}>
+          {empresa.nombre} ({empresa.ticker})
         </h1>
-
-        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-          Última actualización: {fechaMadrid()}
+        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: 0 }}>
+          {empresa.mercado || 'Mercado no especificado'}
+          {empresa.sector && ` · Sector ${empresa.sector}`}
+          {' · '}Última actualización: {fechaMadrid()}
           {desdeCache && ' · desde caché'}
         </p>
 
-        {/* BLOQUE ÚNICO DE DIVULGACIÓN REGULATORIA */}
+        {/* BLOQUE 2: RESUMEN EN UNA FRASE */}
         <section
           className="v3-card"
           style={{
-            marginTop: '20px',
+            marginTop: '16px',
+            padding: '20px',
+            background: 'var(--v3-bg-soft)',
+            fontSize: '16px',
+            lineHeight: 1.6
+          }}
+          aria-label="Resumen de la situación actual"
+        >
+          <p style={{ margin: 0 }}>
+            <strong>{resumenFrase}</strong>
+          </p>
+        </section>
+
+        {/* BLOQUE 3: DATOS CLAVE */}
+        <section className="v3-seccion" style={{ marginTop: '24px' }}>
+          <h2 className="v3-seccion-titulo">Datos clave</h2>
+          <div className="v3-card" style={{ padding: '20px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '20px'
+              }}
+            >
+              <Dato
+                etiqueta="Precio actual"
+                valor={`${precioActual?.toFixed(2) ?? '—'} €`}
+              />
+              <Dato
+                etiqueta="Variación en 5 sesiones"
+                valor={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}%`}
+              />
+              <Dato
+                etiqueta="Variación en 60 sesiones"
+                valor={`${variacion60 >= 0 ? '+' : ''}${variacion60.toFixed(2)}%`}
+              />
+              <Dato
+                etiqueta="Sector (60 sesiones)"
+                valor={
+                  variacionSector60 !== null
+                    ? `${variacionSector60 >= 0 ? '+' : ''}${variacionSector60.toFixed(2)}%`
+                    : '—'
+                }
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* BLOQUE 4: QUÉ MIDE EL INDICADOR (antes de mostrarlo) */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">¿Qué mide el indicador?</h2>
+          <div className="v3-card" style={{ padding: '20px', lineHeight: 1.7 }}>
+            <p style={{ marginTop: 0, fontSize: '15px' }}>
+              <strong>El indicador dice en qué parte de su rango reciente ha cotizado el
+              precio.</strong>{' '}
+              No dice si va a subir o bajar: solo describe dónde ha estado en las últimas 60
+              sesiones.
+            </p>
+            <ul style={{ paddingLeft: '20px', margin: '12px 0', fontSize: '14px' }}>
+              <li>
+                <strong>Parte alta del rango</strong>: el precio ha cotizado cerca de sus máximos
+                recientes.
+              </li>
+              <li>
+                <strong>Parte intermedia</strong>: el precio ha cotizado en la zona central de su
+                rango.
+              </li>
+              <li>
+                <strong>Parte baja del rango</strong>: el precio ha cotizado cerca de sus mínimos
+                recientes.
+              </li>
+            </ul>
+            <p style={{ marginBottom: 0, fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+              Es información histórica y descriptiva. No es una señal, no es una recomendación y
+              no anticipa movimientos futuros.
+            </p>
+          </div>
+        </section>
+
+        {/* BLOQUE 5: SITUACIÓN ACTUAL DEL INDICADOR (frase principal + etiqueta secundaria) */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Situación actual del indicador</h2>
+          <div className="v3-card" style={{ padding: '20px' }}>
+            <p style={{ fontSize: '18px', lineHeight: 1.5, margin: 0 }}>
+              El precio se encuentra en la{' '}
+              <strong>{parteRangoPrincipal} de su rango</strong> de las últimas 60 sesiones.
+            </p>
+            <p
+              style={{
+                margin: '12px 0 0 0',
+                fontSize: '12px',
+                color: 'var(--v3-text-mute)',
+                letterSpacing: '0.3px'
+              }}
+            >
+              Etiqueta técnica: {etiquetaCategoria} · Percentil {percentil} de 60 sesiones.
+            </p>
+            {ultimaSenal && (
+              <p
+                style={{
+                  margin: '10px 0 0 0',
+                  fontSize: '12px',
+                  color: 'var(--v3-text-mute)'
+                }}
+              >
+                Último registro de cambio de parte del rango: {ultimaSenal.fecha} (
+                {etiquetaParteRango(ultimaSenal.tipo)}).
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* BLOQUE 6: GRÁFICO con guía de lectura */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Evolución del precio y del indicador</h2>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
+            La <strong>línea azul</strong> es el precio. La <strong>línea morada</strong> es el
+            indicador: cuanto más arriba está, más cerca ha cotizado el precio de sus máximos
+            recientes; cuanto más abajo, más cerca de sus mínimos.
+          </p>
+          <div
+            className="v3-card"
+            style={{
+              marginTop: '12px',
+              padding: '12px 16px',
+              background: 'var(--v3-bg-soft)',
+              borderLeft: '3px solid #9ca3af',
+              fontSize: '12.5px',
+              color: 'var(--v3-text-soft)',
+              lineHeight: 1.6
+            }}
+          >
+            Este gráfico representa exclusivamente información histórica ya ocurrida. No
+            identifica oportunidades de inversión, no anticipa movimientos futuros, no estima
+            probabilidades futuras y no debe utilizarse para adoptar decisiones de compra, venta o
+            mantenimiento de instrumentos financieros.
+          </div>
+          <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+        </section>
+
+        {/* BLOQUE 7: HISTÓRICO DE REGISTROS con contexto */}
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Histórico de registros</h2>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
+            Cada fila es una sesión en la que el indicador cambió de parte del rango. Sirve para
+            ver con qué frecuencia el precio ha estado en cada parte de su rango en el último año.
+          </p>
+          <TablaSenales senales={analisis.senales} precioActual={null} />
+        </section>
+
+        {/* BLOQUE 7b: CONTEXTO RECIENTE (noticias) */}
+        {analisis.noticias && analisis.noticias.length > 0 && (
+          <ContextoReciente noticias={analisis.noticias} />
+        )}
+
+        {/* BLOQUE 8: COMPARACIÓN SECTORIAL AMPLIADA (si el componente la usa) */}
+        <ComparadorSector empresa={empresa} analisis={analisis} />
+
+        {/* BLOQUE 9: ALERTAS, ENCUESTA, COMPARTIR */}
+        <FormularioAlerta empresa={empresa} />
+
+        <ConsensoComunidad ticker={empresa.ticker} />
+
+        <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
+
+        {/* BLOQUE 10: AVISOS REGULATORIOS Y CONFLICTOS DE INTERÉS */}
+        <section
+          className="v3-card"
+          style={{
+            marginTop: '40px',
             padding: '20px',
             borderLeft: '4px solid #9ca3af',
             background: 'var(--v3-bg-soft)'
           }}
           aria-label="Divulgación regulatoria"
         >
-          <h2 style={{ marginTop: 0, fontSize: '16px' }}>Divulgación regulatoria</h2>
+          <h2 style={{ marginTop: 0, fontSize: '15px' }}>Divulgación regulatoria</h2>
           <p style={{ margin: '8px 0 0 0', fontSize: '13px', lineHeight: 1.7 }}>
             El contenido de esta página tiene <strong>finalidad exclusivamente estadística e
             informativa</strong>. No constituye asesoramiento financiero, recomendación de
@@ -321,223 +506,6 @@ export default async function PaginaEmpresa({ params }) {
           </p>
         </section>
 
-        {/* BLOQUE 1: Datos de la empresa */}
-        <section className="v3-seccion" style={{ marginTop: '20px' }}>
-          <h2 className="v3-seccion-titulo">Datos de la empresa</h2>
-          <div className="v3-card" style={{ padding: '20px' }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '16px'
-              }}
-            >
-              <Dato etiqueta="Ticker" valor={empresa.ticker} />
-              <Dato etiqueta="Sector" valor={empresa.sector || '—'} />
-              <Dato etiqueta="Mercado" valor={empresa.mercado || '—'} />
-              <Dato
-                etiqueta="Precio actual"
-                valor={precioActual?.toFixed(2) ?? '—'}
-                extra={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}% en 5 sesiones`}
-                colorExtra="var(--v3-text-soft)"
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
-          <p style={{ lineHeight: 1.7 }}>
-            {empresa.nombre} ({empresa.ticker}) cotiza en{' '}
-            {empresa.mercado || 'mercado no especificado'} y pertenece al sector{' '}
-            {empresa.sector || 'sector no especificado'}. La información utilizada en esta ficha
-            procede de series históricas públicas de mercado y se revisa periódicamente por el
-            equipo de Equaty con criterios descriptivos.
-          </p>
-          <ComparadorSector empresa={empresa} analisis={analisis} />
-        </section>
-
-        {/* BLOQUE 3: Estado actual del indicador */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Estado actual del indicador (descriptivo)</h2>
-          <div className="v3-card" style={{ padding: '20px' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                gap: '16px',
-                flexWrap: 'wrap'
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '28px',
-                  fontWeight: 800,
-                  color: colorCategoria
-                }}
-              >
-                {etiquetaZona}
-              </div>
-              <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
-                Percentil {percentil} sobre 60 sesiones
-              </div>
-            </div>
-            <p
-              style={{
-                margin: '12px 0 0 0',
-                fontSize: '13px',
-                color: 'var(--v3-text-soft)',
-                lineHeight: 1.6
-              }}
-            >
-              Valor de lectura actual: <strong>{analisis.smiActual?.toFixed(2) ?? '—'}</strong>.
-              Este dato describe de forma descriptiva dónde se sitúa el precio dentro de su rango
-              reciente. No es una señal de acción ni una recomendación de compra o de venta.
-            </p>
-            {ultimaSenal && (
-              <p
-                style={{
-                  margin: '8px 0 0 0',
-                  fontSize: '12px',
-                  color: 'var(--v3-text-mute)'
-                }}
-              >
-                Último registro estadístico: {ultimaSenal.fecha} (tipo de registro:{' '}
-                {etiquetaLectura(ultimaSenal.tipo)}).
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* AVISO ANTES DEL GRÁFICO PRINCIPAL */}
-        <div
-          className="v3-card"
-          style={{
-            marginTop: '20px',
-            padding: '16px 20px',
-            background: 'var(--v3-bg-soft)',
-            borderLeft: '4px solid #9ca3af',
-            fontSize: '13px',
-            lineHeight: 1.7,
-            color: 'var(--v3-text-soft)'
-          }}
-        >
-          Este gráfico representa exclusivamente información histórica ya ocurrida. No identifica
-          oportunidades de inversión, no anticipa movimientos futuros, no estima probabilidades
-          futuras y no debe utilizarse para adoptar decisiones de compra, venta o mantenimiento de
-          instrumentos financieros.
-        </div>
-
-        <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
-
-        {/* Interpretación del gráfico */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Interpretación descriptiva del gráfico</h2>
-          <div className="v3-card" style={{ lineHeight: 1.75 }}>
-            <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
-              En las últimas 60 sesiones, <strong>{empresa.nombre}</strong> ha pasado de{' '}
-              <strong>{primerCierre?.toFixed(2)}</strong> a{' '}
-              <strong>{ultimoCierre?.toFixed(2)}</strong>, con una variación del{' '}
-              <strong>{variacion60 >= 0 ? '+' : ''}{variacion60.toFixed(2)}%</strong>. El rango de
-              cotización se ha movido entre un mínimo de <strong>{minimo.toFixed(2)}</strong> y un
-              máximo de <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha
-              sido del <strong>{volatilidad.toFixed(2)}%</strong>.
-            </p>
-
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador se ha
-              clasificado en <strong>{enAlta}</strong> sesiones en Categoría A,{' '}
-              <strong>{enMedia}</strong> en Categoría B y <strong>{enBaja}</strong> en Categoría
-              C. Estas cifras son puramente descriptivas y reflejan la posición del precio dentro
-              de su propio rango reciente en cada sesión.
-            </p>
-
-            <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              En el último registro, el indicador se sitúa en un valor de{' '}
-              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro de la{' '}
-              <strong style={{ color: colorCategoria }}>{etiquetaZona}</strong>, con un percentil{' '}
-              <strong>{percentil}</strong> sobre las últimas 60 sesiones.
-            </p>
-
-            {ultimaSenal && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                La última actualización del registro estadístico fue el{' '}
-                <strong>{ultimaSenal.fecha}</strong>.
-              </p>
-            )}
-
-            {consenso && consenso.total > 0 && (
-              <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
-                La encuesta de visitantes muestra <strong>{consenso.total}</strong>{' '}
-                {consenso.total === 1 ? 'respuesta' : 'respuestas'} registradas. Los resultados
-                reflejan únicamente respuestas voluntarias de visitantes y no tienen valor
-                analítico, predictivo ni financiero.
-              </p>
-            )}
-          </div>
-        </section>
-
-        <FormularioAlerta empresa={empresa} />
-
-        {/* BLOQUE 2: Indicador propio */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Indicador estadístico descriptivo</h2>
-          <div className="v3-card" style={{ padding: '20px' }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '16px'
-              }}
-            >
-              <Dato
-                etiqueta="Valor"
-                valor={analisis.smiActual?.toFixed(2) ?? '—'}
-                extra="Escala -100 a +100"
-              />
-              <Dato etiqueta="Categoría" valor={etiquetaZona} colorValor={colorCategoria} />
-              <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
-            </div>
-
-            <p
-              style={{
-                margin: '20px 0 0 0',
-                fontSize: '14px',
-                color: 'var(--v3-text)',
-                lineHeight: 1.7
-              }}
-            >
-              El <strong>indicador estadístico descriptivo de Equaty</strong> es un algoritmo
-              interno que combina varias referencias técnicas clásicas (medias móviles, RSI,
-              estocástico y bandas de Bollinger, entre otras) para describir en qué punto del
-              rango reciente se encuentra el precio. El resultado se normaliza en una escala de{' '}
-              <strong>-100 a +100</strong>. El indicador se clasifica en tres categorías
-              estadísticas (A, B y C) con finalidad exclusivamente descriptiva y sin implicación
-              positiva o negativa. El <strong>percentil</strong> señala la posición exacta del
-              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. Es
-              un dato exclusivamente descriptivo de hechos pasados: no predice el futuro, no
-              permite deducir probabilidades ni resultados futuros y no constituye una señal de
-              actuación.
-            </p>
-          </div>
-        </section>
-
-        <ConsensoComunidad ticker={empresa.ticker} />
-
-        <TablaSenales senales={analisis.senales} precioActual={null} />
-
-        {analisis.noticias && analisis.noticias.length > 0 && (
-          <ContextoReciente noticias={analisis.noticias} />
-        )}
-
-        <BotonesCompartir
-          empresa={empresa}
-          analisis={analisis}
-          url={canonical}
-          futuro={null}
-        />
-
-        {/* SECCIÓN DE CONFLICTOS DE INTERÉS */}
         <section className="v3-seccion" aria-label="Conflictos de interés">
           <h2 className="v3-seccion-titulo">Conflictos de interés</h2>
           <div className="v3-card" style={{ padding: '20px', lineHeight: 1.7, fontSize: '13px' }}>
@@ -580,43 +548,32 @@ export default async function PaginaEmpresa({ params }) {
   );
 }
 
-function Dato({ etiqueta, valor, extra, colorValor, colorExtra }) {
+function Dato({ etiqueta, valor }) {
   return (
     <div>
       <div
         style={{
           color: 'var(--v3-text-mute)',
-          fontSize: '12px',
+          fontSize: '11px',
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
           fontWeight: 600,
-          marginBottom: '4px'
+          marginBottom: '6px'
         }}
       >
         {etiqueta}
       </div>
       <div
         style={{
-          fontSize: '20px',
+          fontSize: '22px',
           fontWeight: 700,
-          color: colorValor || 'var(--v3-text)',
+          color: 'var(--v3-text)',
           lineHeight: 1.2,
           wordBreak: 'break-word'
         }}
       >
         {valor}
       </div>
-      {extra && (
-        <div
-          style={{
-            fontSize: '12px',
-            marginTop: '4px',
-            color: colorExtra || 'var(--v3-text-soft)'
-          }}
-        >
-          {extra}
-        </div>
-      )}
     </div>
   );
 }
