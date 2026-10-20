@@ -13,6 +13,12 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
+function etiquetaTramo(movimiento) {
+  if (movimiento === 'compra') return 'tramo inferior';
+  if (movimiento === 'venta') return 'tramo superior';
+  return 'tramo intermedio';
+}
+
 export default function MovimientosHoyCliente({ variante = 'home' }) {
   const [cambios, setCambios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -33,10 +39,9 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
   return (
     <section
       className={esSidebar ? '' : 'v3-seccion'}
-      style={{ marginTop: esSidebar ? '0' : '30px', marginBottom:
-esSidebar ? '28px' : '0' }}
+      style={{ marginTop: esSidebar ? '0' : '30px', marginBottom: esSidebar ? '28px' : '0' }}
     >
-      {!esSidebar && <h2 className="v3-seccion-titulo">Movimientos de hoy</h2>}
+      {!esSidebar && <h2 className="v3-seccion-titulo">Cambios de estado estadístico de hoy</h2>}
       {esSidebar && (
         <h3
           style={{
@@ -48,7 +53,7 @@ esSidebar ? '28px' : '0' }}
             margin: '0 0 10px 0'
           }}
         >
-          Movimientos de hoy
+          Cambios de estado estadístico
         </h3>
       )}
 
@@ -70,7 +75,8 @@ esSidebar ? '28px' : '0' }}
                 lineHeight: 1.5
               }}
             >
-              Empresas que han cambiado de movimiento en las últimas 24 horas.
+              Empresas cuyo indicador estadístico ha cambiado de tramo en las últimas 24 horas.
+              Registro meramente descriptivo de la actualización del indicador.
             </p>
             <p
               style={{
@@ -81,9 +87,8 @@ esSidebar ? '28px' : '0' }}
                 lineHeight: 1.5
               }}
             >
-              ¿Quieres recibir un aviso cuando cambie el movimiento de
-tu empresa? Entra en su
-              ficha y suscríbete. Es gratis.
+              Puedes suscribirte en la ficha de tu empresa para recibir actualizaciones
+              estadísticas del indicador. Es gratis.
             </p>
           </>
         )}
@@ -98,19 +103,14 @@ tu empresa? Entra en su
               lineHeight: 1.4
             }}
           >
-            Suscríbete en la ficha de tu empresa para recibir avisos gratis.
+            Suscríbete en la ficha para recibir actualizaciones estadísticas gratis.
           </p>
         )}
 
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0,
-display: 'grid', gap: '8px' }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '8px' }}>
           {cambios.slice(0, esSidebar ? 5 : 8).map((c) => {
-            const colorNuevo =
-              c.movimientoNuevo === 'compra' ? 'var(--v3-positive)' :
-'var(--v3-negative)';
-            const colorAnterior =
-              c.movimientoAnterior === 'compra' ? 'var(--v3-positive)'
-: 'var(--v3-negative)';
+            const tramoNuevo = etiquetaTramo(c.movimientoNuevo);
+            const tramoAnterior = etiquetaTramo(c.movimientoAnterior);
 
             return (
               <li key={c.ticker}>
@@ -157,14 +157,11 @@ display: 'grid', gap: '8px' }}>
                     style={{
                       fontSize: esSidebar ? '11px' : '13px',
                       fontWeight: 600,
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      color: 'var(--v3-text-soft)'
                     }}
                   >
-                    <span style={{ color: colorAnterior
-}}>{c.movimientoAnterior}</span>
-                    {' → '}
-                    <span style={{ color: colorNuevo
-}}>{c.movimientoNuevo}</span>
+                    cambio de estado estadístico
                   </div>
                 </Link>
               </li>
