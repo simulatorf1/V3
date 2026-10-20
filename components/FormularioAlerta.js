@@ -155,8 +155,8 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           }}
         >
           {esSidebar
-            ? `Aviso técnico informativo: recibirás un email cuando el indicador de ${empresa.nombre} cambie de rango dentro del histórico de datos.`
-            : `Aviso técnico informativo: recibirás un email cuando el indicador de ${empresa.nombre} cambie de rango dentro del histórico de datos (alta → baja o baja → alta). Este aviso es informativo y no constituye una señal ni recomendación de inversión.`}
+            ? `Aviso técnico informativo: Recibirás una actualización cuando se registre un nuevo evento estadístico en la ficha de ${empresa.nombre} .`
+            : `Aviso técnico informativo: Recibirás una actualización cuando se registre un nuevo evento estadístico en la ficha de ${empresa.nombre} . Este aviso es informativo y no constituye una señal ni recomendación de inversión.`}
         </p>
 
         <form onSubmit={enviar}>
