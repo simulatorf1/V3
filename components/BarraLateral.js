@@ -29,9 +29,7 @@ export default function BarraLateral({ ticker }) {
 
   if (cargando) {
     return (
-      <aside style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-        Cargando…
-      </aside>
+      <aside style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>Cargando…</aside>
     );
   }
 
@@ -106,7 +104,9 @@ export default function BarraLateral({ ticker }) {
                   {n.titulo}
                 </a>
                 {n.fuente && (
-                  <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px', marginTop: '3px' }}>
+                  <div
+                    style={{ color: 'var(--v3-text-mute)', fontSize: '11px', marginTop: '3px' }}
+                  >
                     {n.fuente}
                   </div>
                 )}
