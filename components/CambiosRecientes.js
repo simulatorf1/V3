@@ -10,20 +10,24 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
+function etiquetaTramo(zona) {
+  if (zona === 'alta') return 'tramo superior';
+  if (zona === 'baja') return 'tramo inferior';
+  return 'tramo intermedio';
+}
+
 export default function CambiosRecientes({ cambios }) {
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Últimas empresas buscadas</h2>
-      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px',
-marginTop: '-4px' }}>
-        Análisis actualizados en las últimas 48 horas.
+      <h2 className="v3-seccion-titulo">Últimas empresas consultadas</h2>
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
+        Fichas estadísticas actualizadas en las últimas 48 horas.
       </p>
 
       {!cambios || cambios.length === 0 ? (
         <p style={{ color: 'var(--v3-text-soft)' }}>
-          Aún no hay empresas buscadas en las últimas 48 horas. Prueba
-a buscar cualquier empresa
-          en el buscador de arriba.
+          Aún no hay empresas consultadas en las últimas 48 horas. Prueba a buscar cualquier
+          empresa en el buscador de arriba.
         </p>
       ) : (
         <div
@@ -36,6 +40,11 @@ a buscar cualquier empresa
         >
           {cambios.slice(0, 12).map((c) => {
             const stats = c.stats || {};
+            const tramo = stats.zona ? etiquetaTramo(stats.zona) : null;
+            const percentil =
+              stats.percentil !== undefined && stats.percentil !== null
+                ? stats.percentil
+                : null;
 
             return (
               <Link
@@ -109,14 +118,8 @@ a buscar cualquier empresa
                   </span>
                 </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '12px',
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  {stats.compras && stats.compras.muestra > 0 && (
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {tramo && (
                     <div style={{ flex: 1, minWidth: '100px' }}>
                       <div
                         style={{
@@ -127,23 +130,20 @@ a buscar cualquier empresa
                           fontWeight: 600
                         }}
                       >
-                        Acierto compras
+                        Tramo actual
                       </div>
                       <div
                         style={{
-                          fontSize: '18px',
-                          fontWeight: 800,
-                          color:
-                            stats.compras.porcentajeAcierto >= 50
-                              ? 'var(--v3-positive)'
-                              : 'var(--v3-negative)'
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          color: 'var(--v3-text)'
                         }}
                       >
-                        {stats.compras.porcentajeAcierto.toFixed(1)}%
+                        {tramo}
                       </div>
                     </div>
                   )}
-                  {stats.ventas && stats.ventas.muestra > 0 && (
+                  {percentil !== null && (
                     <div style={{ flex: 1, minWidth: '100px' }}>
                       <div
                         style={{
@@ -154,19 +154,16 @@ a buscar cualquier empresa
                           fontWeight: 600
                         }}
                       >
-                        Acierto ventas
+                        Percentil
                       </div>
                       <div
                         style={{
                           fontSize: '18px',
                           fontWeight: 800,
-                          color:
-                            stats.ventas.porcentajeAcierto >= 50
-                              ? 'var(--v3-positive)'
-                              : 'var(--v3-negative)'
+                          color: 'var(--v3-text)'
                         }}
                       >
-                        {stats.ventas.porcentajeAcierto.toFixed(1)}%
+                        {percentil}
                       </div>
                     </div>
                   )}
