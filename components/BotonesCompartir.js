@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 
+function situacionDesdeZona(zona) {
+  if (zona === 'alta') return 'parte alta del rango';
+  if (zona === 'baja') return 'parte baja del rango';
+  return 'parte intermedia del rango';
+}
+
 export default function BotonesCompartir({ empresa, analisis, url }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [textoTuit, setTextoTuit] = useState('');
-
-  function etiquetaCategoria(zona) {
-    if (zona === 'alta') return 'Categoría A';
-    if (zona === 'baja') return 'Categoría C';
-    return 'Categoría B';
-  }
 
   function generarTextoTuit() {
     if (!empresa || !analisis) return '';
@@ -18,23 +18,51 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
     const ticker = empresa.ticker;
     const nombre = empresa.nombre;
     const precio = analisis.precioActual?.toFixed(2) || '—';
-    const categoria = etiquetaCategoria(analisis.zona);
+    const situacion = situacionDesdeZona(analisis.zona);
 
-    const senales = analisis.senales || [];
-    const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
-
-    let texto = `Registro estadístico descriptivo de ${nombre} (${ticker}). `;
-    texto += `Precio ${precio}. `;
-    texto += `Indicador en ${categoria}. `;
-
-    if (ultimaSenal) {
-      const catUltima = etiquetaCategoria(ultimaSenal.tipo === 'compra' ? 'baja' : 'alta');
-      texto += `Último registro estadístico: ${ultimaSenal.fecha} (${catUltima}). `;
+    // Variación en 60 sesiones a partir de las velas
+    const velas = analisis.velasUltimas60 || [];
+    let variacion60 = null;
+    if (velas.length >= 2) {
+      const primero = velas[0]?.close;
+      const ultimo = velas[velas.length - 1]?.close;
+      if (primero) {
+        variacion60 = ((ultimo - primero) / primero) * 100;
+      }
     }
 
-    texto += `Información histórica, no predictiva ni recomendación de inversión. `;
+    const variacionTexto =
+      variacion60 === null
+        ? ''
+        : variacion60 > 0.05
+        ? `ha subido un ${variacion60.toFixed(1)}%`
+        : variacion60 < -0.05
+        ? `ha bajado un ${Math.abs(variacion60).toFixed(1)}%`
+        : 'se ha mantenido prácticamente estable';
+
+    const variacionSector60 =
+      analisis.sectorInfo && analisis.sectorInfo.variacionSector60 !== null
+        ? analisis.sectorInfo.variacionSector60
+        : null;
+
+    let comparacionTexto = '';
+    if (variacion60 !== null && variacionSector60 !== null) {
+      const diff = variacion60 - variacionSector60;
+      if (Math.abs(diff) < 2) comparacionTexto = 'Evolución similar a su sector.';
+      else if (diff > 0) comparacionTexto = 'Evolución algo mejor que su sector.';
+      else comparacionTexto = 'Evolución algo peor que su sector.';
+    }
 
     const enlace = `Más en: ${url}`;
+
+    let texto = `${nombre} (${ticker}) · Precio ${precio} €. `;
+    if (variacionTexto) {
+      texto += `En las últimas 60 sesiones, el precio ${variacionTexto} y se sitúa en la ${situacion}. `;
+    } else {
+      texto += `El precio se sitúa en la ${situacion}. `;
+    }
+    if (comparacionTexto) texto += `${comparacionTexto} `;
+    texto += `Información histórica, no predictiva ni recomendación de inversión. `;
     texto += enlace;
 
     if (texto.length > 280) {
@@ -57,7 +85,7 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
 
   const urlCodificada = encodeURIComponent(url);
   const textoWhatsApp = encodeURIComponent(
-    `${empresa?.nombre} (${empresa?.ticker}) — registro estadístico descriptivo — ${url}`
+    `${empresa?.nombre} (${empresa?.ticker}) — ficha estadística descriptiva — ${url}`
   );
 
   const estiloBoton = {
