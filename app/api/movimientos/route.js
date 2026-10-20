@@ -2,6 +2,12 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
+function aCategoria(movimiento) {
+  if (movimiento === 'compra') return 'C';
+  if (movimiento === 'venta') return 'A';
+  return 'B';
+}
+
 export async function GET() {
   try {
     const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -25,8 +31,8 @@ export async function GET() {
         ticker: c.ticker,
         nombre: emp?.nombre || c.ticker,
         sector: emp?.sector || null,
-        movimientoAnterior: c.movimiento_anterior,
-        movimientoNuevo: c.movimiento_nuevo
+        categoriaAnterior: aCategoria(c.movimiento_anterior),
+        categoriaNueva: aCategoria(c.movimiento_nuevo)
       });
     }
 
