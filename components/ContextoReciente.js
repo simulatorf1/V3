@@ -33,7 +33,9 @@ export default function ContextoReciente({ noticias }) {
                 >
                   {n.titulo}
                 </a>
-                <div style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '4px' }}>
+                <div
+                  style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '4px' }}
+                >
                   {n.fuente && <span>{n.fuente}</span>}
                   {fecha && <span> · {fecha}</span>}
                 </div>
@@ -46,7 +48,7 @@ export default function ContextoReciente({ noticias }) {
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
         Los titulares mostrados proceden de fuentes externas y se enlazan a su origen. Esta web no
         elabora ni interpreta su contenido. Su inclusión no implica valoración alguna sobre la
-        empresa.
+        empresa ni constituye recomendación de inversión.
       </p>
     </section>
   );
