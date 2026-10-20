@@ -17,16 +17,10 @@ export default function TablaSenales({ senales, precioActual }) {
         ? ((precioCierre - s.precio) / s.precio) * 100
         : null;
 
-    let comportamiento = null;
-    if (variacion !== null && variacion !== 0) {
-      comportamiento = variacion > 0 ? 'subida' : 'bajada';
-    }
-
     return {
       ...s,
       precioCierre,
       variacion,
-      comportamiento,
       cierreEsActual: !siguiente
     };
   });
@@ -67,7 +61,6 @@ export default function TablaSenales({ senales, precioActual }) {
                 <th>Indicador en la lectura</th>
                 <th>Precio al cierre</th>
                 <th>Variación posterior</th>
-                <th>Comportamiento posterior</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -97,13 +90,6 @@ export default function TablaSenales({ senales, precioActual }) {
                       : '—'}
                   </td>
                   <td>
-                    {s.comportamiento === 'subida' && 'Subida'}
-                    {s.comportamiento === 'bajada' && 'Bajada'}
-                    {s.comportamiento === null && (
-                      <span style={{ color: 'var(--v3-text-mute)' }}>—</span>
-                    )}
-                  </td>
-                  <td>
                     {s.cierreEsActual ? (
                       <span style={{ color: 'var(--v3-text-mute)' }}>
                         Pendiente de cierre
@@ -120,15 +106,17 @@ export default function TablaSenales({ senales, precioActual }) {
       )}
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '12px' }}>
-        <strong>Criterio de comportamiento posterior:</strong> se registra la variación del precio
-        desde la lectura hasta el cierre del ciclo (la lectura contraria siguiente). Si el ciclo no
-        ha cerrado todavía, se muestra como <strong>pendiente de cierre</strong>.
+        <strong>Criterio de variación posterior:</strong> se registra la variación del precio desde
+        la lectura hasta el cierre del ciclo (la lectura contraria siguiente). Si el ciclo no ha
+        cerrado todavía, se muestra como <strong>pendiente de cierre</strong>. Los datos son
+        exclusivamente descriptivos de hechos pasados.
       </p>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '16px' }}>
         Las lecturas son registros estadísticos que se publican con reglas fijas y visibles. No
         representan operaciones reales realizadas por esta web ni constituyen una sugerencia de
-        compra o venta. El comportamiento pasado no garantiza resultados futuros.
+        compra o venta. La evolución pasada no garantiza resultados futuros y no permite deducir
+        probabilidades ni resultados futuros.
       </p>
     </section>
   );
