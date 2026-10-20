@@ -18,8 +18,8 @@ export const maxDuration = 60;
 const BASE_URL = 'https://equaty.es';
 
 function etiquetaLectura(tipo) {
-  if (tipo === 'compra') return 'tramo inferior';
-  if (tipo === 'venta') return 'tramo superior';
+  if (tipo === 'compra') return 'Categoría C';
+  if (tipo === 'venta') return 'Categoría A';
   return '—';
 }
 
@@ -84,7 +84,7 @@ export async function generateMetadata({ params }) {
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const titulo = `Registro estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): indicador descriptivo, tramos de rango, histórico de lecturas y estadística descriptiva. No es recomendación de inversión.`;
+    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): indicador descriptivo, categorías estadísticas e histórico de registros. No es recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -208,26 +208,26 @@ export default async function PaginaEmpresa({ params }) {
     percentil = Math.round((menores / smisOrdenados.length) * 100);
   }
 
-  const colorZona =
+  // Colores neutrales azul/gris (sin rojo/verde)
+  const colorCategoria =
     analisis.zona === 'alta'
-      ? 'var(--v3-negative)'
+      ? '#2563eb'
       : analisis.zona === 'baja'
-      ? 'var(--v3-positive)'
+      ? '#9ca3af'
       : 'var(--v3-text-soft)';
 
   const etiquetaZona =
     analisis.zona === 'alta'
-      ? 'tramo superior'
+      ? 'Categoría A'
       : analisis.zona === 'baja'
-      ? 'tramo inferior'
-      : 'tramo intermedio';
+      ? 'Categoría C'
+      : 'Categoría B';
 
   const consenso = await cargarConsenso(empresa.ticker);
 
   const senales = analisis.senales || [];
   const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
 
-  // Interpretación del gráfico
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre
@@ -302,7 +302,7 @@ export default async function PaginaEmpresa({ params }) {
           style={{
             marginTop: '20px',
             padding: '20px',
-            borderLeft: '4px solid var(--v3-negative)',
+            borderLeft: '4px solid #9ca3af',
             background: 'var(--v3-bg-soft)'
           }}
           aria-label="Divulgación regulatoria"
@@ -339,13 +339,12 @@ export default async function PaginaEmpresa({ params }) {
                 etiqueta="Precio actual"
                 valor={precioActual?.toFixed(2) ?? '—'}
                 extra={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}% en 5 sesiones`}
-                colorExtra={variacion5 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'}
+                colorExtra="var(--v3-text-soft)"
               />
             </div>
           </div>
         </section>
 
-        {/* Sobre la empresa (incluye comparador sectorial) */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Sobre {empresa.nombre}</h2>
           <p style={{ lineHeight: 1.7 }}>
@@ -374,8 +373,7 @@ export default async function PaginaEmpresa({ params }) {
                 style={{
                   fontSize: '28px',
                   fontWeight: 800,
-                  color: colorZona,
-                  textTransform: 'capitalize'
+                  color: colorCategoria
                 }}
               >
                 {etiquetaZona}
@@ -404,12 +402,31 @@ export default async function PaginaEmpresa({ params }) {
                   color: 'var(--v3-text-mute)'
                 }}
               >
-                Última lectura registrada: {ultimaSenal.fecha} (tipo de lectura:{' '}
-                {etiquetaLectura(ultimaSenal.tipo)}). Registro histórico cerrado.
+                Último registro estadístico: {ultimaSenal.fecha} (tipo de registro:{' '}
+                {etiquetaLectura(ultimaSenal.tipo)}).
               </p>
             )}
           </div>
         </section>
+
+        {/* AVISO ANTES DEL GRÁFICO PRINCIPAL */}
+        <div
+          className="v3-card"
+          style={{
+            marginTop: '20px',
+            padding: '16px 20px',
+            background: 'var(--v3-bg-soft)',
+            borderLeft: '4px solid #9ca3af',
+            fontSize: '13px',
+            lineHeight: 1.7,
+            color: 'var(--v3-text-soft)'
+          }}
+        >
+          Este gráfico representa exclusivamente información histórica ya ocurrida. No identifica
+          oportunidades de inversión, no anticipa movimientos futuros, no estima probabilidades
+          futuras y no debe utilizarse para adoptar decisiones de compra, venta o mantenimiento de
+          instrumentos financieros.
+        </div>
 
         <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
@@ -421,48 +438,40 @@ export default async function PaginaEmpresa({ params }) {
               En las últimas 60 sesiones, <strong>{empresa.nombre}</strong> ha pasado de{' '}
               <strong>{primerCierre?.toFixed(2)}</strong> a{' '}
               <strong>{ultimoCierre?.toFixed(2)}</strong>, con una variación del{' '}
-              <strong
-                style={{
-                  color: variacion60 >= 0 ? 'var(--v3-positive)' : 'var(--v3-negative)'
-                }}
-              >
-                {variacion60 >= 0 ? '+' : ''}
-                {variacion60.toFixed(2)}%
-              </strong>
-              . El rango de cotización se ha movido entre un mínimo de{' '}
-              <strong>{minimo.toFixed(2)}</strong> y un máximo de{' '}
-              <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha sido del{' '}
-              <strong>{volatilidad.toFixed(2)}%</strong>.
+              <strong>{variacion60 >= 0 ? '+' : ''}{variacion60.toFixed(2)}%</strong>. El rango de
+              cotización se ha movido entre un mínimo de <strong>{minimo.toFixed(2)}</strong> y un
+              máximo de <strong>{maximo.toFixed(2)}</strong>, y la volatilidad diaria media ha
+              sido del <strong>{volatilidad.toFixed(2)}%</strong>.
             </p>
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador ha estado{' '}
-              <strong>{enAlta}</strong> en el tramo superior, <strong>{enMedia}</strong> en el
-              tramo intermedio y <strong>{enBaja}</strong> en el tramo inferior. Estas cifras son
-              puramente descriptivas y reflejan la posición del precio dentro de su propio rango
-              reciente en cada sesión.
+              De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador se ha
+              clasificado en <strong>{enAlta}</strong> sesiones en Categoría A,{' '}
+              <strong>{enMedia}</strong> en Categoría B y <strong>{enBaja}</strong> en Categoría
+              C. Estas cifras son puramente descriptivas y reflejan la posición del precio dentro
+              de su propio rango reciente en cada sesión.
             </p>
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-              En la última sesión registrada, el indicador se sitúa en un valor de{' '}
-              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro del{' '}
-              <strong style={{ color: colorZona }}>{etiquetaZona}</strong>, con un percentil{' '}
+              En el último registro, el indicador se sitúa en un valor de{' '}
+              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro de la{' '}
+              <strong style={{ color: colorCategoria }}>{etiquetaZona}</strong>, con un percentil{' '}
               <strong>{percentil}</strong> sobre las últimas 60 sesiones.
             </p>
 
             {ultimaSenal && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                La última actualización del indicador registrada fue el{' '}
+                La última actualización del registro estadístico fue el{' '}
                 <strong>{ultimaSenal.fecha}</strong>.
               </p>
             )}
 
             {consenso && consenso.total > 0 && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)', marginBottom: 0 }}>
-                El consenso de la comunidad muestra <strong>{consenso.total}</strong>{' '}
-                {consenso.total === 1 ? 'voto' : 'votos'} registrados. Los votos reflejan
-                opiniones subjetivas no verificadas de usuarios de internet y no representan
-                análisis ni recomendación alguna.
+                La encuesta de visitantes muestra <strong>{consenso.total}</strong>{' '}
+                {consenso.total === 1 ? 'respuesta' : 'respuestas'} registradas. Los resultados
+                reflejan únicamente respuestas voluntarias de visitantes y no tienen valor
+                analítico, predictivo ni financiero.
               </p>
             )}
           </div>
@@ -472,7 +481,7 @@ export default async function PaginaEmpresa({ params }) {
 
         {/* BLOQUE 2: Indicador propio */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Indicador propio (descriptivo)</h2>
+          <h2 className="v3-seccion-titulo">Indicador estadístico descriptivo</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             <div
               style={{
@@ -486,7 +495,7 @@ export default async function PaginaEmpresa({ params }) {
                 valor={analisis.smiActual?.toFixed(2) ?? '—'}
                 extra="Escala -100 a +100"
               />
-              <Dato etiqueta="Tramo" valor={etiquetaZona} colorValor={colorZona} />
+              <Dato etiqueta="Categoría" valor={etiquetaZona} colorValor={colorCategoria} />
               <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
             </div>
 
@@ -498,18 +507,17 @@ export default async function PaginaEmpresa({ params }) {
                 lineHeight: 1.7
               }}
             >
-              El <strong>indicador propio de Equaty</strong> es un algoritmo interno que combina
-              varias referencias técnicas clásicas (medias móviles, RSI, estocástico y bandas de
-              Bollinger, entre otras) para describir en qué punto del rango reciente se encuentra
-              el precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>:
-              los valores cercanos a +100 indican que el precio se sitúa en la parte alta de su
-              rango reciente, y los cercanos a -100, en la parte baja. El <strong>tramo</strong>{' '}
-              divide ese rango en tres niveles: superior (por encima de +40), intermedio (entre
-              -40 y +40) e inferior (por debajo de -40). El <strong>percentil</strong> señala la
-              posición exacta del valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y
-              100 el máximo. Es un dato exclusivamente descriptivo de hechos pasados: no predice
-              el futuro, no permite deducir probabilidades ni resultados futuros y no constituye
-              una señal de actuación.
+              El <strong>indicador estadístico descriptivo de Equaty</strong> es un algoritmo
+              interno que combina varias referencias técnicas clásicas (medias móviles, RSI,
+              estocástico y bandas de Bollinger, entre otras) para describir en qué punto del
+              rango reciente se encuentra el precio. El resultado se normaliza en una escala de{' '}
+              <strong>-100 a +100</strong>. El indicador se clasifica en tres categorías
+              estadísticas (A, B y C) con finalidad exclusivamente descriptiva y sin implicación
+              positiva o negativa. El <strong>percentil</strong> señala la posición exacta del
+              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. Es
+              un dato exclusivamente descriptivo de hechos pasados: no predice el futuro, no
+              permite deducir probabilidades ni resultados futuros y no constituye una señal de
+              actuación.
             </p>
           </div>
         </section>
