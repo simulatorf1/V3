@@ -398,16 +398,7 @@ export default async function PaginaEmpresa({ params }) {
             >
               {explicacionPercentil(percentil)}
             </p>
-            <p
-              style={{
-                margin: '8px 0 0 0',
-                fontSize: '12px',
-                color: 'var(--v3-text-mute)',
-                letterSpacing: '0.3px'
-              }}
-            >
-              Categoría técnica: {categoriaTecnica}
-            </p>
+
             {ultimaSenal && (
               <p
                 style={{
