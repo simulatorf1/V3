@@ -1,6 +1,6 @@
 function etiquetaLectura(tipo) {
-  if (tipo === 'compra') return 'baja';
-  if (tipo === 'venta') return 'alta';
+  if (tipo === 'compra') return 'tramo inferior';
+  if (tipo === 'venta') return 'tramo superior';
   return '—';
 }
 
