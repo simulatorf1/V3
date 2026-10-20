@@ -25,7 +25,9 @@ export default function ConsensoComunidad({ ticker }) {
     const cookieId = obtenerOCrearCookieId();
     if (!cookieId) return;
 
-    const guardado = document.cookie.match(new RegExp('(?:^|; )v3_voto_' + ticker + '=([^;]*)'));
+    const guardado = document.cookie.match(
+      new RegExp('(?:^|; )v3_voto_' + ticker + '=([^;]*)')
+    );
     if (guardado) setVotoUsuario(decodeURIComponent(guardado[1]));
 
     fetch(`/api/votos?ticker=${encodeURIComponent(ticker)}`)
@@ -70,19 +72,19 @@ export default function ConsensoComunidad({ ticker }) {
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Consenso de la comunidad</h2>
+      <h2 className="v3-seccion-titulo">Encuesta de visitantes</h2>
 
       <div className="v3-card" style={{ padding: '20px' }}>
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: 0 }}>
           Sin registro. Voto único por navegador.{' '}
           {total > 0
-            ? `${total} voto${total === 1 ? '' : 's'} registrado${total === 1 ? '' : 's'}.`
-            : 'Aún no hay votos.'}
+            ? `${total} respuesta${total === 1 ? '' : 's'} registrada${total === 1 ? '' : 's'}.`
+            : 'Aún no hay respuestas.'}
         </p>
 
         {sentimiento && (
           <p style={{ marginTop: '4px' }}>
-            <strong>Sentimiento agregado:</strong> {sentimiento}
+            <strong>Resultado agregado:</strong> {sentimiento}
           </p>
         )}
 
@@ -104,8 +106,8 @@ export default function ConsensoComunidad({ ticker }) {
         </div>
 
         <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '14px' }}>
-          El consenso agregado refleja la opinión de los visitantes que han votado. No constituye
-          una recomendación de inversión ni representa la posición de esta web.
+          Los resultados reflejan únicamente respuestas voluntarias de visitantes y no tienen
+          valor analítico, predictivo ni financiero.
         </p>
       </div>
     </section>
