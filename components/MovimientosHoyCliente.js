@@ -13,12 +13,6 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function etiquetaTramo(movimiento) {
-  if (movimiento === 'compra') return 'tramo inferior';
-  if (movimiento === 'venta') return 'tramo superior';
-  return 'tramo intermedio';
-}
-
 export default function MovimientosHoyCliente({ variante = 'home' }) {
   const [cambios, setCambios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -41,7 +35,9 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
       className={esSidebar ? '' : 'v3-seccion'}
       style={{ marginTop: esSidebar ? '0' : '30px', marginBottom: esSidebar ? '28px' : '0' }}
     >
-      {!esSidebar && <h2 className="v3-seccion-titulo">Cambios de estado estadístico de hoy</h2>}
+      {!esSidebar && (
+        <h2 className="v3-seccion-titulo">Actualizaciones del registro estadístico</h2>
+      )}
       {esSidebar && (
         <h3
           style={{
@@ -53,7 +49,7 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
             margin: '0 0 10px 0'
           }}
         >
-          Cambios de estado estadístico
+          Actualizaciones del registro estadístico
         </h3>
       )}
 
@@ -75,8 +71,8 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
                 lineHeight: 1.5
               }}
             >
-              Empresas cuyo indicador estadístico ha cambiado de tramo en las últimas 24 horas.
-              Registro meramente descriptivo de la actualización del indicador.
+              Empresas cuyo indicador estadístico ha registrado una actualización en las últimas
+              24 horas. Registro meramente descriptivo.
             </p>
             <p
               style={{
@@ -88,7 +84,7 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
               }}
             >
               Puedes suscribirte en la ficha de tu empresa para recibir actualizaciones
-              estadísticas del indicador. Es gratis.
+              estadísticas por email. Es gratis.
             </p>
           </>
         )}
@@ -103,70 +99,65 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
               lineHeight: 1.4
             }}
           >
-            Suscríbete en la ficha para recibir actualizaciones estadísticas gratis.
+            Suscríbete en la ficha para recibir actualizaciones estadísticas por email.
           </p>
         )}
 
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '8px' }}>
-          {cambios.slice(0, esSidebar ? 5 : 8).map((c) => {
-            const tramoNuevo = etiquetaTramo(c.movimientoNuevo);
-            const tramoAnterior = etiquetaTramo(c.movimientoAnterior);
-
-            return (
-              <li key={c.ticker}>
-                <Link
-                  href={`/analisis/${construirSlug(c)}`}
-                  style={{
-                    display: 'flex',
-                    flexDirection: esSidebar ? 'column' : 'row',
-                    justifyContent: 'space-between',
-                    alignItems: esSidebar ? 'flex-start' : 'center',
-                    gap: esSidebar ? '4px' : '12px',
-                    padding: esSidebar ? '8px 10px' : '12px 16px',
-                    background: '#fff',
-                    borderRadius: 'var(--v3-radius-sm)',
-                    textDecoration: 'none',
-                    color: 'var(--v3-text)',
-                    border: '1px solid #bfdbfe'
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: esSidebar ? '13px' : '14px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {c.nombre}
-                    </div>
-                    <div
-                      style={{
-                        color: 'var(--v3-text-soft)',
-                        fontSize: '11px',
-                        marginTop: '2px'
-                      }}
-                    >
-                      {c.ticker}
-                      {c.sector && !esSidebar && ` · ${c.sector}`}
-                    </div>
+          {cambios.slice(0, esSidebar ? 5 : 8).map((c) => (
+            <li key={c.ticker}>
+              <Link
+                href={`/analisis/${construirSlug(c)}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: esSidebar ? 'column' : 'row',
+                  justifyContent: 'space-between',
+                  alignItems: esSidebar ? 'flex-start' : 'center',
+                  gap: esSidebar ? '4px' : '12px',
+                  padding: esSidebar ? '8px 10px' : '12px 16px',
+                  background: '#fff',
+                  borderRadius: 'var(--v3-radius-sm)',
+                  textDecoration: 'none',
+                  color: 'var(--v3-text)',
+                  border: '1px solid #bfdbfe'
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: esSidebar ? '13px' : '14px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {c.nombre}
                   </div>
                   <div
                     style={{
-                      fontSize: esSidebar ? '11px' : '13px',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                      color: 'var(--v3-text-soft)'
+                      color: 'var(--v3-text-soft)',
+                      fontSize: '11px',
+                      marginTop: '2px'
                     }}
                   >
-                    cambio de estado estadístico
+                    {c.ticker}
+                    {c.sector && !esSidebar && ` · ${c.sector}`}
                   </div>
-                </Link>
-              </li>
-            );
-          })}
+                </div>
+                <div
+                  style={{
+                    fontSize: esSidebar ? '11px' : '13px',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    color: 'var(--v3-text-soft)'
+                  }}
+                >
+                  actualización del registro estadístico
+                </div>
+              </Link>
+            </li>
+          ))}
         </ul>
       </div>
     </section>
