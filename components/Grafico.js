@@ -48,62 +48,64 @@ export default function Grafico({ velas, smis }) {
       });
       precioLine.setData(precioData);
 
-      const zonaAltaBaseline = chart.addBaselineSeries({
+      // Categoría A: azul
+      const categoriaABaseline = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
-        topFillColor1: 'rgba(198, 40, 40, 0.55)',
-        topFillColor2: 'rgba(198, 40, 40, 0.15)',
-        bottomFillColor1: 'rgba(198, 40, 40, 0)',
-        bottomFillColor2: 'rgba(198, 40, 40, 0)',
-        topLineColor: 'rgba(198, 40, 40, 0.4)',
-        bottomLineColor: 'rgba(198, 40, 40, 0)',
+        topFillColor1: 'rgba(37, 99, 235, 0.45)',
+        topFillColor2: 'rgba(37, 99, 235, 0.12)',
+        bottomFillColor1: 'rgba(37, 99, 235, 0)',
+        bottomFillColor2: 'rgba(37, 99, 235, 0)',
+        topLineColor: 'rgba(37, 99, 235, 0.4)',
+        bottomLineColor: 'rgba(37, 99, 235, 0)',
         lineWidth: 1,
         priceScaleId: 'left',
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false
       });
-      zonaAltaBaseline.setData(smiData);
+      categoriaABaseline.setData(smiData);
 
-      const zonaBajaBaseline = chart.addBaselineSeries({
+      // Categoría C: gris
+      const categoriaCBaseline = chart.addBaselineSeries({
         baseValue: { type: 'price', price: -40 },
-        topFillColor1: 'rgba(46, 125, 50, 0)',
-        topFillColor2: 'rgba(46, 125, 50, 0)',
-        bottomFillColor1: 'rgba(46, 125, 50, 0.55)',
-        bottomFillColor2: 'rgba(46, 125, 50, 0.15)',
-        topLineColor: 'rgba(46, 125, 50, 0)',
-        bottomLineColor: 'rgba(46, 125, 50, 0.4)',
+        topFillColor1: 'rgba(156, 163, 175, 0)',
+        topFillColor2: 'rgba(156, 163, 175, 0)',
+        bottomFillColor1: 'rgba(156, 163, 175, 0.45)',
+        bottomFillColor2: 'rgba(156, 163, 175, 0.12)',
+        topLineColor: 'rgba(156, 163, 175, 0)',
+        bottomLineColor: 'rgba(156, 163, 175, 0.4)',
         lineWidth: 1,
         priceScaleId: 'left',
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false
       });
-      zonaBajaBaseline.setData(smiData);
+      categoriaCBaseline.setData(smiData);
 
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
-        title: 'Indicador propietario',
+        title: 'Indicador estadístico descriptivo',
         priceScaleId: 'left'
       });
       smiLine.setData(smiData);
 
       smiLine.createPriceLine({
         price: 40,
-        color: '#cf222e',
+        color: '#2563eb',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: 'zona alta',
+        title: 'Categoría A',
         priceScaleId: 'left'
       });
       smiLine.createPriceLine({
         price: -40,
-        color: '#1a7f37',
+        color: '#9ca3af',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: 'zona baja',
+        title: 'Categoría C',
         priceScaleId: 'left'
       });
       smiLine.createPriceLine({
@@ -148,16 +150,14 @@ export default function Grafico({ velas, smis }) {
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico principal</h2>
-      <div
-        className="v3-card"
-        style={{ padding: '12px', background: '#fff' }}
-      >
+      <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '10px' }}>
-        El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador propietario
-        (línea morada). El área roja aparece solo cuando el indicador sobresale por encima de +40;
-        el área verde, solo cuando cae por debajo de -40. No es una recomendación de inversión.
+        El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador estadístico
+        descriptivo (línea morada). El área azul aparece solo cuando el indicador supera +40 y el
+        área gris solo cuando cae por debajo de -40. Esta representación es exclusivamente
+        descriptiva de datos históricos y no constituye recomendación de inversión.
       </p>
     </section>
   );
