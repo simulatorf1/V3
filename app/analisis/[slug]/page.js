@@ -18,9 +18,9 @@ export const maxDuration = 60;
 const BASE_URL = 'https://equaty.es';
 
 function etiquetaLectura(tipo) {
-  if (tipo === 'compra') return 'lectura baja';
-  if (tipo === 'venta') return 'lectura alta';
-  return 'lectura';
+  if (tipo === 'compra') return 'tramo inferior';
+  if (tipo === 'venta') return 'tramo superior';
+  return '—';
 }
 
 function slugSector(s) {
@@ -41,45 +41,6 @@ function fechaMadrid(fecha = new Date()) {
     hour: '2-digit',
     minute: '2-digit'
   });
-}
-
-// Devuelve estadísticos puros de la serie de variaciones, sin balances "subidas/bajadas"
-function estadisticosVariacion(senales, limite = 100) {
-  const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const limitada = lista.slice(-limite);
-
-  const variaciones = [];
-  let pendientes = 0;
-  for (let i = 0; i < limitada.length; i++) {
-    const s = limitada[i];
-    const siguiente = limitada[i + 1];
-    if (!siguiente) {
-      pendientes++;
-      continue;
-    }
-    if (!s.precio) continue;
-    variaciones.push(((siguiente.precio - s.precio) / s.precio) * 100);
-  }
-
-  if (variaciones.length === 0) {
-    return { n: 0, pendientes, min: null, max: null, media: null, mediana: null };
-  }
-
-  const ordenadas = [...variaciones].sort((a, b) => a - b);
-  const media = variaciones.reduce((a, b) => a + b, 0) / variaciones.length;
-  const mediana =
-    ordenadas.length % 2 === 1
-      ? ordenadas[Math.floor(ordenadas.length / 2)]
-      : (ordenadas[ordenadas.length / 2 - 1] + ordenadas[ordenadas.length / 2]) / 2;
-
-  return {
-    n: variaciones.length,
-    pendientes,
-    min: ordenadas[0],
-    max: ordenadas[ordenadas.length - 1],
-    media,
-    mediana
-  };
 }
 
 async function cargarConsenso(ticker) {
@@ -123,7 +84,7 @@ export async function generateMetadata({ params }) {
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const titulo = `Registro estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): indicador descriptivo, zonas, histórico de lecturas y estadística descriptiva. No es recomendación de inversión.`;
+    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): indicador descriptivo, tramos de rango, histórico de lecturas y estadística descriptiva. No es recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -230,14 +191,6 @@ export default async function PaginaEmpresa({ params }) {
     }
   };
 
-  // Estadísticos puros de la serie de variaciones (sin balances subida/bajada)
-  const variacionesTrasBaja = estadisticosVariacion(
-    (analisis.senales || []).filter((s) => s.tipo === 'compra')
-  );
-  const variacionesTrasAlta = estadisticosVariacion(
-    (analisis.senales || []).filter((s) => s.tipo === 'venta')
-  );
-
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
 
@@ -261,6 +214,13 @@ export default async function PaginaEmpresa({ params }) {
       : analisis.zona === 'baja'
       ? 'var(--v3-positive)'
       : 'var(--v3-text-soft)';
+
+  const etiquetaZona =
+    analisis.zona === 'alta'
+      ? 'tramo superior'
+      : analisis.zona === 'baja'
+      ? 'tramo inferior'
+      : 'tramo intermedio';
 
   const consenso = await cargarConsenso(empresa.ticker);
 
@@ -418,7 +378,7 @@ export default async function PaginaEmpresa({ params }) {
                   textTransform: 'capitalize'
                 }}
               >
-                Zona {analisis.zona}
+                {etiquetaZona}
               </div>
               <div style={{ fontSize: '14px', color: 'var(--v3-text-soft)' }}>
                 Percentil {percentil} sobre 60 sesiones
@@ -477,22 +437,22 @@ export default async function PaginaEmpresa({ params }) {
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador ha estado{' '}
-              <strong>{enAlta}</strong> en zona alta, <strong>{enMedia}</strong> en zona
-              intermedia y <strong>{enBaja}</strong> en zona baja. Estas cifras son puramente
-              descriptivas y reflejan la posición del precio dentro de su propio rango reciente en
-              cada sesión.
+              <strong>{enAlta}</strong> en el tramo superior, <strong>{enMedia}</strong> en el
+              tramo intermedio y <strong>{enBaja}</strong> en el tramo inferior. Estas cifras son
+              puramente descriptivas y reflejan la posición del precio dentro de su propio rango
+              reciente en cada sesión.
             </p>
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               En la última sesión registrada, el indicador se sitúa en un valor de{' '}
-              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro de la{' '}
-              <strong style={{ color: colorZona }}>zona {analisis.zona}</strong>, con un percentil{' '}
+              <strong>{analisis.smiActual?.toFixed(2)}</strong>, dentro del{' '}
+              <strong style={{ color: colorZona }}>{etiquetaZona}</strong>, con un percentil{' '}
               <strong>{percentil}</strong> sobre las últimas 60 sesiones.
             </p>
 
             {ultimaSenal && (
               <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
-                La última lectura del indicador registrada fue el{' '}
+                La última actualización del indicador registrada fue el{' '}
                 <strong>{ultimaSenal.fecha}</strong>.
               </p>
             )}
@@ -526,7 +486,7 @@ export default async function PaginaEmpresa({ params }) {
                 valor={analisis.smiActual?.toFixed(2) ?? '—'}
                 extra="Escala -100 a +100"
               />
-              <Dato etiqueta="Zona" valor={analisis.zona} colorValor={colorZona} />
+              <Dato etiqueta="Tramo" valor={etiquetaZona} colorValor={colorZona} />
               <Dato etiqueta="Percentil" valor={percentil} extra="Posición en 60 sesiones" />
             </div>
 
@@ -543,133 +503,13 @@ export default async function PaginaEmpresa({ params }) {
               Bollinger, entre otras) para describir en qué punto del rango reciente se encuentra
               el precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>:
               los valores cercanos a +100 indican que el precio se sitúa en la parte alta de su
-              rango reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong>{' '}
-              divide ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y
-              +40) y baja (por debajo de -40). El <strong>percentil</strong> señala la posición
-              exacta del valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el
-              máximo. Es un dato exclusivamente descriptivo de hechos pasados: no predice el
-              futuro, no permite deducir probabilidades ni resultados futuros y no constituye una
-              señal de actuación.
-            </p>
-          </div>
-        </section>
-
-        {/* BLOQUE 4: Serie histórica de variaciones (datos puros, sin balances subida/bajada) */}
-        <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Serie histórica de variaciones del precio</h2>
-
-          <div className="v3-card" style={{ padding: '20px' }}>
-            <h3 style={{ marginTop: 0, fontSize: '16px' }}>
-              Variaciones posteriores registradas tras cada lectura en {empresa.nombre}
-            </h3>
-
-            <p
-              style={{
-                margin: '8px 0 12px 0',
-                fontSize: '13px',
-                color: 'var(--v3-text-soft)',
-                lineHeight: 1.6
-              }}
-            >
-              Estos datos describen la <strong>serie histórica de variaciones del precio</strong>{' '}
-              medidas desde cada lectura del indicador hasta el cierre del ciclo. Se presentan con
-              carácter exclusivamente descriptivo de hechos pasados. No constituyen una
-              probabilidad, una tasa de acierto, una señal de actuación ni una recomendación, y no
-              permiten deducir resultados futuros.
-            </p>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: '16px',
-                marginTop: '12px'
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    color: 'var(--v3-text-mute)',
-                    fontSize: '12px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontWeight: 600,
-                    marginBottom: '8px'
-                  }}
-                >
-                  Tras lecturas bajas
-                </div>
-                {variacionesTrasBaja.n > 0 ? (
-                  <>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-                      Lecturas cerradas: <strong>{variacionesTrasBaja.n}</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación mínima: <strong>{variacionesTrasBaja.min.toFixed(2)}%</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación máxima: <strong>{variacionesTrasBaja.max.toFixed(2)}%</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación media: <strong>{variacionesTrasBaja.media.toFixed(2)}%</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación mediana: <strong>{variacionesTrasBaja.mediana.toFixed(2)}%</strong>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>—</div>
-                )}
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    color: 'var(--v3-text-mute)',
-                    fontSize: '12px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontWeight: 600,
-                    marginBottom: '8px'
-                  }}
-                >
-                  Tras lecturas altas
-                </div>
-                {variacionesTrasAlta.n > 0 ? (
-                  <>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-                      Lecturas cerradas: <strong>{variacionesTrasAlta.n}</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación mínima: <strong>{variacionesTrasAlta.min.toFixed(2)}%</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación máxima: <strong>{variacionesTrasAlta.max.toFixed(2)}%</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación media: <strong>{variacionesTrasAlta.media.toFixed(2)}%</strong>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '4px' }}>
-                      Variación mediana: <strong>{variacionesTrasAlta.mediana.toFixed(2)}%</strong>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)' }}>—</div>
-                )}
-              </div>
-            </div>
-
-            <p
-              style={{
-                margin: '16px 0 0 0',
-                fontSize: '13px',
-                color: 'var(--v3-text-soft)',
-                lineHeight: 1.6
-              }}
-            >
-              Todos estos datos proceden del gráfico y de la tabla de lecturas que aparecen más
-              abajo. Es información histórica y descriptiva; no permite deducir probabilidades ni
-              resultados futuros y no constituye recomendación alguna.
+              rango reciente, y los cercanos a -100, en la parte baja. El <strong>tramo</strong>{' '}
+              divide ese rango en tres niveles: superior (por encima de +40), intermedio (entre
+              -40 y +40) e inferior (por debajo de -40). El <strong>percentil</strong> señala la
+              posición exacta del valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y
+              100 el máximo. Es un dato exclusivamente descriptivo de hechos pasados: no predice
+              el futuro, no permite deducir probabilidades ni resultados futuros y no constituye
+              una señal de actuación.
             </p>
           </div>
         </section>
