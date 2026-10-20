@@ -416,7 +416,7 @@ export default async function PaginaEmpresa({ params }) {
 
         {/* CAMBIO 3: ¿Para qué sirve este indicador? — encima del gráfico */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">¿Para qué sirve este indicador?</h2>
+          <h2 className="v3-seccion-titulo">Indicador Equaty</h2>
           <div
             className="v3-card"
             style={{
