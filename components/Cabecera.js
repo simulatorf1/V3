@@ -9,7 +9,6 @@ export default function Cabecera() {
   const enlaces = [
     { href: '/empresas', texto: 'Empresas' },
     { href: '/sectores', texto: 'Sectores' },
-    { href: '/posiciones', texto: 'Posiciones de referencia' },
     { href: '/noticias', texto: 'Noticias' },
     { href: '/metodologia', texto: 'Metodología' }
   ];
