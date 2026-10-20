@@ -48,8 +48,8 @@ export default function Grafico({ velas, smis }) {
       });
       precioLine.setData(precioData);
 
-      // Categoría A: azul
-      const categoriaABaseline = chart.addBaselineSeries({
+      // Área superior del rango (azul)
+      const zonaSuperior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
         topFillColor1: 'rgba(37, 99, 235, 0.45)',
         topFillColor2: 'rgba(37, 99, 235, 0.12)',
@@ -63,10 +63,10 @@ export default function Grafico({ velas, smis }) {
         lastValueVisible: false,
         crosshairMarkerVisible: false
       });
-      categoriaABaseline.setData(smiData);
+      zonaSuperior.setData(smiData);
 
-      // Categoría C: gris
-      const categoriaCBaseline = chart.addBaselineSeries({
+      // Área inferior del rango (gris)
+      const zonaInferior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: -40 },
         topFillColor1: 'rgba(156, 163, 175, 0)',
         topFillColor2: 'rgba(156, 163, 175, 0)',
@@ -80,12 +80,12 @@ export default function Grafico({ velas, smis }) {
         lastValueVisible: false,
         crosshairMarkerVisible: false
       });
-      categoriaCBaseline.setData(smiData);
+      zonaInferior.setData(smiData);
 
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
-        title: 'Indicador estadístico descriptivo',
+        title: 'Indicador',
         priceScaleId: 'left'
       });
       smiLine.setData(smiData);
@@ -96,7 +96,7 @@ export default function Grafico({ velas, smis }) {
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: 'Categoría A',
+        title: 'parte alta',
         priceScaleId: 'left'
       });
       smiLine.createPriceLine({
@@ -105,7 +105,7 @@ export default function Grafico({ velas, smis }) {
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: 'Categoría C',
+        title: 'parte baja',
         priceScaleId: 'left'
       });
       smiLine.createPriceLine({
@@ -154,9 +154,9 @@ export default function Grafico({ velas, smis }) {
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '10px' }}>
-        El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador estadístico
-        descriptivo (línea morada). El área azul aparece solo cuando el indicador supera +40 y el
-        área gris solo cuando cae por debajo de -40. Esta representación es exclusivamente
+        El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador (línea
+        morada). El área azul aparece cuando el indicador se sitúa en la parte alta del rango; el
+        área gris, cuando se sitúa en la parte baja. Esta representación es exclusivamente
         descriptiva de datos históricos y no constituye recomendación de inversión.
       </p>
     </section>
