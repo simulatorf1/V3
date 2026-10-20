@@ -122,8 +122,8 @@ export async function generateMetadata({ params }) {
     if (!empresa) return { title: 'Empresa — Equaty' };
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
-    const titulo = `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
-    const descripcion = `Informe estadístico de ${empresa.nombre} (${empresa.ticker}): indicador propio, zonas, histórico de lecturas y estadística. No es recomendación de inversión.`;
+    const titulo = `Registro estadístico de ${empresa.nombre} (${empresa.ticker}) — Actualizado ${fecha}`;
+    const descripcion = `Ficha informativa y estadística de ${empresa.nombre} (${empresa.ticker}): indicador descriptivo, zonas, histórico de lecturas y estadística descriptiva. No es recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -216,8 +216,8 @@ export default async function PaginaEmpresa({ params }) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: `Análisis técnico y estadístico de ${empresa.nombre} (${empresa.ticker})`,
-    description: `Informe estadístico de ${empresa.nombre}`,
+    headline: `Registro estadístico de ${empresa.nombre} (${empresa.ticker})`,
+    description: `Ficha informativa y estadística de ${empresa.nombre}`,
     url: canonical,
     datePublished: analisis.generado_at,
     dateModified: analisis.generado_at,
@@ -328,7 +328,7 @@ export default async function PaginaEmpresa({ params }) {
         </nav>
 
         <h1>
-          Análisis técnico y estadístico de {empresa.nombre} ({empresa.ticker})
+          Registro estadístico de {empresa.nombre} ({empresa.ticker})
         </h1>
 
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
@@ -336,18 +336,30 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        <div className="v3-aviso">
-          <p style={{ margin: 0 }}>
-            Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
-            recomendación de inversión.
+        {/* BLOQUE ÚNICO DE DIVULGACIÓN REGULATORIA */}
+        <section
+          className="v3-card"
+          style={{
+            marginTop: '20px',
+            padding: '20px',
+            borderLeft: '4px solid var(--v3-negative)',
+            background: 'var(--v3-bg-soft)'
+          }}
+          aria-label="Divulgación regulatoria"
+        >
+          <h2 style={{ marginTop: 0, fontSize: '16px' }}>Divulgación regulatoria</h2>
+          <p style={{ margin: '8px 0 0 0', fontSize: '13px', lineHeight: 1.7 }}>
+            El contenido de esta página tiene <strong>finalidad exclusivamente estadística e
+            informativa</strong>. No constituye asesoramiento financiero, recomendación de
+            inversión, análisis financiero regulado, oferta ni solicitud de compra o venta de
+            instrumentos financieros. Los datos mostrados se basan en información histórica de
+            mercado y se presentan con carácter descriptivo. No existe capacidad predictiva
+            demostrada: la evolución pasada no garantiza resultados futuros y no permite deducir
+            probabilidades ni resultados futuros. El usuario debe tomar sus propias decisiones de
+            inversión de forma independiente y, en su caso, consultar a un asesor financiero
+            debidamente autorizado.
           </p>
-          <p style={{ margin: '8px 0 0 0' }}>
-            Este indicador mide la posición del precio dentro de su rango histórico reciente
-            (últimas 60 sesiones). No evalúa ni predice la dirección futura del precio. Los
-            registros históricos muestran la variación del precio después de cada lectura, no lo
-            que ocurrirá.
-          </p>
-        </div>
+        </section>
 
         {/* BLOQUE 1: Datos de la empresa */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
@@ -379,16 +391,16 @@ export default async function PaginaEmpresa({ params }) {
           <p style={{ lineHeight: 1.7 }}>
             {empresa.nombre} ({empresa.ticker}) cotiza en{' '}
             {empresa.mercado || 'mercado no especificado'} y pertenece al sector{' '}
-            {empresa.sector || 'sector no especificado'}. La información utilizada en este informe
+            {empresa.sector || 'sector no especificado'}. La información utilizada en esta ficha
             procede de series históricas públicas de mercado y se revisa periódicamente por el
-            equipo de Equaty.
+            equipo de Equaty con criterios descriptivos.
           </p>
           <ComparadorSector empresa={empresa} analisis={analisis} />
         </section>
 
         {/* BLOQUE 3: Estado actual del indicador */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Estado actual del indicador</h2>
+          <h2 className="v3-seccion-titulo">Estado actual del indicador (descriptivo)</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             <div
               style={{
@@ -421,8 +433,8 @@ export default async function PaginaEmpresa({ params }) {
               }}
             >
               Valor de lectura actual: <strong>{analisis.smiActual?.toFixed(2) ?? '—'}</strong>.
-              Este dato describe dónde se sitúa el precio dentro de su rango reciente. No es una
-              señal de acción ni una recomendación de compra o de venta.
+              Este dato describe de forma descriptiva dónde se sitúa el precio dentro de su rango
+              reciente. No es una señal de acción ni una recomendación de compra o de venta.
             </p>
             {ultimaSenal && (
               <p
@@ -443,7 +455,7 @@ export default async function PaginaEmpresa({ params }) {
 
         {/* Interpretación del gráfico */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Interpretación del gráfico</h2>
+          <h2 className="v3-seccion-titulo">Interpretación descriptiva del gráfico</h2>
           <div className="v3-card" style={{ lineHeight: 1.75 }}>
             <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--v3-text)' }}>
               En las últimas 60 sesiones, <strong>{empresa.nombre}</strong> ha pasado de{' '}
@@ -466,9 +478,9 @@ export default async function PaginaEmpresa({ params }) {
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
               De las <strong>{totalSesiones}</strong> sesiones analizadas, el indicador ha estado{' '}
               <strong>{enAlta}</strong> en zona alta, <strong>{enMedia}</strong> en zona
-              intermedia y <strong>{enBaja}</strong> en zona baja. Estas son las zonas en las que,
-              estadísticamente, el precio ha cotizado más caro o más barato de lo habitual dentro
-              de su propio rango reciente.
+              intermedia y <strong>{enBaja}</strong> en zona baja. Estas cifras son puramente
+              descriptivas y reflejan la posición del precio dentro de su propio rango reciente en
+              cada sesión.
             </p>
 
             <p style={{ fontSize: '14px', color: 'var(--v3-text)' }}>
@@ -500,7 +512,7 @@ export default async function PaginaEmpresa({ params }) {
 
         {/* BLOQUE 2: Indicador propio */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Indicador propio</h2>
+          <h2 className="v3-seccion-titulo">Indicador propio (descriptivo)</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
             <div
               style={{
@@ -528,14 +540,16 @@ export default async function PaginaEmpresa({ params }) {
             >
               El <strong>indicador propio de Equaty</strong> es un algoritmo interno que combina
               varias referencias técnicas clásicas (medias móviles, RSI, estocástico y bandas de
-              Bollinger, entre otras) para medir en qué punto del rango reciente se encuentra el
-              precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>: los
-              valores cercanos a +100 indican que el precio está en la parte alta de su rango
-              reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong> divide
-              ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y +40) y
-              baja (por debajo de -40). El <strong>percentil</strong> señala la posición exacta del
-              valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el máximo. No
-              predice el futuro: describe lo que ha pasado otras veces en situaciones parecidas.
+              Bollinger, entre otras) para describir en qué punto del rango reciente se encuentra
+              el precio. El resultado se normaliza en una escala de <strong>-100 a +100</strong>:
+              los valores cercanos a +100 indican que el precio se sitúa en la parte alta de su
+              rango reciente, y los cercanos a -100, en la parte baja. La <strong>zona</strong>{' '}
+              divide ese rango en tres tramos: alta (por encima de +40), intermedia (entre -40 y
+              +40) y baja (por debajo de -40). El <strong>percentil</strong> señala la posición
+              exacta del valor de hoy dentro de las últimas 60 sesiones: 0 es el mínimo y 100 el
+              máximo. Es un dato exclusivamente descriptivo de hechos pasados: no predice el
+              futuro, no permite deducir probabilidades ni resultados futuros y no constituye una
+              señal de actuación.
             </p>
           </div>
         </section>
@@ -546,7 +560,7 @@ export default async function PaginaEmpresa({ params }) {
 
           <div className="v3-card" style={{ padding: '20px' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>
-              Variaciones posteriores a cada lectura en {empresa.nombre}
+              Variaciones posteriores registradas tras cada lectura en {empresa.nombre}
             </h3>
 
             <p
@@ -558,8 +572,10 @@ export default async function PaginaEmpresa({ params }) {
               }}
             >
               Estos datos describen la <strong>serie histórica de variaciones del precio</strong>{' '}
-              medidas desde cada lectura del indicador hasta el cierre del ciclo. No constituyen
-              una probabilidad, una tasa de acierto ni una recomendación.
+              medidas desde cada lectura del indicador hasta el cierre del ciclo. Se presentan con
+              carácter exclusivamente descriptivo de hechos pasados. No constituyen una
+              probabilidad, una tasa de acierto, una señal de actuación ni una recomendación, y no
+              permiten deducir resultados futuros.
             </p>
 
             <div
@@ -652,15 +668,11 @@ export default async function PaginaEmpresa({ params }) {
               }}
             >
               Todos estos datos proceden del gráfico y de la tabla de lecturas que aparecen más
-              abajo. Es información histórica, no una recomendación.
+              abajo. Es información histórica y descriptiva; no permite deducir probabilidades ni
+              resultados futuros y no constituye recomendación alguna.
             </p>
           </div>
         </section>
-
-        <p className="v3-aviso-mute">
-          Este análisis se elabora de forma independiente a las circunstancias personales de cada
-          lector. No constituye asesoramiento financiero personalizado.
-        </p>
 
         <ConsensoComunidad ticker={empresa.ticker} />
 
@@ -677,10 +689,40 @@ export default async function PaginaEmpresa({ params }) {
           futuro={null}
         />
 
-        <p className="v3-aviso-mute" style={{ marginTop: '20px' }}>
-          Este registro se basa exclusivamente en datos históricos y no garantiza ningún resultado
-          futuro. El usuario debe tomar sus propias decisiones de inversión.
-        </p>
+        {/* SECCIÓN DE CONFLICTOS DE INTERÉS */}
+        <section className="v3-seccion" aria-label="Conflictos de interés">
+          <h2 className="v3-seccion-titulo">Conflictos de interés</h2>
+          <div className="v3-card" style={{ padding: '20px', lineHeight: 1.7, fontSize: '13px' }}>
+            <p style={{ marginTop: 0 }}>
+              Equaty es una plataforma de contenido estadístico e informativo. Su política respecto
+              a los valores analizados es la siguiente:
+            </p>
+            <ul style={{ paddingLeft: '20px', margin: '8px 0' }}>
+              <li>
+                <strong>Posiciones:</strong> Equaty no mantiene posiciones propias en los
+                instrumentos financieros sobre los que publica fichas estadísticas, ni opera en
+                los mercados con la finalidad de beneficiarse de la evolución de dichos
+                instrumentos.
+              </li>
+              <li>
+                <strong>Relaciones comerciales:</strong> Equaty no mantiene acuerdos comerciales
+                con los emisores de los instrumentos analizados que pudieran influir en el
+                contenido de las fichas. En caso de que existiera cualquier relación de este tipo,
+                se haría constar de forma expresa y visible en esta sección.
+              </li>
+              <li>
+                <strong>Fuentes de ingresos:</strong> la plataforma puede generar ingresos por
+                publicidad, suscripciones o servicios de datos agregados. Estas fuentes de ingreso
+                no condicionan la elaboración del contenido estadístico, que se rige por criterios
+                descriptivos y neutrales.
+              </li>
+            </ul>
+            <p style={{ marginBottom: 0 }}>
+              El contenido de esta ficha se elabora de forma independiente a las circunstancias
+              personales de cada lector y no constituye asesoramiento financiero personalizado.
+            </p>
+          </div>
+        </section>
       </main>
 
       <div className="v3-sidebar">
