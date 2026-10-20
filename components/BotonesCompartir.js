@@ -1,7 +1,3 @@
-Este era el archivo más problemático: generaba un tuit con "Acierto histórico de compras: X%", "Acierto histórico de ventas: X%", "dar compra de nuevo", "Último movimiento registrado: compra/venta" y "zona alta/baja". Se elimina todo eso y se genera un texto puramente descriptivo con Categoría A/B/C.
-
-```javascript
-'use client';
 
 import { useState } from 'react';
 
