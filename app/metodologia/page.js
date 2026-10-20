@@ -38,25 +38,6 @@ export default function Metodologia() {
         (entre -40 y +40) y <strong>zona baja</strong> (por debajo de -40).
       </p>
 
-      <h2>Definición de señales</h2>
-      <p>
-        Se registra una <strong>señal de compra</strong> cuando el indicador gira de bajista a
-        alcista estando por debajo de +40. Se registra una <strong>señal de venta</strong> cuando
-        el indicador gira de alcista a bajista. La ejecución se realiza al cierre de la sesión
-        anterior a la confirmación.
-      </p>
-
-      <h2>Estadística histórica</h2>
-      <p>
-        El porcentaje de acierto se calcula sobre los ciclos cerrados del histórico de movimientos
-        estadísticos: una compra se cierra con la siguiente venta registrada; una venta se cierra
-        con la siguiente compra registrada. Si el último movimiento no ha sido seguido por uno
-        contrario, se evalúa hasta el precio actual.
-      </p>
-      <p>
-        Si el tamaño de muestra es inferior a 10 observaciones, se añade el aviso{' '}
-        <em>"Muestra limitada. Interpretar con cautela."</em>
-      </p>
 
       <h2>Limitaciones estadísticas</h2>
       <ul>
