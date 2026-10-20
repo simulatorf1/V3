@@ -1,84 +1,41 @@
+Este era el archivo más problemático: generaba un tuit con "Acierto histórico de compras: X%", "Acierto histórico de ventas: X%", "dar compra de nuevo", "Último movimiento registrado: compra/venta" y "zona alta/baja". Se elimina todo eso y se genera un texto puramente descriptivo con Categoría A/B/C.
+
+```javascript
 'use client';
 
 import { useState } from 'react';
 
-export default function BotonesCompartir({ empresa, analisis, url, futuro }) {
+export default function BotonesCompartir({ empresa, analisis, url }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [textoTuit, setTextoTuit] = useState('');
+
+  function etiquetaCategoria(zona) {
+    if (zona === 'alta') return 'Categoría A';
+    if (zona === 'baja') return 'Categoría C';
+    return 'Categoría B';
+  }
 
   function generarTextoTuit() {
     if (!empresa || !analisis) return '';
 
     const ticker = empresa.ticker;
     const nombre = empresa.nombre;
-    const zona = analisis.zona;
     const precio = analisis.precioActual?.toFixed(2) || '—';
+    const categoria = etiquetaCategoria(analisis.zona);
 
     const senales = analisis.senales || [];
     const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
 
-    // Aciertos
-    const ciclos = [];
-    const lista = [...senales].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-    for (let i = 0; i < lista.length; i++) {
-      const s = lista[i];
-      const siguiente = lista[i + 1];
-      const precioCierre = siguiente ? siguiente.precio : analisis.precioActual;
-      const variacion = precioCierre ? ((precioCierre - s.precio) / s.precio) * 100 : 0;
-      let acierto = null;
-      if (variacion !== 0) {
-        if (s.tipo === 'compra') acierto = variacion > 0;
-        else if (s.tipo === 'venta') acierto = variacion < 0;
-      }
-      ciclos.push({ tipo: s.tipo, acierto });
-    }
-
-    function statsCiclo(tipo) {
-      const filtrados = ciclos.filter((c) => c.tipo === tipo);
-      let aciertos = 0;
-      let total = 0;
-      for (const c of filtrados) {
-        if (c.acierto === null) continue;
-        total++;
-        if (c.acierto) aciertos++;
-      }
-      return {
-        muestra: filtrados.length,
-        porcentaje: total > 0 ? (aciertos / total) * 100 : 0
-      };
-    }
-
-    const statsCompras = statsCiclo('compra');
-    const statsVentas = statsCiclo('venta');
-
-    let texto = `Nuevo análisis de ${nombre} (${ticker}). `;
+    let texto = `Registro estadístico descriptivo de ${nombre} (${ticker}). `;
     texto += `Precio ${precio}. `;
-
-    if (zona === 'alta') {
-      texto += `Indicador en zona alta. `;
-    } else if (zona === 'baja') {
-      texto += `Indicador en zona baja. `;
-    } else {
-      texto += `Indicador en zona intermedia. `;
-    }
-
-    if (futuro && futuro.ultimoCaso) {
-      const tipoGiro = futuro.ultimoCaso.direccionGiro === 'subiendo' ? 'compra' : 'venta';
-      texto += `Estadísticamente, ${futuro.ultimoCaso.sesiones} ${
-        futuro.ultimoCaso.sesiones === 1 ? 'sesión' : 'sesiones'
-      } para dar ${tipoGiro} de nuevo. `;
-    }
+    texto += `Indicador en ${categoria}. `;
 
     if (ultimaSenal) {
-      texto += `Último movimiento registrado: ${ultimaSenal.tipo}. `;
+      const catUltima = etiquetaCategoria(ultimaSenal.tipo === 'compra' ? 'baja' : 'alta');
+      texto += `Último registro estadístico: ${ultimaSenal.fecha} (${catUltima}). `;
     }
 
-    if (statsCompras.muestra > 0) {
-      texto += `Acierto histórico de compras: ${statsCompras.porcentaje.toFixed(0)}%. `;
-    }
-    if (statsVentas.muestra > 0) {
-      texto += `Acierto histórico de ventas: ${statsVentas.porcentaje.toFixed(0)}%. `;
-    }
+    texto += `Información histórica, no predictiva ni recomendación de inversión. `;
 
     const enlace = `Más en: ${url}`;
     texto += enlace;
@@ -102,7 +59,9 @@ export default function BotonesCompartir({ empresa, analisis, url, futuro }) {
   }
 
   const urlCodificada = encodeURIComponent(url);
-  const textoWhatsApp = encodeURIComponent(`${empresa?.nombre} (${empresa?.ticker}) — ${url}`);
+  const textoWhatsApp = encodeURIComponent(
+    `${empresa?.nombre} (${empresa?.ticker}) — registro estadístico descriptivo — ${url}`
+  );
 
   const estiloBoton = {
     display: 'inline-flex',
