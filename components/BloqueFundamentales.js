@@ -8,6 +8,10 @@ export default function BloqueFundamentales({ datos }) {
     industria,
     marketCap,
     dividendYield,
+    per,
+    priceToBook,
+    max52,
+    min52,
     deudaNetaEbitda,
     roe,
     margenNeto,
@@ -20,14 +24,21 @@ export default function BloqueFundamentales({ datos }) {
     return Number(v).toFixed(decimales);
   }
 
-  function fmtPct(v, decimales = 1) {
+  // Yahoo v7 devuelve dividendYield en porcentaje ya multiplicado (ej: 2.5 = 2.5%)
+  function fmtPctDirecto(v, decimales = 2) {
+    if (v === null || v === undefined || Number.isNaN(v)) return '—';
+    return `${Number(v).toFixed(decimales)}%`;
+  }
+
+  function fmtPctDecimal(v, decimales = 1) {
     if (v === null || v === undefined || Number.isNaN(v)) return '—';
     return `${(Number(v) * 100).toFixed(decimales)}%`;
   }
 
   function fmtMillones(v) {
     if (v === null || v === undefined || Number.isNaN(v)) return '—';
-    if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(1)} B`;
+    if (Math.abs(v) >= 1e12) return `${(v / 1e12).toFixed(2)} B`;
+    if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(2)} B`;
     if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(1)} M`;
     return Number(v).toLocaleString('es-ES');
   }
@@ -53,6 +64,9 @@ export default function BloqueFundamentales({ datos }) {
     margenNeto !== null ||
     fcf !== null ||
     dividendYield !== null ||
+    per !== null ||
+    priceToBook !== null ||
+    marketCap !== null ||
     fechaResultados;
 
   if (!hayDatos) return null;
@@ -73,6 +87,37 @@ export default function BloqueFundamentales({ datos }) {
             gap: '20px'
           }}
         >
+          {marketCap !== null && (
+            <Dato etiqueta="Capitalización" valor={fmtMillones(marketCap)} />
+          )}
+          {per !== null && (
+            <Dato
+              etiqueta="PER"
+              valor={`${fmtNum(per)}x`}
+              extra="Precio / beneficio por acción"
+            />
+          )}
+          {priceToBook !== null && (
+            <Dato
+              etiqueta="Precio / Valor contable"
+              valor={`${fmtNum(priceToBook)}x`}
+              extra="Relación entre precio y valor en libros"
+            />
+          )}
+          {dividendYield !== null && (
+            <Dato
+              etiqueta="Rentabilidad por dividendo"
+              valor={fmtPctDirecto(dividendYield)}
+              extra="Dividendo anual sobre precio actual"
+            />
+          )}
+          {max52 !== null && min52 !== null && (
+            <Dato
+              etiqueta="Rango 52 semanas"
+              valor={`${fmtNum(min52)} – ${fmtNum(max52)} €`}
+              extra="Mínimo y máximo del último año"
+            />
+          )}
           {deudaNetaEbitda !== null && (
             <Dato
               etiqueta="Deuda Neta / EBITDA"
@@ -83,14 +128,14 @@ export default function BloqueFundamentales({ datos }) {
           {roe !== null && (
             <Dato
               etiqueta="ROE"
-              valor={fmtPct(roe)}
+              valor={fmtPctDecimal(roe)}
               extra="Rentabilidad sobre fondos propios"
             />
           )}
           {margenNeto !== null && (
             <Dato
               etiqueta="Margen neto"
-              valor={fmtPct(margenNeto)}
+              valor={fmtPctDecimal(margenNeto)}
               extra="Beneficio neto sobre ventas"
             />
           )}
@@ -100,16 +145,6 @@ export default function BloqueFundamentales({ datos }) {
               valor={fmtMillones(fcf)}
               extra="Efectivo disponible tras inversiones"
             />
-          )}
-          {dividendYield !== null && (
-            <Dato
-              etiqueta="Rentabilidad por dividendo"
-              valor={fmtPct(dividendYield)}
-              extra="Dividendo anual sobre precio actual"
-            />
-          )}
-          {marketCap !== null && (
-            <Dato etiqueta="Capitalización" valor={fmtMillones(marketCap)} />
           )}
         </div>
 
@@ -141,9 +176,9 @@ export default function BloqueFundamentales({ datos }) {
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
-        Estos datos proceden de estados financieros publicados por la empresa y se presentan con
-        carácter exclusivamente descriptivo. No constituyen una valoración, una recomendación de
-        inversión ni una previsión de resultados futuros.
+        Estos datos proceden de fuentes públicas de mercado y se presentan con carácter
+        exclusivamente descriptivo. No constituyen una valoración, una recomendación de inversión
+        ni una previsión de resultados futuros.
       </p>
     </section>
   );
