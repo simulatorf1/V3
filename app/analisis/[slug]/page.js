@@ -12,6 +12,7 @@ import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import FormularioAlerta from '../../../components/FormularioAlerta';
+import BloqueFundamentales from '../../../components/BloqueFundamentales';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -396,7 +397,9 @@ export default async function PaginaEmpresa({ params }) {
             )}
           </div>
         </section>
-
+        {analisis.fundamentales && (
+          <BloqueFundamentales datos={analisis.fundamentales} />
+        )}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">¿Para qué sirve este indicador?</h2>
           <div
