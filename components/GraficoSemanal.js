@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-export default function GraficoSemanal({ velas }) {
+export default function GraficoSemanal({ velas, smis }) {
   const contenedorRef = useRef(null);
 
   useEffect(() => {
@@ -12,7 +12,7 @@ export default function GraficoSemanal({ velas }) {
     let cleanup = () => {};
 
     async function init() {
-      const { createChart } = await import('lightweight-charts');
+      const { createChart, LineStyle } = await import('lightweight-charts');
 
       const velasData = velas.map((v) => ({
         time: v.date,
@@ -22,18 +22,31 @@ export default function GraficoSemanal({ velas }) {
         close: v.close
       }));
 
+      const smiData = [];
+      for (let i = 0; i < smis.length; i++) {
+        if (smis[i] === null || smis[i] === undefined) continue;
+        if (!velas[i]) continue;
+        smiData.push({ time: velas[i].date, value: smis[i] });
+      }
+
       chart = createChart(contenedorRef.current, {
         width: contenedorRef.current.clientWidth,
-        height: 360,
+        height: 420,
         layout: { background: { color: '#ffffff' }, textColor: '#333' },
         grid: {
           vertLines: { color: '#f0f0f0' },
           horzLines: { color: '#f0f0f0' }
         },
         timeScale: { borderColor: '#ddd' },
-        rightPriceScale: { borderColor: '#ddd', scaleMargins: { top: 0.1, bottom: 0.1 } }
+        rightPriceScale: { borderColor: '#ddd', scaleMargins: { top: 0.1, bottom: 0.1 } },
+        leftPriceScale: {
+          borderColor: '#ddd',
+          visible: true,
+          scaleMargins: { top: 0.1, bottom: 0.1 }
+        }
       });
 
+      // VELAS del precio (semanal)
       const velasSeries = chart.addCandlestickSeries({
         upColor: '#2563eb',
         downColor: '#9ca3af',
@@ -44,6 +57,86 @@ export default function GraficoSemanal({ velas }) {
         priceScaleId: 'right'
       });
       velasSeries.setData(velasData);
+
+      // Área superior del rango (azul)
+      const zonaSuperior = chart.addBaselineSeries({
+        baseValue: { type: 'price', price: 40 },
+        topFillColor1: 'rgba(37, 99, 235, 0.35)',
+        topFillColor2: 'rgba(37, 99, 235, 0.08)',
+        bottomFillColor1: 'rgba(37, 99, 235, 0)',
+        bottomFillColor2: 'rgba(37, 99, 235, 0)',
+        topLineColor: 'rgba(37, 99, 235, 0.3)',
+        bottomLineColor: 'rgba(37, 99, 235, 0)',
+        lineWidth: 1,
+        priceScaleId: 'left',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+      });
+      zonaSuperior.setData(smiData);
+
+      // Área inferior del rango (gris)
+      const zonaInferior = chart.addBaselineSeries({
+        baseValue: { type: 'price', price: -40 },
+        topFillColor1: 'rgba(156, 163, 175, 0)',
+        topFillColor2: 'rgba(156, 163, 175, 0)',
+        bottomFillColor1: 'rgba(156, 163, 175, 0.35)',
+        bottomFillColor2: 'rgba(156, 163, 175, 0.08)',
+        topLineColor: 'rgba(156, 163, 175, 0)',
+        bottomLineColor: 'rgba(156, 163, 175, 0.3)',
+        lineWidth: 1,
+        priceScaleId: 'left',
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+      });
+      zonaInferior.setData(smiData);
+
+      // Línea del indicador semanal
+      const smiLine = chart.addLineSeries({
+        color: '#7b1fa2',
+        lineWidth: 2,
+        title: 'Indicador semanal',
+        priceScaleId: 'left'
+      });
+      smiLine.setData(smiData);
+
+      smiLine.createPriceLine({
+        price: 40,
+        color: '#2563eb',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'parte alta',
+        priceScaleId: 'left'
+      });
+      smiLine.createPriceLine({
+        price: -40,
+        color: '#9ca3af',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'parte baja',
+        priceScaleId: 'left'
+      });
+      smiLine.createPriceLine({
+        price: 0,
+        color: '#aaa',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: false,
+        priceScaleId: 'left'
+      });
+
+      chart.priceScale('left').applyOptions({
+        autoScale: false,
+        scaleMargins: { top: 0.1, bottom: 0.1 }
+      });
+      smiLine.applyOptions({
+        autoscaleInfoProvider: () => ({
+          priceRange: { minValue: -100, maxValue: 100 }
+        })
+      });
 
       chart.timeScale().fitContent();
 
@@ -63,15 +156,15 @@ export default function GraficoSemanal({ velas }) {
     init();
 
     return () => cleanup();
-  }, [velas]);
+  }, [velas, smis]);
 
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Evolución semanal del precio</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
-        Cada vela representa una semana. Las velas azules indican semanas al alza y las grises
-        semanas a la baja. Esta vista permite observar el comportamiento del precio en un periodo
-        más amplio.
+        Cada vela representa una semana: azul si cerró por encima de su apertura, gris si cerró
+        por debajo. La línea morada es el indicador calculado con velas semanales. Esta vista
+        permite observar el comportamiento del precio en un periodo más amplio.
       </p>
       <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
