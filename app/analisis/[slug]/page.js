@@ -2,6 +2,7 @@ import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar'
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
+import GraficoSemanal from '../../../components/GraficoSemanal';
 import ContextoReciente from '../../../components/ContextoReciente';
 import ComparadorSector from '../../../components/ComparadorSector';
 import TablaSenales from '../../../components/TablaSenales';
@@ -17,28 +18,18 @@ export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
 
-// Traduce el valor interno (compra/venta) a lenguaje humano
 function situacionDesdeTipo(tipo) {
   if (tipo === 'compra') return 'parte baja del rango';
   if (tipo === 'venta') return 'parte alta del rango';
   return 'parte intermedia del rango';
 }
 
-// Traduce la zona interna (alta/baja) a lenguaje humano
 function situacionDesdeZona(zona) {
   if (zona === 'alta') return 'parte alta del rango';
   if (zona === 'baja') return 'parte baja del rango';
   return 'parte intermedia del rango';
 }
 
-// Categoría técnica (secundaria)
-function categoriaDesdeZona(zona) {
-  if (zona === 'alta') return 'A';
-  if (zona === 'baja') return 'C';
-  return 'B';
-}
-
-// Explicación humana del percentil
 function explicacionPercentil(percentil) {
   if (percentil >= 80) {
     return `Percentil ${percentil}: el precio está en la zona alta de su rango de las últimas 60 sesiones.`;
@@ -240,9 +231,7 @@ export default async function PaginaEmpresa({ params }) {
     percentil = Math.round((menores / smisOrdenados.length) * 100);
   }
 
-  // CAMBIO 1 + 8: situación humana primero, técnica después
   const situacionActual = situacionDesdeZona(analisis.zona);
-  const categoriaTecnica = categoriaDesdeZona(analisis.zona);
 
   const consenso = await cargarConsenso(empresa.ticker);
 
@@ -273,7 +262,6 @@ export default async function PaginaEmpresa({ params }) {
       ? analisis.sectorInfo.variacionSector60
       : null;
 
-  // CAMBIO 6: resumen humano en 2 líneas
   const variacionTexto =
     variacion60 > 0.05
       ? `ha subido un ${variacion60.toFixed(1)}%`
@@ -318,7 +306,6 @@ export default async function PaginaEmpresa({ params }) {
           <span style={{ color: 'var(--v3-text)' }}>{empresa.nombre}</span>
         </nav>
 
-        {/* CABECERA */}
         <h1 style={{ marginBottom: '4px' }}>
           {empresa.nombre} ({empresa.ticker})
         </h1>
@@ -329,7 +316,6 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        {/* CAMBIO 6: ¿Qué estoy viendo? — resumen humano en 2 líneas */}
         <section
           className="v3-card"
           style={{
@@ -343,13 +329,12 @@ export default async function PaginaEmpresa({ params }) {
         >
           <p style={{ margin: 0 }}>
             Durante los últimos 60 días, <strong>{empresa.nombre}</strong> {variacionTexto}.
-            Actualmente el precio se encuentra en una{' '}
-            <strong>{situacionActual}</strong> respecto a su propio comportamiento reciente.
+            Actualmente el precio se encuentra en una <strong>{situacionActual}</strong> respecto a
+            su propio comportamiento reciente.
             {comparacionTexto && ` ${comparacionTexto}`}
           </p>
         </section>
 
-        {/* DATOS CLAVE */}
         <section className="v3-seccion" style={{ marginTop: '24px' }}>
           <h2 className="v3-seccion-titulo">Datos clave</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
@@ -381,7 +366,6 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* CAMBIO 1: Situación humana como protagonista, técnica después */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Situación actual</h2>
           <div className="v3-card" style={{ padding: '20px' }}>
@@ -398,7 +382,6 @@ export default async function PaginaEmpresa({ params }) {
             >
               {explicacionPercentil(percentil)}
             </p>
-
             {ultimaSenal && (
               <p
                 style={{
@@ -414,9 +397,8 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* CAMBIO 3: ¿Para qué sirve este indicador? — encima del gráfico */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Indicador Equaty</h2>
+          <h2 className="v3-seccion-titulo">¿Para qué sirve este indicador?</h2>
           <div
             className="v3-card"
             style={{
@@ -438,7 +420,6 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* GRÁFICO con guía de lectura y aviso */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Evolución del precio y del indicador</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
@@ -464,9 +445,12 @@ export default async function PaginaEmpresa({ params }) {
             mantenimiento de instrumentos financieros.
           </div>
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+
+          {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
+            <GraficoSemanal velas={analisis.velasSemanales} />
+          )}
         </section>
 
-        {/* CAMBIO 4 + 5: Historial de cambios de rango (antes "Histórico de registros") */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Historial de cambios de rango</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
@@ -488,7 +472,6 @@ export default async function PaginaEmpresa({ params }) {
 
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
-        {/* AVISOS REGULATORIOS */}
         <section
           className="v3-card"
           style={{
