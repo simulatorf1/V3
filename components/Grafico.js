@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useRef } from 'react';
 
 export default function Grafico({ velas, smis }) {
@@ -13,7 +14,13 @@ export default function Grafico({ velas, smis }) {
     async function init() {
       const { createChart, LineStyle } = await import('lightweight-charts');
 
-      const precioData = velas.map((v) => ({ time: v.date, value: v.close }));
+      const velasData = velas.map((v) => ({
+        time: v.date,
+        open: v.open,
+        high: v.high,
+        low: v.low,
+        close: v.close
+      }));
 
       const smiData = [];
       for (let i = 0; i < smis.length; i++) {
@@ -39,22 +46,26 @@ export default function Grafico({ velas, smis }) {
         }
       });
 
-      const precioLine = chart.addLineSeries({
-        color: '#0b5fff',
-        lineWidth: 2,
-        title: 'Precio',
+      // VELAS del precio (diario)
+      const velasSeries = chart.addCandlestickSeries({
+        upColor: '#2563eb',
+        downColor: '#9ca3af',
+        borderUpColor: '#2563eb',
+        borderDownColor: '#9ca3af',
+        wickUpColor: '#2563eb',
+        wickDownColor: '#9ca3af',
         priceScaleId: 'right'
       });
-      precioLine.setData(precioData);
+      velasSeries.setData(velasData);
 
       // Área superior del rango (azul)
       const zonaSuperior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
-        topFillColor1: 'rgba(37, 99, 235, 0.45)',
-        topFillColor2: 'rgba(37, 99, 235, 0.12)',
+        topFillColor1: 'rgba(37, 99, 235, 0.35)',
+        topFillColor2: 'rgba(37, 99, 235, 0.08)',
         bottomFillColor1: 'rgba(37, 99, 235, 0)',
         bottomFillColor2: 'rgba(37, 99, 235, 0)',
-        topLineColor: 'rgba(37, 99, 235, 0.4)',
+        topLineColor: 'rgba(37, 99, 235, 0.3)',
         bottomLineColor: 'rgba(37, 99, 235, 0)',
         lineWidth: 1,
         priceScaleId: 'left',
@@ -69,10 +80,10 @@ export default function Grafico({ velas, smis }) {
         baseValue: { type: 'price', price: -40 },
         topFillColor1: 'rgba(156, 163, 175, 0)',
         topFillColor2: 'rgba(156, 163, 175, 0)',
-        bottomFillColor1: 'rgba(156, 163, 175, 0.45)',
-        bottomFillColor2: 'rgba(156, 163, 175, 0.12)',
+        bottomFillColor1: 'rgba(156, 163, 175, 0.35)',
+        bottomFillColor2: 'rgba(156, 163, 175, 0.08)',
         topLineColor: 'rgba(156, 163, 175, 0)',
-        bottomLineColor: 'rgba(156, 163, 175, 0.4)',
+        bottomLineColor: 'rgba(156, 163, 175, 0.3)',
         lineWidth: 1,
         priceScaleId: 'left',
         priceLineVisible: false,
@@ -81,6 +92,7 @@ export default function Grafico({ velas, smis }) {
       });
       zonaInferior.setData(smiData);
 
+      // Línea del indicador
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
@@ -148,15 +160,16 @@ export default function Grafico({ velas, smis }) {
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Gráfico principal</h2>
+      <h2 className="v3-seccion-titulo">Gráfico principal (diario)</h2>
       <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '10px' }}>
-        El eje derecho muestra el precio (línea azul) y el eje izquierdo el indicador (línea
-        morada). El área azul aparece cuando el indicador se sitúa en la parte alta del rango; el
-        área gris, cuando se sitúa en la parte baja. Esta representación es exclusivamente
-        descriptiva de datos históricos y no constituye recomendación de inversión.
+        Cada vela representa una sesión: azul si cerró por encima de su apertura, gris si cerró
+        por debajo. La línea morada es el indicador: cuanto más arriba está, más cerca ha cotizado
+        el precio de sus máximos recientes; cuanto más abajo, más cerca de sus mínimos. Esta
+        representación es exclusivamente descriptiva de datos históricos y no constituye
+        recomendación de inversión.
       </p>
     </section>
   );
