@@ -33,7 +33,12 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
   return (
     <section
       className={esSidebar ? '' : 'v3-seccion'}
-      style={{ marginTop: esSidebar ? '0' : '30px', marginBottom: esSidebar ? '28px' : '0' }}
+      style={{
+        marginTop: esSidebar ? '0' : '30px',
+        marginBottom: esSidebar ? '28px' : '0',
+        maxWidth: '100%',
+        overflow: 'hidden'
+      }}
     >
       {!esSidebar && (
         <h2 className="v3-seccion-titulo">Actualizaciones del registro estadístico</h2>
@@ -58,7 +63,10 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
           background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
           border: '2px solid #3b82f6',
           borderRadius: 'var(--v3-radius)',
-          padding: esSidebar ? '14px' : '20px'
+          padding: esSidebar ? '10px' : '20px',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          overflow: 'hidden'
         }}
       >
         {!esSidebar && (
@@ -92,7 +100,7 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
         {esSidebar && (
           <p
             style={{
-              margin: '0 0 10px 0',
+              margin: '0 0 8px 0',
               fontSize: '11px',
               color: '#ea580c',
               fontWeight: 600,
@@ -103,57 +111,68 @@ export default function MovimientosHoyCliente({ variante = 'home' }) {
           </p>
         )}
 
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '8px' }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            display: 'grid',
+            gap: '6px'
+          }}
+        >
           {cambios.slice(0, esSidebar ? 5 : 8).map((c) => (
-            <li key={c.ticker}>
+            <li key={c.ticker} style={{ maxWidth: '100%' }}>
               <Link
                 href={`/analisis/${construirSlug(c)}`}
                 style={{
-                  display: 'flex',
-                  flexDirection: esSidebar ? 'column' : 'row',
-                  justifyContent: 'space-between',
-                  alignItems: esSidebar ? 'flex-start' : 'center',
-                  gap: esSidebar ? '4px' : '12px',
-                  padding: esSidebar ? '8px 10px' : '12px 16px',
+                  display: 'block',
+                  padding: esSidebar ? '6px 8px' : '12px 16px',
                   background: '#fff',
                   borderRadius: 'var(--v3-radius-sm)',
                   textDecoration: 'none',
                   color: 'var(--v3-text)',
-                  border: '1px solid #bfdbfe'
+                  border: '1px solid #bfdbfe',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden'
                 }}
               >
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      fontSize: esSidebar ? '13px' : '14px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {c.nombre}
-                  </div>
-                  <div
-                    style={{
-                      color: 'var(--v3-text-soft)',
-                      fontSize: '11px',
-                      marginTop: '2px'
-                    }}
-                  >
-                    {c.ticker}
-                    {c.sector && !esSidebar && ` · ${c.sector}`}
-                  </div>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: esSidebar ? '12px' : '14px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {c.nombre}
                 </div>
                 <div
                   style={{
-                    fontSize: esSidebar ? '11px' : '13px',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    color: 'var(--v3-text-soft)'
+                    color: 'var(--v3-text-soft)',
+                    fontSize: '11px',
+                    marginTop: '2px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  actualización del registro estadístico
+                  {c.ticker}
+                  {c.sector && !esSidebar && ` · ${c.sector}`}
+                </div>
+                <div
+                  style={{
+                    fontSize: esSidebar ? '10px' : '12px',
+                    fontWeight: 600,
+                    color: 'var(--v3-text-mute)',
+                    marginTop: '4px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  actualización del registro
                 </div>
               </Link>
             </li>
