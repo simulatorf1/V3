@@ -446,9 +446,15 @@ export default async function PaginaEmpresa({ params }) {
           </div>
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
 
-          {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
-            <GraficoSemanal velas={analisis.velasSemanales} />
-          )}
+          {analisis.velasSemanales &&
+            analisis.velasSemanales.length > 0 &&
+            analisis.smisSemanales &&
+            analisis.smisSemanales.length > 0 && (
+              <GraficoSemanal
+                velas={analisis.velasSemanales}
+                smis={analisis.smisSemanales}
+              />
+            )}
         </section>
 
         <section className="v3-seccion">
