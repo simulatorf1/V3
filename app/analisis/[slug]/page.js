@@ -255,15 +255,11 @@ export default async function PaginaEmpresa({ params }) {
   const max60 = velas.length > 0 ? Math.max(...velas.map((v) => v.high)) : null;
   const min60 = velas.length > 0 ? Math.min(...velas.map((v) => v.low)) : null;
 
-  // Pendiente de la línea del precio (5 sesiones)
-  const precio5AtrasParaPendiente =
-    velas.length >= 6 ? velas[velas.length - 6].close : null;
   const pendientePrecio =
-    precio5AtrasParaPendiente && precio5AtrasParaPendiente !== 0
-      ? ((precioActual - precio5AtrasParaPendiente) / precio5AtrasParaPendiente) * 100
+    precio5Atras && precio5Atras !== 0
+      ? ((precioActual - precio5Atras) / precio5Atras) * 100
       : null;
 
-  // Pendiente de la línea del indicador (5 sesiones)
   const smiActual = analisis.smiActual;
   const smi5Atras = smis.length >= 6 ? smis[smis.length - 6] : null;
   const pendienteIndicador =
@@ -274,23 +270,19 @@ export default async function PaginaEmpresa({ params }) {
       ? ((smiActual - smi5Atras) / Math.abs(smi5Atras)) * 100
       : null;
 
-  // Posición dentro del rango 60
   const posicionRango =
     max60 !== null && min60 !== null && max60 !== min60
       ? ((precioActual - min60) / (max60 - min60)) * 100
       : 0;
 
-  // Amplitud del rango 60
   const amplitudRango =
     min60 !== null && min60 !== 0 && max60 !== null
       ? ((max60 - min60) / min60) * 100
       : null;
 
-  // Distancia al máximo y mínimo
   const distanciaMax = max60 ? ((precioActual - max60) / max60) * 100 : null;
   const distanciaMin = min60 ? ((precioActual - min60) / min60) * 100 : null;
 
-  // Volatilidad diaria media
   let volatilidad = 0;
   if (velas.length > 1) {
     const retornos = [];
@@ -304,6 +296,52 @@ export default async function PaginaEmpresa({ params }) {
       const varianza =
         retornos.reduce((a, b) => a + Math.pow(b - media, 2), 0) / retornos.length;
       volatilidad = Math.sqrt(varianza) * 100;
+    }
+  }
+
+  // NUEVA: volatilidad semanal media (a partir de velas semanales)
+  let volatilidadSemanal = null;
+  const velasSem = analisis.velasSemanales || [];
+  if (velasSem.length > 1) {
+    const retsSem = [];
+    for (let i = 1; i < velasSem.length; i++) {
+      if (velasSem[i - 1]?.close) {
+        retsSem.push((velasSem[i].close - velasSem[i - 1].close) / velasSem[i - 1].close);
+      }
+    }
+    if (retsSem.length > 0) {
+      const mediaSem = retsSem.reduce((a, b) => a + b, 0) / retsSem.length;
+      const varSem =
+        retsSem.reduce((a, b) => a + Math.pow(b - mediaSem, 2), 0) / retsSem.length;
+      volatilidadSemanal = Math.sqrt(varSem) * 100;
+    }
+  }
+
+  // NUEVA: sesiones alcistas vs bajistas en 60
+  let sesionesAlcistas = 0;
+  let sesionesBajistas = 0;
+  for (let i = 1; i < velas.length; i++) {
+    if (velas[i].close > velas[i - 1].close) sesionesAlcistas++;
+    else if (velas[i].close < velas[i - 1].close) sesionesBajistas++;
+  }
+  const totalSesionesMov = sesionesAlcistas + sesionesBajistas;
+  const ratioAlcistas =
+    totalSesionesMov > 0 ? (sesionesAlcistas / totalSesionesMov) * 100 : 0;
+
+  // NUEVA: racha actual (sesiones consecutivas en la misma dirección)
+  let racha = 0;
+  let direccionRacha = null;
+  for (let i = velas.length - 1; i >= 1; i--) {
+    const dif = velas[i].close - velas[i - 1].close;
+    if (dif === 0) break;
+    const dir = dif > 0 ? 'alcista' : 'bajista';
+    if (direccionRacha === null) {
+      direccionRacha = dir;
+      racha = 1;
+    } else if (dir === direccionRacha) {
+      racha++;
+    } else {
+      break;
     }
   }
 
@@ -329,18 +367,17 @@ export default async function PaginaEmpresa({ params }) {
     diasDesdeUltimoCambio = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
   }
 
-  // Número de cambios de zona en 60 sesiones
   const cambiosZona60 = senales.length;
 
   const estiloAcordeon = {
-    marginTop: '20px',
+    marginTop: '16px',
     border: '1px solid var(--v3-border)',
     borderRadius: 'var(--v3-radius-sm)',
     background: 'var(--v3-bg-soft)'
   };
   const estiloSummary = {
     cursor: 'pointer',
-    padding: '16px 20px',
+    padding: '14px 20px',
     fontWeight: 700,
     fontSize: '15px',
     listStyle: 'none'
@@ -385,18 +422,18 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        {/* BLOQUE DE BARRAS */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <div className="v3-card" style={{ padding: '20px' }}>
             <div style={{ fontSize: '30px', fontWeight: 800, marginBottom: '4px' }}>
               {precioActual?.toFixed(2) ?? '—'} €
             </div>
-            <p style={{ margin: '0 0 22px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
               Precio actual · {empresa.mercado || ''}
             </p>
 
             <BarraEscala
               etiqueta="Variación 5 sesiones"
+              ayuda="Diferencia porcentual entre el precio actual y el de hace 5 sesiones."
               valor={variacion5}
               valorTexto={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}%`}
               min={-10}
@@ -405,6 +442,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta="Variación 60 sesiones"
+              ayuda="Diferencia porcentual entre el precio actual y el de hace 60 sesiones (aproximadamente 3 meses de bolsa)."
               valor={variacion60}
               valorTexto={`${variacion60 >= 0 ? '+' : ''}${variacion60.toFixed(2)}%`}
               min={-15}
@@ -419,6 +457,7 @@ export default async function PaginaEmpresa({ params }) {
                   ? `${variacionSector60 >= 0 ? '+' : ''}${variacionSector60.toFixed(2)}%`
                   : '—'
               }`}
+              ayuda="Compara la variación porcentual de la empresa en 60 sesiones con la media de las empresas de su sector en el mismo periodo."
               valor={variacionSector60}
               valorTexto={
                 variacionSector60 !== null
@@ -431,6 +470,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta={`Indicador Equaty · ${situacionActual}`}
+              ayuda="El indicador Equaty es un oscilador técnico (SMI) que mide dónde se ha movido el precio dentro de su rango reciente. Va de -100 a +100. Valores altos = cerca de máximos recientes; valores bajos = cerca de mínimos recientes."
               valor={smiActual}
               valorTexto={`${smiActual?.toFixed(0) ?? '—'}`}
               min={-100}
@@ -447,6 +487,7 @@ export default async function PaginaEmpresa({ params }) {
                   ? 'baja'
                   : 'plana'
               }`}
+              ayuda="Indica si el precio ha subido o bajado en las últimas 5 sesiones, medido en porcentaje. Positivo = la línea del gráfico sube; negativo = baja."
               valor={pendientePrecio}
               valorTexto={
                 pendientePrecio !== null
@@ -467,6 +508,7 @@ export default async function PaginaEmpresa({ params }) {
                   ? 'baja'
                   : 'plana'
               }`}
+              ayuda="Indica si el valor del indicador Equaty ha subido o bajado en las últimas 5 sesiones, en porcentaje. Positivo = el indicador sube; negativo = baja."
               valor={pendienteIndicador}
               valorTexto={
                 pendienteIndicador !== null
@@ -479,6 +521,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta="Posición dentro del rango 60 sesiones"
+              ayuda="Indica en qué punto del rango de precios de las últimas 60 sesiones está el precio actual. 0% = está en el mínimo del rango; 100% = está en el máximo."
               valor={posicionRango}
               valorTexto={`${posicionRango.toFixed(0)}%`}
               min={0}
@@ -487,6 +530,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta="Amplitud del rango 60 sesiones"
+              ayuda="Mide cuánto ha oscilado el precio en las últimas 60 sesiones, en porcentaje entre su mínimo y su máximo. Cuanto mayor, más volátil ha sido el rango."
               valor={amplitudRango}
               valorTexto={amplitudRango !== null ? `${amplitudRango.toFixed(2)}%` : '—'}
               min={0}
@@ -495,6 +539,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta="Distancia al máximo de 60 sesiones"
+              ayuda="Diferencia porcentual entre el precio actual y el máximo de las últimas 60 sesiones. Negativo = está por debajo del máximo."
               valor={distanciaMax}
               valorTexto={
                 distanciaMax !== null
@@ -507,6 +552,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta="Distancia al mínimo de 60 sesiones"
+              ayuda="Diferencia porcentual entre el precio actual y el mínimo de las últimas 60 sesiones. Positivo = está por encima del mínimo."
               valor={distanciaMin}
               valorTexto={
                 distanciaMin !== null
@@ -519,11 +565,23 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta="Volatilidad diaria media (60 sesiones)"
+              ayuda="Desviación típica de los retornos diarios en las últimas 60 sesiones. Indica cuánto se mueve el precio de media cada día, en porcentaje."
               valor={volatilidad}
               valorTexto={`${volatilidad.toFixed(2)}%`}
               min={0}
               max={5}
             />
+
+            {volatilidadSemanal !== null && (
+              <BarraEscala
+                etiqueta="Volatilidad semanal media"
+                ayuda="Desviación típica de los retornos semanales en las últimas 104 semanas. Indica cuánto se mueve el precio de media cada semana, en porcentaje."
+                valor={volatilidadSemanal}
+                valorTexto={`${volatilidadSemanal.toFixed(2)}%`}
+                min={0}
+                max={15}
+              />
+            )}
 
             {volumenRelativo !== null && (
               <BarraEscala
@@ -532,6 +590,7 @@ export default async function PaginaEmpresa({ params }) {
                 } vs media 60 ${
                   volumenMedio60 ? Math.round(volumenMedio60).toLocaleString('es-ES') : '—'
                 }`}
+                ayuda="Compara el volumen negociado en la última sesión con la media de las últimas 60 sesiones. 100% = volumen medio; más de 100% = más actividad de lo habitual; menos de 100% = menos actividad."
                 valor={volumenRelativo - 100}
                 valorTexto={`${volumenRelativo.toFixed(0)}% de la media`}
                 min={-100}
@@ -540,7 +599,30 @@ export default async function PaginaEmpresa({ params }) {
             )}
 
             <BarraEscala
+              etiqueta={`Sesiones alcistas vs bajistas (60 sesiones) · ${sesionesAlcistas} alcistas de ${totalSesionesMov}`}
+              ayuda="Porcentaje de sesiones en las que el precio cerró por encima del cierre anterior. Por encima del 50% indica mayoría de sesiones alcistas en el periodo."
+              valor={ratioAlcistas}
+              valorTexto={`${sesionesAlcistas} de ${totalSesionesMov}`}
+              min={0}
+              max={100}
+            />
+
+            <BarraEscala
+              etiqueta={`Racha actual · ${
+                racha > 0 && direccionRacha
+                  ? `${racha} ${racha === 1 ? 'sesión' : 'sesiones'} ${direccionRacha}${racha === 1 ? '' : 's'}`
+                  : '—'
+              }`}
+              ayuda="Número de sesiones consecutivas en las que el precio ha cerrado en la misma dirección (alcista o bajista). Indica la duración del movimiento actual."
+              valor={racha}
+              valorTexto={`${racha}`}
+              min={0}
+              max={10}
+            />
+
+            <BarraEscala
               etiqueta={`Veces en esta misma zona (${totalSesionesValidas} sesiones)`}
+              ayuda="Número de sesiones de las últimas 60 en las que el indicador ha estado en la misma zona (alta, intermedia o baja) que ahora. Sirve para saber si la situación actual es habitual o poco frecuente."
               valor={
                 totalSesionesValidas > 0
                   ? Math.round((sesionesEnZona / totalSesionesValidas) * 100)
@@ -557,6 +639,7 @@ export default async function PaginaEmpresa({ params }) {
                   ? `hace ${diasDesdeUltimoCambio} días`
                   : '—'
               }`}
+              ayuda="Cuántas veces ha cambiado el precio de zona (alta, intermedia o baja) en las últimas 60 sesiones. Indica la frecuencia con la que el indicador ha cruzado los umbrales."
               valor={cambiosZona60}
               valorTexto={`${cambiosZona60}`}
               min={0}
@@ -565,7 +648,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <p
               style={{
-                margin: '18px 0 0 0',
+                margin: '14px 0 0 0',
                 fontSize: '11.5px',
                 color: 'var(--v3-text-mute)',
                 lineHeight: 1.5
@@ -575,7 +658,7 @@ export default async function PaginaEmpresa({ params }) {
             </p>
             <p
               style={{
-                margin: '6px 0 0 0',
+                margin: '4px 0 0 0',
                 fontSize: '11.5px',
                 color: 'var(--v3-text-mute)',
                 lineHeight: 1.5
@@ -624,7 +707,7 @@ export default async function PaginaEmpresa({ params }) {
           <FormularioAlerta empresa={empresa} />
         </section>
 
-        <section style={{ marginTop: '20px' }}>
+        <section style={{ marginTop: '16px' }}>
           <MovimientosHoyCliente variante="home" />
         </section>
 
@@ -685,21 +768,17 @@ export default async function PaginaEmpresa({ params }) {
 }
 
 /**
- * Barra con cuadraditos reglados y escala fija.
- * - Si min < 0 < max: el relleno parte del cero (en el centro) hacia la derecha (positivo) o izquierda (negativo).
- * - Si min >= 0: el relleno parte de la izquierda (0) hacia la derecha.
- * - Si max <= 0: el relleno parte de la derecha (0) hacia la izquierda.
+ * Barra con cuadraditos reglados, escala fija y tooltip de ayuda (?).
  */
-function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
+function BarraEscala({ etiqueta, ayuda, valor, valorTexto, min, max }) {
   const v = valor === null || valor === undefined || Number.isNaN(valor) ? 0 : valor;
   const clamped = Math.max(min, Math.min(max, v));
   const totalCuadros = 40;
 
-  // Posición del cero en la barra (0-1)
   let cero = 0;
   if (min < 0 && max > 0) cero = (0 - min) / (max - min);
   else if (min >= 0) cero = 0;
-  else cero = 1; // max <= 0
+  else cero = 1;
 
   const pos = (clamped - min) / (max - min);
   const color = clamped >= 0 ? '#2563eb' : '#9ca3af';
@@ -709,13 +788,10 @@ function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
     const centro = (i + 0.5) / totalCuadros;
     let relleno = false;
     if (cero === 0) {
-      // Escala solo positiva: relleno de 0 a pos
       relleno = centro <= pos;
     } else if (cero === 1) {
-      // Escala solo negativa: relleno de pos a 1
       relleno = centro >= pos;
     } else {
-      // Escala con cero en medio
       if (clamped >= 0) {
         relleno = centro >= cero && centro <= pos;
       } else {
@@ -728,7 +804,7 @@ function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
         key={i}
         style={{
           flex: 1,
-          height: '14px',
+          height: '12px',
           background: relleno ? color : 'transparent',
           borderRight: esCero && cero > 0 && cero < 1 ? '2px solid rgba(0,0,0,0.35)' : 'none',
           boxSizing: 'border-box'
@@ -738,28 +814,50 @@ function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
   }
 
   return (
-    <div style={{ marginBottom: '16px' }}>
+    <div style={{ marginBottom: '12px' }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'baseline',
-          marginBottom: '6px',
-          fontSize: '12px',
+          marginBottom: '4px',
+          fontSize: '11.5px',
           color: 'var(--v3-text-soft)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.4px',
+          letterSpacing: '0.3px',
           fontWeight: 600,
           gap: '12px'
         }}
       >
-        <span style={{ flex: 1 }}>{etiqueta}</span>
+        <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {etiqueta}
+          {ayuda && (
+            <span
+              title={ayuda}
+              aria-label={ayuda}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '16px',
+                height: '16px',
+                borderRadius: '50%',
+                border: '1px solid var(--v3-text-mute)',
+                color: 'var(--v3-text-mute)',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'help',
+                flexShrink: 0
+              }}
+            >
+              ?
+            </span>
+          )}
+        </span>
         <span
           style={{
             color: 'var(--v3-text)',
-            fontSize: '14px',
+            fontSize: '13.5px',
             fontWeight: 700,
-            textTransform: 'none',
             letterSpacing: 0,
             whiteSpace: 'nowrap'
           }}
@@ -771,7 +869,7 @@ function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
         style={{
           display: 'flex',
           gap: '2px',
-          height: '14px',
+          height: '12px',
           background: 'var(--v3-bg-soft)',
           borderRadius: '3px',
           padding: 0,
@@ -787,7 +885,7 @@ function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
           justifyContent: 'space-between',
           fontSize: '10px',
           color: 'var(--v3-text-mute)',
-          marginTop: '2px'
+          marginTop: '1px'
         }}
       >
         <span>{min}</span>
