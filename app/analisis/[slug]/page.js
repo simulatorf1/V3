@@ -470,7 +470,7 @@ export default async function PaginaEmpresa({ params }) {
 
             <BarraEscala
               etiqueta={`Indicador Equaty · ${situacionActual}`}
-              ayuda="El indicador Equaty es un oscilador técnico (SMI) que mide dónde se ha movido el precio dentro de su rango reciente. Va de -100 a +100. Valores altos = cerca de máximos recientes; valores bajos = cerca de mínimos recientes."
+              ayuda="El indicador Equaty es un oscilador técnico que mide dónde se ha movido el precio dentro de su rango reciente. Va de -100 a +100. Valores altos = cerca de máximos recientes; valores bajos = cerca de mínimos recientes."
               valor={smiActual}
               valorTexto={`${smiActual?.toFixed(0) ?? '—'}`}
               min={-100}
@@ -734,8 +734,7 @@ export default async function PaginaEmpresa({ params }) {
               financiero debidamente autorizado.
             </p>
             <p>
-              <strong>Metodología.</strong> El indicador Equaty es el Stochastic Momentum Index
-              (SMI), un oscilador técnico que mide la distancia del precio al punto medio de su
+              <strong>Metodología.</strong> El indicador Equaty es un oscilador técnico que mide la distancia del precio al punto medio de su
               rango reciente y la suaviza. Se normaliza entre -100 y +100. Los valores cercanos a
               +100 indican que el precio se ha movido cerca del extremo superior de su rango
               reciente, y los cercanos a -100, cerca del extremo inferior. Los cálculos se
