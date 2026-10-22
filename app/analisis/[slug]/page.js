@@ -1,5 +1,4 @@
 import { obtenerOCrearEmpresa, obtenerAnalisis } from '../../../lib/autogenerar';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
 import GraficoSemanal from '../../../components/GraficoSemanal';
@@ -29,22 +28,6 @@ function situacionDesdeZona(zona) {
   if (zona === 'alta') return 'parte alta del rango';
   if (zona === 'baja') return 'parte baja del rango';
   return 'parte intermedia del rango';
-}
-
-function explicacionPercentil(percentil) {
-  if (percentil >= 80) {
-    return `Percentil ${percentil}: el precio está en la zona alta de su rango de las últimas 60 sesiones.`;
-  }
-  if (percentil >= 60) {
-    return `Percentil ${percentil}: el precio está en la zona media-alta de su rango de las últimas 60 sesiones.`;
-  }
-  if (percentil >= 40) {
-    return `Percentil ${percentil}: el precio está aproximadamente en la zona central de su rango de las últimas 60 sesiones.`;
-  }
-  if (percentil >= 20) {
-    return `Percentil ${percentil}: el precio está en la zona media-baja de su rango de las últimas 60 sesiones.`;
-  }
-  return `Percentil ${percentil}: el precio está en la zona baja de su rango de las últimas 60 sesiones.`;
 }
 
 function slugSector(s) {
@@ -106,10 +89,9 @@ export async function generateMetadata({ params }) {
     const empresa = await obtenerOCrearEmpresa(ticker);
     if (!empresa) return { title: 'Empresa — Equaty' };
 
-    // CAMBIO 11: title y description optimizados por ficha
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const titulo = `${empresa.nombre} (${empresa.ticker}) — Precio, evolución y rango | Equaty`;
-    const descripcion = `Ficha estadística descriptiva de ${empresa.nombre} (${empresa.ticker}) actualizada el ${fecha}: precio actual, variación en 60 sesiones, comparación sectorial y posición dentro del rango reciente. Información histórica, no recomendación de inversión.`;
+    const descripcion = `Ficha estadística descriptiva de ${empresa.nombre} (${empresa.ticker}) actualizada el ${fecha}: precio actual, variación en 60 sesiones, comparación sectorial e indicador IBEXIA. Información histórica, no recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -208,7 +190,6 @@ export default async function PaginaEmpresa({ params }) {
 
   const canonical = `${BASE_URL}/analisis/${slug}`;
 
-  // CAMBIO 12: Schema.org Dataset + FinancialProduct
   const schema = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -278,16 +259,6 @@ export default async function PaginaEmpresa({ params }) {
       ? analisis.sectorInfo.variacionSector60
       : null;
 
-  // CAMBIO 1: barras horizontales. Escala simétrica respecto al máximo valor absoluto
-  const valores = [
-    Math.abs(variacion5),
-    Math.abs(variacion60),
-    variacionSector60 !== null ? Math.abs(variacionSector60) : 0
-  ];
-  const maxAbs = Math.max(...valores, 1);
-  const escalaPct = (v) => Math.min(100, (Math.abs(v) / maxAbs) * 100);
-
-  // CAMBIO 5+6: acordeones al final con HTML nativo <details>
   const estiloAcordeon = {
     marginTop: '20px',
     border: '1px solid var(--v3-border)',
@@ -341,73 +312,57 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        {/* CAMBIO 1 + 2 + 3 + 4: barras horizontales con Situación actual integrada */}
+        {/* BARRAS: una por línea, escala fija centrada en cero */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <div className="v3-card" style={{ padding: '20px' }}>
-            <div
-              style={{
-                fontSize: '28px',
-                fontWeight: 800,
-                marginBottom: '4px'
-              }}
-            >
+            <div style={{ fontSize: '28px', fontWeight: 800, marginBottom: '4px' }}>
               {precioActual?.toFixed(2) ?? '—'} €
             </div>
-            <p
-              style={{
-                margin: '0 0 20px 0',
-                fontSize: '13px',
-                color: 'var(--v3-text-soft)'
-              }}
-            >
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
               Precio actual · {empresa.mercado || ''}
             </p>
 
-            <BarraHorizontal
+            <BarraEscala
               etiqueta="Variación 5 sesiones"
+              valor={variacion5}
               valorTexto={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}%`}
-              porcentaje={escalaPct(variacion5)}
-              signo={variacion5 >= 0 ? 'pos' : 'neg'}
+              min={-15}
+              max={15}
             />
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                marginTop: '12px'
-              }}
-            >
-              <BarraHorizontal
-                etiqueta="Variación 60 sesiones"
-                valorTexto={`${variacion60 >= 0 ? '+' : ''}${variacion60.toFixed(2)}%`}
-                porcentaje={escalaPct(variacion60)}
-                signo={variacion60 >= 0 ? 'pos' : 'neg'}
-                compacta
-              />
-              <BarraHorizontal
-                etiqueta="Sector 60 sesiones"
-                valorTexto={
-                  variacionSector60 !== null
-                    ? `${variacionSector60 >= 0 ? '+' : ''}${variacionSector60.toFixed(2)}%`
-                    : '—'
-                }
-                porcentaje={
-                  variacionSector60 !== null ? escalaPct(variacionSector60) : 0
-                }
-                signo={
-                  variacionSector60 !== null && variacionSector60 >= 0 ? 'pos' : 'neg'
-                }
-                compacta
-              />
-            </div>
-            <div style={{ marginTop: '12px' }}>
-              <BarraHorizontal
-                etiqueta={`Posición en rango 60 sesiones · ${situacionActual}`}
-                valorTexto={`Percentil ${percentil}`}
-                porcentaje={percentil}
-                signo="pos"
-              />
-            </div>
+
+            <div style={{ height: '12px' }} />
+
+            <BarraEscala
+              etiqueta="Variación 60 sesiones"
+              valor={variacion60}
+              valorTexto={`${variacion60 >= 0 ? '+' : ''}${variacion60.toFixed(2)}%`}
+              min={-30}
+              max={30}
+            />
+
+            <div style={{ height: '12px' }} />
+
+            <BarraEscala
+              etiqueta="Sector 60 sesiones"
+              valor={variacionSector60}
+              valorTexto={
+                variacionSector60 !== null
+                  ? `${variacionSector60 >= 0 ? '+' : ''}${variacionSector60.toFixed(2)}%`
+                  : '—'
+              }
+              min={-15}
+              max={15}
+            />
+
+            <div style={{ height: '12px' }} />
+
+            <BarraEscala
+              etiqueta={`Indicador IBEXIA · ${situacionActual}`}
+              valor={analisis.smiActual}
+              valorTexto={`${analisis.smiActual?.toFixed(0) ?? '—'} · Percentil ${percentil}`}
+              min={-100}
+              max={100}
+            />
 
             <p
               style={{
@@ -433,18 +388,18 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* CAMBIO 10: gráfico diario */}
+        {/* GRÁFICO DIARIO */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Evolución del precio y del indicador</h2>
+          <h2 className="v3-seccion-titulo">Evolución del precio y del indicador IBEXIA</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
             La <strong>línea azul</strong> es el precio. La <strong>línea morada</strong> es el
-            indicador: cuanto más arriba está, más cerca ha cotizado el precio de sus máximos
-            recientes; cuanto más abajo, más cerca de sus mínimos.
+            indicador IBEXIA: cuanto más arriba está, más cerca ha cotizado el precio de sus
+            máximos recientes; cuanto más abajo, más cerca de sus mínimos.
           </p>
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
         </section>
 
-        {/* CAMBIO 10: gráfico semanal */}
+        {/* GRÁFICO SEMANAL */}
         {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
           <GraficoSemanal
             velas={analisis.velasSemanales}
@@ -452,12 +407,19 @@ export default async function PaginaEmpresa({ params }) {
           />
         )}
 
-        {/* CAMBIO 8 + 10: cambios de zona recientes destacado y visible */}
-        <section style={{ marginTop: '28px' }}>
-          <MovimientosHoyCliente variante="home" />
-        </section>
+        {/* HISTORIAL DE CAMBIOS — acordeón abierto, parte visible */}
+        <details open style={estiloAcordeon}>
+          <summary style={estiloSummary}>Historial de cambios de esta empresa</summary>
+          <div style={{ padding: '0 20px 20px 20px' }}>
+            <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: 0 }}>
+              Cada fila muestra una sesión en la que el precio cambió de situación dentro de su
+              rango.
+            </p>
+            <TablaSenales senales={analisis.senales} precioActual={null} />
+          </div>
+        </details>
 
-        {/* CAMBIO 9 + 10: alertas con nuevo copy */}
+        {/* ALERTAS EMAIL */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Avisos por email</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
@@ -467,23 +429,15 @@ export default async function PaginaEmpresa({ params }) {
           <FormularioAlerta empresa={empresa} />
         </section>
 
-        {/* CAMBIO 10: encuesta */}
+        {/* ACTUALIZACIONES DEL REGISTRO ESTADÍSTICO */}
+        <section style={{ marginTop: '20px' }}>
+          <MovimientosHoyCliente variante="home" />
+        </section>
+
+        {/* ENCUESTA */}
         <ConsensoComunidad ticker={empresa.ticker} />
 
-        {/* CAMBIO 5 + 7 + 10: historial en acordeón cerrado */}
-        <details style={estiloAcordeon}>
-          <summary style={estiloSummary}>Historial de cambios de esta empresa</summary>
-          <div style={{ padding: '0 20px 20px 20px' }}>
-            <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: 0 }}>
-              Cada fila muestra una sesión en la que el precio cambió de situación dentro de su
-              rango. Sirve para ver con qué frecuencia ha estado en cada zona durante el último
-              año.
-            </p>
-            <TablaSenales senales={analisis.senales} precioActual={null} />
-          </div>
-        </details>
-
-        {/* Noticias y comparador sin avisos legales repetidos */}
+        {/* NOTICIAS Y COMPARADOR — sin repetir el valor del sector */}
         {analisis.noticias && analisis.noticias.length > 0 && (
           <ContextoReciente noticias={analisis.noticias} />
         )}
@@ -492,7 +446,7 @@ export default async function PaginaEmpresa({ params }) {
 
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
-        {/* CAMBIO 5 + 6 + 10: bloque legal largo en acordeón cerrado */}
+        {/* DIVULGACIÓN AL FINAL */}
         <details style={estiloAcordeon}>
           <summary style={estiloSummary}>Divulgación regulatoria y metodología</summary>
           <div style={{ padding: '0 20px 20px 20px', fontSize: '13px', lineHeight: 1.7 }}>
@@ -508,7 +462,7 @@ export default async function PaginaEmpresa({ params }) {
               financiero debidamente autorizado.
             </p>
             <p>
-              <strong>Metodología.</strong> El indicador mostrado es el Stochastic Momentum Index
+              <strong>Metodología.</strong> El indicador IBEXIA es el Stochastic Momentum Index
               (SMI), un oscilador técnico que mide la distancia del precio al punto medio de su
               rango reciente y la suaviza. Se normaliza entre -100 y +100. Los valores cercanos a
               +100 indican que el precio se ha movido cerca del extremo superior de su rango
@@ -541,8 +495,22 @@ export default async function PaginaEmpresa({ params }) {
   );
 }
 
-function BarraHorizontal({ etiqueta, valorTexto, porcentaje, signo, compacta }) {
-  const color = signo === 'pos' ? '#2563eb' : '#9ca3af';
+/**
+ * Barra con escala fija centrada en cero.
+ * - Para variaciones: min/max en % (ej: -15 / +15).
+ * - Para IBEXIA: min/max en -100 / +100.
+ * El relleno parte del centro (cero) y se extiende hacia derecha (positivo)
+ * o izquierda (negativo). Azul para positivo, gris para negativo.
+ */
+function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
+  const v = valor === null || valor === undefined || Number.isNaN(valor) ? 0 : valor;
+  const clamped = Math.max(min, Math.min(max, v));
+  const cero = ((0 - min) / (max - min)) * 100;
+  const pos = ((clamped - min) / (max - min)) * 100;
+  const ancho = Math.abs(pos - cero);
+  const izquierda = pos < cero ? pos : cero;
+  const color = clamped >= 0 ? '#2563eb' : '#9ca3af';
+
   return (
     <div>
       <div
@@ -551,7 +519,7 @@ function BarraHorizontal({ etiqueta, valorTexto, porcentaje, signo, compacta }) 
           justifyContent: 'space-between',
           alignItems: 'baseline',
           marginBottom: '6px',
-          fontSize: compacta ? '11px' : '12px',
+          fontSize: '12px',
           color: 'var(--v3-text-soft)',
           textTransform: 'uppercase',
           letterSpacing: '0.4px',
@@ -559,26 +527,62 @@ function BarraHorizontal({ etiqueta, valorTexto, porcentaje, signo, compacta }) 
         }}
       >
         <span>{etiqueta}</span>
-        <span style={{ color: 'var(--v3-text)', fontSize: compacta ? '13px' : '14px', fontWeight: 700 }}>
+        <span
+          style={{
+            color: 'var(--v3-text)',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'none',
+            letterSpacing: 0
+          }}
+        >
           {valorTexto}
         </span>
       </div>
       <div
         style={{
-          height: compacta ? '6px' : '8px',
+          position: 'relative',
+          height: '8px',
           background: 'var(--v3-border)',
           borderRadius: '999px',
           overflow: 'hidden'
         }}
       >
+        {/* Marca del cero */}
         <div
           style={{
-            width: `${Math.max(2, Math.min(100, porcentaje))}%`,
-            height: '100%',
+            position: 'absolute',
+            left: `${cero}%`,
+            top: 0,
+            bottom: 0,
+            width: '1px',
+            background: 'rgba(0,0,0,0.25)'
+          }}
+        />
+        {/* Relleno desde el cero */}
+        <div
+          style={{
+            position: 'absolute',
+            left: `${izquierda}%`,
+            top: 0,
+            bottom: 0,
+            width: `${ancho}%`,
             background: color,
             borderRadius: '999px'
           }}
         />
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '10px',
+          color: 'var(--v3-text-mute)',
+          marginTop: '2px'
+        }}
+      >
+        <span>{min}</span>
+        <span>{max}</span>
       </div>
     </div>
   );
