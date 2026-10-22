@@ -1,15 +1,3 @@
-Ninguno seleccionado 
-
-Ir al contenido
-Uso de Gmail con lectores de pantalla
-1 de 3.085
-(sin asunto)
-Recibidos
-
-Javier Junco <xumkox@gmail.com>
-10:44 (hace 2 minutos)
-para mí
-
 import '../app/globals.css';
 import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
