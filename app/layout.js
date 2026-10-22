@@ -1,3 +1,15 @@
+Ninguno seleccionado 
+
+Ir al contenido
+Uso de Gmail con lectores de pantalla
+1 de 3.085
+(sin asunto)
+Recibidos
+
+Javier Junco <xumkox@gmail.com>
+10:44 (hace 2 minutos)
+para mí
+
 import '../app/globals.css';
 import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
@@ -28,7 +40,22 @@ export const metadata = {
     url: BASE_URL,
     siteName: 'Equaty',
     locale: 'es_ES',
-    type: 'website'
+    type: 'website',
+    images: [
+      {
+        url: `${BASE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: 'Equaty — Análisis bursátil estadístico'
+      }
+    ]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Equaty — Análisis bursátil estadístico',
+    description:
+      'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
+    images: [`${BASE_URL}/og-image.png`]
   },
   robots: {
     index: true,
