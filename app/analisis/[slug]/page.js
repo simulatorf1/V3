@@ -3,7 +3,6 @@ import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
 import GraficoSemanal from '../../../components/GraficoSemanal';
 import ContextoReciente from '../../../components/ContextoReciente';
-import ComparadorSector from '../../../components/ComparadorSector';
 import TablaSenales from '../../../components/TablaSenales';
 import RegistrarVisita from '../../../components/RegistrarVisita';
 import BarraLateral from '../../../components/BarraLateral';
@@ -17,12 +16,6 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
-
-function situacionDesdeTipo(tipo) {
-  if (tipo === 'compra') return 'parte baja del rango';
-  if (tipo === 'venta') return 'parte alta del rango';
-  return 'parte intermedia del rango';
-}
 
 function situacionDesdeZona(zona) {
   if (zona === 'alta') return 'parte alta del rango';
@@ -91,7 +84,7 @@ export async function generateMetadata({ params }) {
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const titulo = `${empresa.nombre} (${empresa.ticker}) — Precio, evolución y rango | Equaty`;
-    const descripcion = `Ficha estadística descriptiva de ${empresa.nombre} (${empresa.ticker}) actualizada el ${fecha}: precio actual, variación en 60 sesiones, comparación sectorial e indicador IBEXIA. Información histórica, no recomendación de inversión.`;
+    const descripcion = `Ficha estadística descriptiva de ${empresa.nombre} (${empresa.ticker}) actualizada el ${fecha}: precio actual, variación en 60 sesiones, comparación sectorial e indicador Equaty. Información histórica, no recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
     return {
@@ -259,6 +252,53 @@ export default async function PaginaEmpresa({ params }) {
       ? analisis.sectorInfo.variacionSector60
       : null;
 
+  // Máximos y mínimos del rango de 60 sesiones
+  const max60 = velas.length > 0 ? Math.max(...velas.map((v) => v.high)) : null;
+  const min60 = velas.length > 0 ? Math.min(...velas.map((v) => v.low)) : null;
+
+  // Volatilidad diaria media
+  let volatilidad = 0;
+  if (velas.length > 1) {
+    const retornos = [];
+    for (let i = 1; i < velas.length; i++) {
+      if (velas[i - 1]?.close) {
+        retornos.push((velas[i].close - velas[i - 1].close) / velas[i - 1].close);
+      }
+    }
+    if (retornos.length > 0) {
+      const media = retornos.reduce((a, b) => a + b, 0) / retornos.length;
+      const varianza =
+        retornos.reduce((a, b) => a + Math.pow(b - media, 2), 0) / retornos.length;
+      volatilidad = Math.sqrt(varianza) * 100;
+    }
+  }
+
+  // Tendencia del indicador en las últimas 5 sesiones
+  const smiActual = analisis.smiActual;
+  const smi5Atras = smis.length >= 6 ? smis[smis.length - 6] : null;
+  const inclinacion = smi5Atras !== null && smiActual !== null ? smiActual - smi5Atras : null;
+
+  // Veces en esta misma zona en los últimos 60 días
+  const sesionesEnZona = smisValidos.filter((s) => {
+    if (analisis.zona === 'alta') return s > 40;
+    if (analisis.zona === 'baja') return s < -40;
+    return s >= -40 && s <= 40;
+  }).length;
+  const totalSesionesValidas = smisValidos.length;
+  const frecuenciaZona = totalSesionesValidas > 0
+    ? Math.round((sesionesEnZona / totalSesionesValidas) * 100)
+    : 0;
+
+  // Distancia al máximo y mínimo del rango
+  const distanciaMax = max60 ? ((precioActual - max60) / max60) * 100 : null;
+  const distanciaMin = min60 ? ((precioActual - min60) / min60) * 100 : null;
+
+  // Volumen relativo (última sesión vs media 60)
+  const volumenRelativo =
+    analisis.volumenMedio60 && analisis.volumenUltimo
+      ? (analisis.volumenUltimo / analisis.volumenMedio60) * 100
+      : null;
+
   const estiloAcordeon = {
     marginTop: '20px',
     border: '1px solid var(--v3-border)',
@@ -275,7 +315,7 @@ export default async function PaginaEmpresa({ params }) {
 
   return (
     <div className="v3-grid-analisis">
-      <main style={{ maxWidth: '780px', margin: '0 auto' }}>
+      <main style={{ maxWidth: '820px', margin: '0 auto' }}>
         <link rel="canonical" href={canonical} />
         <script
           type="application/ld+json"
@@ -312,13 +352,13 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
-        {/* BARRAS: una por línea, escala fija centrada en cero */}
+        {/* BLOQUE DE BARRAS */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <div className="v3-card" style={{ padding: '20px' }}>
-            <div style={{ fontSize: '28px', fontWeight: 800, marginBottom: '4px' }}>
+            <div style={{ fontSize: '30px', fontWeight: 800, marginBottom: '4px' }}>
               {precioActual?.toFixed(2) ?? '—'} €
             </div>
-            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+            <p style={{ margin: '0 0 22px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
               Precio actual · {empresa.mercado || ''}
             </p>
 
@@ -330,8 +370,6 @@ export default async function PaginaEmpresa({ params }) {
               max={15}
             />
 
-            <div style={{ height: '12px' }} />
-
             <BarraEscala
               etiqueta="Variación 60 sesiones"
               valor={variacion60}
@@ -339,8 +377,6 @@ export default async function PaginaEmpresa({ params }) {
               min={-30}
               max={30}
             />
-
-            <div style={{ height: '12px' }} />
 
             <BarraEscala
               etiqueta="Sector 60 sesiones"
@@ -354,19 +390,87 @@ export default async function PaginaEmpresa({ params }) {
               max={15}
             />
 
-            <div style={{ height: '12px' }} />
+            <BarraEscala
+              etiqueta={`Indicador Equaty · ${situacionActual}`}
+              valor={smiActual}
+              valorTexto={`${smiActual?.toFixed(0) ?? '—'}`}
+              min={-100}
+              max={100}
+            />
 
             <BarraEscala
-              etiqueta={`Indicador IBEXIA · ${situacionActual}`}
-              valor={analisis.smiActual}
-              valorTexto={`${analisis.smiActual?.toFixed(0) ?? '—'} · Percentil ${percentil}`}
-              min={-100}
+              etiqueta={`Inclinación del indicador (5 sesiones) · ${
+                inclinacion === null
+                  ? '—'
+                  : inclinacion > 0
+                  ? 'subiendo'
+                  : inclinacion < 0
+                  ? 'bajando'
+                  : 'plana'
+              }`}
+              valor={inclinacion}
+              valorTexto={
+                inclinacion !== null
+                  ? `${inclinacion >= 0 ? '+' : ''}${inclinacion.toFixed(1)}`
+                  : '—'
+              }
+              min={-40}
+              max={40}
+            />
+
+            <BarraEscala
+              etiqueta="Distancia al máximo de 60 sesiones"
+              valor={distanciaMax}
+              valorTexto={
+                distanciaMax !== null
+                  ? `${distanciaMax >= 0 ? '+' : ''}${distanciaMax.toFixed(2)}%`
+                  : '—'
+              }
+              min={-50}
+              max={0}
+            />
+
+            <BarraEscala
+              etiqueta="Distancia al mínimo de 60 sesiones"
+              valor={distanciaMin}
+              valorTexto={
+                distanciaMin !== null
+                  ? `${distanciaMin >= 0 ? '+' : ''}${distanciaMin.toFixed(2)}%`
+                  : '—'
+              }
+              min={0}
+              max={50}
+            />
+
+            <BarraEscala
+              etiqueta="Volatilidad diaria media (60 sesiones)"
+              valor={volatilidad}
+              valorTexto={`${volatilidad.toFixed(2)}%`}
+              min={0}
+              max={5}
+            />
+
+            {volumenRelativo !== null && (
+              <BarraEscala
+                etiqueta="Volumen de la última sesión vs media de 60"
+                valor={volumenRelativo - 100}
+                valorTexto={`${volumenRelativo.toFixed(0)}% de la media`}
+                min={-100}
+                max={100}
+              />
+            )}
+
+            <BarraEscala
+              etiqueta={`Veces en esta misma zona (${totalSesionesValidas} sesiones)`}
+              valor={frecuenciaZona}
+              valorTexto={`${sesionesEnZona} de ${totalSesionesValidas} sesiones`}
+              min={0}
               max={100}
             />
 
             <p
               style={{
-                margin: '16px 0 0 0',
+                margin: '18px 0 0 0',
                 fontSize: '11.5px',
                 color: 'var(--v3-text-mute)',
                 lineHeight: 1.5
@@ -388,18 +492,16 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
 
-        {/* GRÁFICO DIARIO */}
         <section className="v3-seccion">
-          <h2 className="v3-seccion-titulo">Evolución del precio y del indicador IBEXIA</h2>
+          <h2 className="v3-seccion-titulo">Evolución del precio y del indicador Equaty</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
             La <strong>línea azul</strong> es el precio. La <strong>línea morada</strong> es el
-            indicador IBEXIA: cuanto más arriba está, más cerca ha cotizado el precio de sus
+            indicador Equaty: cuanto más arriba está, más cerca ha cotizado el precio de sus
             máximos recientes; cuanto más abajo, más cerca de sus mínimos.
           </p>
           <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
         </section>
 
-        {/* GRÁFICO SEMANAL */}
         {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
           <GraficoSemanal
             velas={analisis.velasSemanales}
@@ -407,7 +509,7 @@ export default async function PaginaEmpresa({ params }) {
           />
         )}
 
-        {/* HISTORIAL DE CAMBIOS — acordeón abierto, parte visible */}
+        {/* HISTORIAL — acordeón abierto */}
         <details open style={estiloAcordeon}>
           <summary style={estiloSummary}>Historial de cambios de esta empresa</summary>
           <div style={{ padding: '0 20px 20px 20px' }}>
@@ -419,7 +521,6 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </details>
 
-        {/* ALERTAS EMAIL */}
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Avisos por email</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
@@ -429,24 +530,18 @@ export default async function PaginaEmpresa({ params }) {
           <FormularioAlerta empresa={empresa} />
         </section>
 
-        {/* ACTUALIZACIONES DEL REGISTRO ESTADÍSTICO */}
         <section style={{ marginTop: '20px' }}>
           <MovimientosHoyCliente variante="home" />
         </section>
 
-        {/* ENCUESTA */}
         <ConsensoComunidad ticker={empresa.ticker} />
 
-        {/* NOTICIAS Y COMPARADOR — sin repetir el valor del sector */}
         {analisis.noticias && analisis.noticias.length > 0 && (
           <ContextoReciente noticias={analisis.noticias} />
         )}
 
-        <ComparadorSector empresa={empresa} analisis={analisis} />
-
         <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
 
-        {/* DIVULGACIÓN AL FINAL */}
         <details style={estiloAcordeon}>
           <summary style={estiloSummary}>Divulgación regulatoria y metodología</summary>
           <div style={{ padding: '0 20px 20px 20px', fontSize: '13px', lineHeight: 1.7 }}>
@@ -462,7 +557,7 @@ export default async function PaginaEmpresa({ params }) {
               financiero debidamente autorizado.
             </p>
             <p>
-              <strong>Metodología.</strong> El indicador IBEXIA es el Stochastic Momentum Index
+              <strong>Metodología.</strong> El indicador Equaty es el Stochastic Momentum Index
               (SMI), un oscilador técnico que mide la distancia del precio al punto medio de su
               rango reciente y la suaviza. Se normaliza entre -100 y +100. Los valores cercanos a
               +100 indican que el precio se ha movido cerca del extremo superior de su rango
@@ -496,23 +591,42 @@ export default async function PaginaEmpresa({ params }) {
 }
 
 /**
- * Barra con escala fija centrada en cero.
- * - Para variaciones: min/max en % (ej: -15 / +15).
- * - Para IBEXIA: min/max en -100 / +100.
- * El relleno parte del centro (cero) y se extiende hacia derecha (positivo)
- * o izquierda (negativo). Azul para positivo, gris para negativo.
+ * Barra con cuadraditos reglados y escala fija centrada en cero (cuando min < 0 < max).
+ * Se rellena desde el cero hacia la derecha (positivo) o hacia la izquierda (negativo).
  */
 function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
   const v = valor === null || valor === undefined || Number.isNaN(valor) ? 0 : valor;
   const clamped = Math.max(min, Math.min(max, v));
-  const cero = ((0 - min) / (max - min)) * 100;
-  const pos = ((clamped - min) / (max - min)) * 100;
-  const ancho = Math.abs(pos - cero);
-  const izquierda = pos < cero ? pos : cero;
+  const totalCuadros = 40;
+  const cero = min < 0 && max > 0 ? ((0 - min) / (max - min)) * totalCuadros : 0;
+  const pos = ((clamped - min) / (max - min)) * totalCuadros;
   const color = clamped >= 0 ? '#2563eb' : '#9ca3af';
 
+  const cuadros = [];
+  for (let i = 0; i < totalCuadros; i++) {
+    let relleno = false;
+    if (clamped >= 0) {
+      relleno = i >= cero && i < pos;
+    } else {
+      relleno = i < cero && i >= pos;
+    }
+    const esCero = i === Math.round(cero) - 1;
+    cuadros.push(
+      <div
+        key={i}
+        style={{
+          flex: 1,
+          height: '14px',
+          background: relleno ? color : 'transparent',
+          borderRight: esCero ? '2px solid rgba(0,0,0,0.35)' : 'none',
+          boxSizing: 'border-box'
+        }}
+      />
+    );
+  }
+
   return (
-    <div>
+    <div style={{ marginBottom: '16px' }}>
       <div
         style={{
           display: 'flex',
@@ -541,36 +655,17 @@ function BarraEscala({ etiqueta, valor, valorTexto, min, max }) {
       </div>
       <div
         style={{
-          position: 'relative',
-          height: '8px',
-          background: 'var(--v3-border)',
-          borderRadius: '999px',
-          overflow: 'hidden'
+          display: 'flex',
+          gap: '2px',
+          height: '14px',
+          background: 'var(--v3-bg-soft)',
+          borderRadius: '3px',
+          padding: '0',
+          overflow: 'hidden',
+          border: '1px solid var(--v3-border)'
         }}
       >
-        {/* Marca del cero */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${cero}%`,
-            top: 0,
-            bottom: 0,
-            width: '1px',
-            background: 'rgba(0,0,0,0.25)'
-          }}
-        />
-        {/* Relleno desde el cero */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${izquierda}%`,
-            top: 0,
-            bottom: 0,
-            width: `${ancho}%`,
-            background: color,
-            borderRadius: '999px'
-          }}
-        />
+        {cuadros}
       </div>
       <div
         style={{
