@@ -38,9 +38,12 @@ export default function ListaCambiosZona({ cambios }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
           gap: '10px',
-          marginTop: '12px'
+          marginTop: '12px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0
         }}
       >
         {cambios.map((c) => (
@@ -54,7 +57,10 @@ export default function ListaCambiosZona({ cambios }) {
               border: '1px solid var(--v3-border)',
               borderRadius: 'var(--v3-radius-sm)',
               textDecoration: 'none',
-              color: 'var(--v3-text)'
+              color: 'var(--v3-text)',
+              minWidth: 0,
+              maxWidth: '100%',
+              boxSizing: 'border-box'
             }}
           >
             <div
