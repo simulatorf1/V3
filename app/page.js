@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import Buscador from '../components/Buscador';
-import CambiosRecientes from '../components/CambiosRecientes';
 import SectoresPrincipales from '../components/SectoresPrincipales';
-import MovimientosHoyCliente from '../components/MovimientosHoyCliente';
 import RankingTabla from '../components/RankingTabla';
 import ListaExtremos from '../components/ListaExtremos';
 import ListaCambiosZona from '../components/ListaCambiosZona';
@@ -24,10 +22,19 @@ function parseDatos(datos) {
 }
 
 function calcularVariacion(velas, sesiones) {
-  if (!velas || velas.length < sesiones + 1) return null;
-  const primero = velas[velas.length - sesiones - 1]?.close;
+  if (!velas || velas.length < 2) return null;
+
+  // Si sesiones >= velas.length, usamos primera y última vela disponible.
+  // Si sesiones < velas.length, usamos la vela de hace "sesiones" y la última.
+  let primero;
+  if (sesiones >= velas.length - 1) {
+    primero = velas[0]?.close;
+  } else {
+    primero = velas[velas.length - sesiones - 1]?.close;
+  }
   const ultimo = velas[velas.length - 1]?.close;
-  if (!primero) return null;
+
+  if (!primero || primero === 0) return null;
   return ((ultimo - primero) / primero) * 100;
 }
 
@@ -40,25 +47,33 @@ function calcularPercentil(smis, smiActual) {
 }
 
 async function cargarDatos() {
-  const vacio = { cambios: [], sectores: [], ranking: [], extremosAltos: [], extremosBajos: [], cambiosZona: [], mapaSector: [] };
+  const vacio = {
+    sectores: [],
+    ranking: [],
+    totalRanking: 0,
+    extremosAltos: [],
+    extremosBajos: [],
+    cambiosZona: [],
+    mapaSector: [],
+    sectorTop: null
+  };
 
   try {
-    const hace48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const [paginasRes, empresasRes, cambiosRes] = await Promise.all([
       supabase
         .from('paginas')
-        .select('ticker, datos, actualizado_at')
+        .select('ticker, datos')
         .order('actualizado_at', { ascending: false })
-        .limit(300),
+        .limit(500),
       supabase.from('empresas').select('ticker, nombre, sector'),
       supabase
         .from('cambios_movimiento')
         .select('ticker, movimiento_anterior, movimiento_nuevo, detectado_at')
         .gte('detectado_at', hace24h)
         .order('detectado_at', { ascending: false })
-        .limit(15)
+        .limit(20)
     ]);
 
     const paginas = paginasRes?.data || [];
@@ -70,7 +85,6 @@ async function cargarDatos() {
       if (e && e.ticker) empresasMap[e.ticker] = e;
     }
 
-    const cambios = [];
     const ranking = [];
     const extremosAltos = [];
     const extremosBajos = [];
@@ -84,6 +98,7 @@ async function cargarDatos() {
       const velas = datos.velasUltimas60 || [];
       const smis = datos.smisUltimos60 || [];
       const smiActual = datos.smiActual;
+
       const variacion5 = calcularVariacion(velas, 5);
       const variacion60 = calcularVariacion(velas, 60);
       const percentil = calcularPercentil(smis, smiActual);
@@ -105,24 +120,14 @@ async function cargarDatos() {
         if (percentil >= 90) extremosAltos.push(item);
         if (percentil <= 10) extremosBajos.push(item);
       }
-
-      if (p.actualizado_at >= hace48h) {
-        cambios.push({
-          ticker: p.ticker,
-          nombre: emp.nombre,
-          sector: emp.sector,
-          precio: datos.precioActual,
-          zona: datos.zona,
-          percentil
-        });
-      }
     }
 
-    ranking.sort((a, b) => {
-      if (a.variacion60 === null) return 1;
-      if (b.variacion60 === null) return -1;
-      return b.variacion60 - a.variacion60;
-    });
+    // ORDENAR ANTES DE CORTAR
+    const rankingOrdenado = ranking
+      .filter((i) => i.variacion60 !== null)
+      .sort((a, b) => b.variacion60 - a.variacion60);
+
+    const totalRanking = rankingOrdenado.length;
 
     extremosAltos.sort((a, b) => b.percentil - a.percentil);
     extremosBajos.sort((a, b) => a.percentil - b.percentil);
@@ -131,8 +136,18 @@ async function cargarDatos() {
       ticker: c.ticker,
       nombre: empresasMap[c.ticker]?.nombre || c.ticker,
       sector: empresasMap[c.ticker]?.sector || null,
-      categoriaAnterior: c.movimiento_anterior === 'venta' ? 'A' : c.movimiento_anterior === 'compra' ? 'C' : 'B',
-      categoriaNueva: c.movimiento_nuevo === 'venta' ? 'A' : c.movimiento_nuevo === 'compra' ? 'C' : 'B'
+      categoriaAnterior:
+        c.movimiento_anterior === 'venta'
+          ? 'A'
+          : c.movimiento_anterior === 'compra'
+          ? 'C'
+          : 'B',
+      categoriaNueva:
+        c.movimiento_nuevo === 'venta'
+          ? 'A'
+          : c.movimiento_nuevo === 'compra'
+          ? 'C'
+          : 'B'
     }));
 
     const conteoSectores = {};
@@ -145,15 +160,17 @@ async function cargarDatos() {
       .slice(0, 12)
       .map(([sector, empresas]) => ({ sector, empresas }));
 
-    const sectorTop = sectores[0]?.sector;
+    const sectorTop = sectores[0]?.sector || null;
     const mapaSector = sectorTop
-      ? ranking.filter((r) => r.sector === sectorTop).slice(0, 20)
+      ? ranking
+          .filter((r) => r.sector === sectorTop && r.percentil !== null)
+          .slice(0, 24)
       : [];
 
     return {
-      cambios: cambios.slice(0, 12),
       sectores,
-      ranking: ranking.slice(0, 15),
+      ranking: rankingOrdenado.slice(0, 15),
+      totalRanking,
       extremosAltos: extremosAltos.slice(0, 8),
       extremosBajos: extremosBajos.slice(0, 8),
       cambiosZona,
@@ -202,6 +219,7 @@ export default async function Home() {
         items={datos.ranking}
         tipo="variacion60"
         titulo="Top 15 por variación en 60 sesiones"
+        total={datos.totalRanking}
       />
 
       <ListaCambiosZona cambios={datos.cambiosZona} />
@@ -211,10 +229,6 @@ export default async function Home() {
       {datos.sectorTop && (
         <MapaCalorSector items={datos.mapaSector} sector={datos.sectorTop} />
       )}
-
-      <MovimientosHoyCliente />
-
-      <CambiosRecientes cambios={datos.cambios} />
 
       <SectoresPrincipales sectores={datos.sectores} />
 
