@@ -218,9 +218,7 @@ export default async function Home() {
         </Link>
       </div>
 
-      {/* GRID DE DOS COLUMNAS EN ESCRITORIO, UNA EN MÓVIL */}
       <div className="v3-home-grid">
-        {/* Fila 1: ranking (izquierda) + cambios de zona (derecha) */}
         <div>
           <RankingTabla
             items={datos.ranking}
@@ -234,12 +232,10 @@ export default async function Home() {
           <ListaCambiosZona cambios={datos.cambiosZona} />
         </div>
 
-        {/* Fila 2: radar de extremos a ancho completo (span 2) */}
         <div className="v3-span-2">
           <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
         </div>
 
-        {/* Fila 3: mapa de calor a ancho completo (span 2) */}
         {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
           <div className="v3-span-2">
             <MapaCalorSector
