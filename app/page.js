@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import Buscador from '../components/Buscador';
-import SectoresPrincipales from '../components/SectoresPrincipales';
 import RankingTabla from '../components/RankingTabla';
 import ListaExtremos from '../components/ListaExtremos';
 import ListaCambiosZona from '../components/ListaCambiosZona';
@@ -44,7 +43,6 @@ function calcularPercentil(smis, smiActual) {
 
 async function cargarDatos() {
   const vacio = {
-    sectores: [],
     ranking: [],
     totalRanking: 0,
     extremosAltos: [],
@@ -157,7 +155,6 @@ async function cargarDatos() {
       conteoSectores[e.sector] = (conteoSectores[e.sector] || 0) + 1;
     }
 
-    // Sectores con datos de percentil, ordenados por número de empresas
     const sectoresConDatos = Object.keys(porSector)
       .filter((s) => porSector[s].length > 0)
       .sort((a, b) => {
@@ -174,13 +171,7 @@ async function cargarDatos() {
         .slice(0, 30);
     }
 
-    const sectores = Object.entries(conteoSectores)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 12)
-      .map(([sector, empresas]) => ({ sector, empresas }));
-
     return {
-      sectores,
       ranking: rankingOrdenado.slice(0, 15),
       totalRanking,
       extremosAltos: extremosAltos.slice(0, 8),
@@ -232,6 +223,7 @@ export default async function Home() {
         tipo="variacion60"
         titulo="Top 15 por variación en 60 sesiones"
         total={datos.totalRanking}
+        colapsable={true}
       />
 
       <ListaCambiosZona cambios={datos.cambiosZona} />
@@ -244,8 +236,6 @@ export default async function Home() {
           sectoresOrden={datos.sectoresOrden}
         />
       )}
-
-      <SectoresPrincipales sectores={datos.sectores} />
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
         Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
