@@ -10,6 +10,8 @@ import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import MovimientosHoyCliente from '../../../components/MovimientosHoyCliente';
 import FormularioAlerta from '../../../components/FormularioAlerta';
+import FormularioAlerta from '../../../components/FormularioAlerta';
+import WatchlistBoton from '../../../components/WatchlistBoton';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -415,6 +417,11 @@ export default async function PaginaEmpresa({ params }) {
         <h1 style={{ marginBottom: '4px' }}>
           {empresa.nombre} ({empresa.ticker})
         </h1>
+
+        <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+          <WatchlistBoton ticker={empresa.ticker} nombre={empresa.nombre} />
+        </div>
+
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: 0 }}>
           {empresa.mercado || 'Mercado no especificado'}
           {empresa.sector && ` · Sector ${empresa.sector}`}
