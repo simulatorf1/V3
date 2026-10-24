@@ -10,10 +10,20 @@ function construirSlug(item) {
   return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function colorDesdeZona(zona) {
-  if (zona === 'alta') return '#2563eb';
-  if (zona === 'baja') return '#9ca3af';
-  return '#e5e7eb';
+function colorDesdePercentil(percentil) {
+  if (percentil === null || percentil === undefined) return '#e5e7eb';
+  if (percentil >= 90) return '#1e3a8a'; // azul muy oscuro
+  if (percentil >= 70) return '#2563eb'; // azul medio
+  if (percentil >= 50) return '#60a5fa'; // azul claro
+  if (percentil >= 30) return '#bfdbfe'; // azul muy claro
+  if (percentil >= 10) return '#e5e7eb'; // gris claro
+  return '#9ca3af'; // gris
+}
+
+function colorTexto(percentil) {
+  if (percentil === null || percentil === undefined) return 'var(--v3-text)';
+  if (percentil >= 50) return '#fff';
+  return 'var(--v3-text)';
 }
 
 export default function MapaCalorSector({ items, sector }) {
@@ -23,9 +33,8 @@ export default function MapaCalorSector({ items, sector }) {
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Mapa de calor · {sector}</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Cada celda es una empresa del sector. El color indica la zona en la que se encuentra
-        dentro de su rango de 60 sesiones. Azul = parte alta, gris = parte baja, claro = intermedia.
-        Dato descriptivo.
+        Cada celda es una empresa del sector. El color indica su percentil dentro del rango de 60
+        sesiones: azul oscuro = percentil más alto, gris = percentil más bajo. Dato descriptivo.
       </p>
 
       <div
@@ -44,8 +53,8 @@ export default function MapaCalorSector({ items, sector }) {
               display: 'block',
               padding: '10px',
               borderRadius: 'var(--v3-radius-sm)',
-              background: colorDesdeZona(item.zona),
-              color: item.zona === 'intermedia' ? 'var(--v3-text)' : '#fff',
+              background: colorDesdePercentil(item.percentil),
+              color: colorTexto(item.percentil),
               textDecoration: 'none',
               fontSize: '12px',
               minHeight: '60px'
@@ -53,6 +62,11 @@ export default function MapaCalorSector({ items, sector }) {
           >
             <div style={{ fontWeight: 700, lineHeight: 1.2 }}>{item.nombre}</div>
             <div style={{ opacity: 0.85, marginTop: '2px' }}>{item.ticker}</div>
+            {item.percentil !== null && item.percentil !== undefined && (
+              <div style={{ opacity: 0.9, marginTop: '2px', fontSize: '11px' }}>
+                P{item.percentil}
+              </div>
+            )}
           </Link>
         ))}
       </div>
