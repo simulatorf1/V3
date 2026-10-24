@@ -404,12 +404,22 @@ ul {
   border-color: var(--v3-primary);
   text-decoration: none;
 }
+
 /* Layout de dos columnas para el home. En móvil se apila. */
 .v3-home-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 24px;
   margin-top: 24px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.v3-home-grid > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 @media (min-width: 900px) {
