@@ -11,9 +11,9 @@ function construirSlug(cambio) {
 }
 
 function situacionDesdeCategoria(cat) {
-  if (cat === 'A') return 'parte alta del rango';
-  if (cat === 'C') return 'parte baja del rango';
-  return 'parte intermedia del rango';
+  if (cat === 'A') return 'parte alta';
+  if (cat === 'C') return 'parte baja';
+  return 'parte intermedia';
 }
 
 export default function ListaCambiosZona({ cambios }) {
@@ -32,53 +32,55 @@ export default function ListaCambiosZona({ cambios }) {
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Cambios de zona de hoy</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Empresas que han cambiado de zona (alta, intermedia o baja) respecto a la sesión anterior.
-        Dato descriptivo.
+        Empresas que han cambiado de zona respecto a la sesión anterior. Dato descriptivo.
       </p>
 
-      <ul
+      <div
         style={{
-          listStyle: 'none',
-          padding: 0,
-          margin: '12px 0 0 0',
           display: 'grid',
-          gap: '8px'
+          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+          gap: '10px',
+          marginTop: '12px'
         }}
       >
         {cambios.map((c) => (
-          <li key={c.ticker}>
-            <Link
-              href={`/analisis/${construirSlug(c)}`}
+          <Link
+            key={c.ticker}
+            href={`/analisis/${construirSlug(c)}`}
+            style={{
+              display: 'block',
+              padding: '12px 14px',
+              background: '#fff',
+              border: '1px solid var(--v3-border)',
+              borderRadius: 'var(--v3-radius-sm)',
+              textDecoration: 'none',
+              color: 'var(--v3-text)'
+            }}
+          >
+            <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                background: '#fff',
-                border: '1px solid var(--v3-border)',
-                borderRadius: 'var(--v3-radius-sm)',
-                textDecoration: 'none',
-                color: 'var(--v3-text)'
+                fontWeight: 700,
+                fontSize: '14px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '14px' }}>
-                  {c.nombre}
-                </div>
-                <div style={{ color: 'var(--v3-text-soft)', fontSize: '12px' }}>
-                  {c.ticker}
-                  {c.sector && ` · ${c.sector}`}
-                </div>
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)', textAlign: 'right' }}>
-                <div>Antes: {situacionDesdeCategoria(c.categoriaAnterior)}</div>
-                <div>Ahora: {situacionDesdeCategoria(c.categoriaNueva)}</div>
-              </div>
-            </Link>
-          </li>
+              {c.nombre}
+            </div>
+            <div style={{ color: 'var(--v3-text-soft)', fontSize: '11px', marginTop: '2px' }}>
+              {c.ticker}
+              {c.sector && ` · ${c.sector}`}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '6px' }}>
+              Antes: {situacionDesdeCategoria(c.categoriaAnterior)}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--v3-text)', fontWeight: 600 }}>
+              Ahora: {situacionDesdeCategoria(c.categoriaNueva)}
+            </div>
+          </Link>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }
