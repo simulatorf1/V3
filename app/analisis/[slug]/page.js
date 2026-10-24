@@ -10,6 +10,7 @@ import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import MovimientosHoyCliente from '../../../components/MovimientosHoyCliente';
 import FormularioAlerta from '../../../components/FormularioAlerta';
+import Comparador from '../../../components/Comparador';
 import WatchlistBoton from '../../../components/WatchlistBoton';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
@@ -675,7 +676,7 @@ export default async function PaginaEmpresa({ params }) {
             </p>
           </div>
         </section>
-
+        <Comparador tickerActual={empresa.ticker} nombreActual={empresa.nombre} />
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Evolución del precio y del indicador Equaty</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
