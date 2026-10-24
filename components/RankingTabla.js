@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -56,10 +54,14 @@ export default function RankingTabla({ items, titulo, total, colapsable = true }
           border: '1px solid var(--v3-border)',
           borderRadius: 'var(--v3-radius-sm)',
           overflowX: 'auto',
-          marginTop: '12px'
+          overflowY: 'hidden',
+          marginTop: '12px',
+          width: '100%',
+          maxWidth: '100%',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
-        <table className="v3-table" style={{ margin: 0 }}>
+        <table className="v3-table" style={{ margin: 0, minWidth: '560px' }}>
           <thead
             style={{
               background: 'var(--v3-bg-soft)',
@@ -102,7 +104,11 @@ export default function RankingTabla({ items, titulo, total, colapsable = true }
                 <td>{fmtPct(item.variacion5)}</td>
                 <td>{fmtPct(item.variacion60)}</td>
                 <td>{item.zona ? situacionDesdeZona(item.zona) : '—'}</td>
-                <td>{item.percentil !== null && item.percentil !== undefined ? item.percentil : '—'}</td>
+                <td>
+                  {item.percentil !== null && item.percentil !== undefined
+                    ? item.percentil
+                    : '—'}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -124,9 +130,7 @@ export default function RankingTabla({ items, titulo, total, colapsable = true }
               cursor: 'pointer'
             }}
           >
-            {expandido
-              ? 'Ver solo los 3 primeros'
-              : `Ver los ${items.length} primeros`}
+            {expandido ? 'Ver solo los 3 primeros' : `Ver los ${items.length} primeros`}
           </button>
         </div>
       )}
