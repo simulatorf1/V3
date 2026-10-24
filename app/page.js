@@ -218,24 +218,37 @@ export default async function Home() {
         </Link>
       </div>
 
-      <RankingTabla
-        items={datos.ranking}
-        tipo="variacion60"
-        titulo="Top 15 por variación en 60 sesiones"
-        total={datos.totalRanking}
-        colapsable={true}
-      />
+      {/* GRID DE DOS COLUMNAS EN ESCRITORIO, UNA EN MÓVIL */}
+      <div className="v3-home-grid">
+        {/* Fila 1: ranking (izquierda) + cambios de zona (derecha) */}
+        <div>
+          <RankingTabla
+            items={datos.ranking}
+            tipo="variacion60"
+            titulo="Top 15 por variación en 60 sesiones"
+            total={datos.totalRanking}
+            colapsable={true}
+          />
+        </div>
+        <div>
+          <ListaCambiosZona cambios={datos.cambiosZona} />
+        </div>
 
-      <ListaCambiosZona cambios={datos.cambiosZona} />
+        {/* Fila 2: radar de extremos a ancho completo (span 2) */}
+        <div className="v3-span-2">
+          <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
+        </div>
 
-      <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
-
-      {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
-        <MapaCalorSector
-          sectoresData={datos.sectoresData}
-          sectoresOrden={datos.sectoresOrden}
-        />
-      )}
+        {/* Fila 3: mapa de calor a ancho completo (span 2) */}
+        {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
+          <div className="v3-span-2">
+            <MapaCalorSector
+              sectoresData={datos.sectoresData}
+              sectoresOrden={datos.sectoresOrden}
+            />
+          </div>
+        )}
+      </div>
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
         Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
