@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 
 function construirSlug(item) {
@@ -21,7 +24,9 @@ function fmtPct(v, decimales = 2) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(decimales)}%`;
 }
 
-export default function RankingTabla({ items, titulo, total }) {
+export default function RankingTabla({ items, titulo, total, colapsable = true }) {
+  const [expandido, setExpandido] = useState(!colapsable);
+
   if (!items || items.length === 0) {
     return (
       <section className="v3-seccion">
@@ -33,13 +38,16 @@ export default function RankingTabla({ items, titulo, total }) {
     );
   }
 
+  const itemsVisibles = expandido ? items : items.slice(0, 3);
+  const hayMas = items.length > 3;
+
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">{titulo || 'Ranking'}</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
         Ordenado de mayor a menor variación en 60 sesiones.
         {total !== undefined && total !== null && (
-          <span> Mostrando {items.length} de {total} empresas con datos disponibles.</span>
+          <span> Mostrando {itemsVisibles.length} de {total} empresas con datos disponibles.</span>
         )}
       </p>
 
@@ -71,7 +79,7 @@ export default function RankingTabla({ items, titulo, total }) {
             </tr>
           </thead>
           <tbody>
-            {items.map((item, i) => (
+            {itemsVisibles.map((item, i) => (
               <tr key={item.ticker}>
                 <td style={{ color: 'var(--v3-text-mute)' }}>{i + 1}</td>
                 <td>
@@ -100,6 +108,28 @@ export default function RankingTabla({ items, titulo, total }) {
           </tbody>
         </table>
       </div>
+
+      {colapsable && hayMas && (
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          <button
+            onClick={() => setExpandido(!expandido)}
+            style={{
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: 600,
+              borderRadius: 'var(--v3-radius-sm)',
+              border: '1px solid var(--v3-border-strong)',
+              background: '#fff',
+              color: 'var(--v3-text)',
+              cursor: 'pointer'
+            }}
+          >
+            {expandido
+              ? 'Ver solo los 3 primeros'
+              : `Ver los ${items.length} primeros`}
+          </button>
+        </div>
+      )}
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
         El color y las cifras indican hechos históricos. No implican valoración ni acción.
