@@ -10,7 +10,6 @@ import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import MovimientosHoyCliente from '../../../components/MovimientosHoyCliente';
 import FormularioAlerta from '../../../components/FormularioAlerta';
-import FormularioAlerta from '../../../components/FormularioAlerta';
 import WatchlistBoton from '../../../components/WatchlistBoton';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
