@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
   const [email, setEmail] = useState('');
+  const [zonaObjetivo, setZonaObjetivo] = useState('baja');
   const [acepta, setAcepta] = useState(false);
   const [estado, setEstado] = useState('inicial');
   const [error, setError] = useState(null);
@@ -33,7 +34,8 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
-          ticker: empresa.ticker
+          ticker: empresa.ticker,
+          zonaObjetivo
         })
       });
 
@@ -61,7 +63,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           borderLeft: '4px solid #2563eb',
           background: '#eff6ff',
           borderRadius: 'var(--v3-radius-sm)',
-          marginTop: esSidebar ? '0' : '30px'
+          marginTop: esSidebar ? '0' : '16px'
         }}
       >
         <div
@@ -85,165 +87,158 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
   }
 
   return (
-    <>
-      <style jsx global>{`
-        @keyframes v3-parpadeo-gratis {
-          0%, 100% {
-            background-color: #2563eb;
-            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
-          }
-          50% {
-            background-color: #1e40af;
-            box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
-          }
-        }
-        .v3-gratis-badge {
-          animation: v3-parpadeo-gratis 1.2s ease-in-out infinite;
-        }
-      `}</style>
-
+    <div
+      style={{
+        background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+        border: '2px solid #3b82f6',
+        borderRadius: 'var(--v3-radius)',
+        padding: esSidebar ? '16px' : '20px',
+        marginTop: esSidebar ? '0' : '16px'
+      }}
+    >
       <div
         style={{
-          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-          border: '2px solid #3b82f6',
-          borderRadius: 'var(--v3-radius)',
-          padding: esSidebar ? '16px' : '20px',
-          marginTop: esSidebar ? '0' : '30px',
-          position: 'relative'
+          fontSize: esSidebar ? '14px' : '16px',
+          fontWeight: 800,
+          color: '#1e3a8a',
+          marginBottom: '8px'
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '10px',
-            flexWrap: 'wrap'
-          }}
-        >
-          <div
-            style={{
-              fontSize: esSidebar ? '14px' : '16px',
-              fontWeight: 800,
-              color: '#1e3a8a'
-            }}
-          >
-            {esSidebar
-              ? 'Actualizaciones estadísticas'
-              : 'Actualizaciones estadísticas por email'}
-          </div>
-          <span
-            className="v3-gratis-badge"
-            style={{
-              display: 'inline-block',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontSize: '11px',
-              fontWeight: 800,
-              color: '#fff',
-              letterSpacing: '0.5px'
-            }}
-          >
-            GRATIS
-          </span>
-        </div>
+        {esSidebar ? 'Avisos por email' : 'Avisos por email cuando cambie de zona'}
+      </div>
 
-        <p
-          style={{
-            margin: '0 0 12px 0',
-            fontSize: esSidebar ? '12.5px' : '14px',
-            color: '#1e40af',
-            lineHeight: 1.5
-          }}
-        >
-          {esSidebar
-            ? `Recibirás una notificación cuando se incorpore un nuevo registro estadístico histórico en la ficha de ${empresa.nombre}.`
-            : `Recibirás una notificación cuando se incorpore un nuevo registro estadístico histórico en la ficha de ${empresa.nombre}. Esta notificación es informativa y no constituye una señal ni recomendación de inversión.`}
-        </p>
+      <p
+        style={{
+          margin: '0 0 12px 0',
+          fontSize: esSidebar ? '12.5px' : '14px',
+          color: '#1e40af',
+          lineHeight: 1.5
+        }}
+      >
+        Elige de qué zona quieres que te avisemos cuando {empresa.nombre} salga de ella. Solo el
+        dato, sin interpretación.
+      </p>
 
-        <form onSubmit={enviar}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="tu@email.com"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              fontSize: '14px',
-              border: '2px solid #93c5fd',
-              borderRadius: 'var(--v3-radius-sm)',
-              outline: 'none',
-              boxSizing: 'border-box',
-              marginBottom: '8px'
-            }}
-            disabled={estado === 'enviando'}
-          />
+      <form onSubmit={enviar}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <button
-            type="submit"
-            disabled={estado === 'enviando'}
+            type="button"
+            onClick={() => setZonaObjetivo('baja')}
             style={{
-              width: '100%',
-              padding: '11px 16px',
-              fontSize: '14px',
-              fontWeight: 700,
-              color: '#fff',
-              background: estado === 'enviando' ? '#9ca3af' : '#2563eb',
-              border: 'none',
+              flex: 1,
+              padding: '10px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
               borderRadius: 'var(--v3-radius-sm)',
-              cursor: estado === 'enviando' ? 'wait' : 'pointer'
-            }}
-          >
-            {estado === 'enviando' ? 'Enviando…' : 'Quiero recibirlas gratis'}
-          </button>
-
-          <label
-            style={{
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'flex-start',
-              marginTop: '10px',
-              fontSize: '11.5px',
-              color: '#1e40af',
+              border: zonaObjetivo === 'baja' ? '2px solid #2563eb' : '1px solid var(--v3-border-strong)',
+              background: zonaObjetivo === 'baja' ? '#2563eb' : '#fff',
+              color: zonaObjetivo === 'baja' ? '#fff' : 'var(--v3-text)',
               cursor: 'pointer'
             }}
           >
-            <input
-              type="checkbox"
-              checked={acepta}
-              onChange={(e) => setAcepta(e.target.checked)}
-              style={{ marginTop: '2px' }}
-              disabled={estado === 'enviando'}
-            />
-            <span>
-              Acepto recibir actualizaciones estadísticas por email. Puedo darme de baja cuando
-              quiera. He leído la{' '}
-              <a href="/privacidad" style={{ color: '#1e3a8a', fontWeight: 600 }}>
-                Política de Privacidad
-              </a>
-              .
-            </span>
-          </label>
+            Salga de parte baja
+          </button>
+          <button
+            type="button"
+            onClick={() => setZonaObjetivo('alta')}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              borderRadius: 'var(--v3-radius-sm)',
+              border: zonaObjetivo === 'alta' ? '2px solid #2563eb' : '1px solid var(--v3-border-strong)',
+              background: zonaObjetivo === 'alta' ? '#2563eb' : '#fff',
+              color: zonaObjetivo === 'alta' ? '#fff' : 'var(--v3-text)',
+              cursor: 'pointer'
+            }}
+          >
+            Salga de parte alta
+          </button>
+        </div>
 
-          {error && (
-            <p style={{ color: '#b91c1c', fontSize: '12px', marginTop: '8px' }}>{error}</p>
-          )}
-        </form>
-
-        <p
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="tu@email.com"
           style={{
-            color: '#1e40af',
-            fontSize: '11px',
-            marginTop: '10px',
-            marginBottom: 0,
-            lineHeight: 1.4
+            width: '100%',
+            padding: '10px 12px',
+            fontSize: '14px',
+            border: '2px solid #93c5fd',
+            borderRadius: 'var(--v3-radius-sm)',
+            outline: 'none',
+            boxSizing: 'border-box',
+            marginBottom: '8px'
+          }}
+          disabled={estado === 'enviando'}
+        />
+
+        <button
+          type="submit"
+          disabled={estado === 'enviando'}
+          style={{
+            width: '100%',
+            padding: '11px 16px',
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#fff',
+            background: estado === 'enviando' ? '#9ca3af' : '#2563eb',
+            border: 'none',
+            borderRadius: 'var(--v3-radius-sm)',
+            cursor: estado === 'enviando' ? 'wait' : 'pointer'
           }}
         >
-          Recibirás únicamente notificaciones informativas sobre actualizaciones del registro
-          estadístico de esta empresa. Puedes darte de baja en cualquier momento con un clic.
-          Estas notificaciones no constituyen una señal ni recomendación de inversión.
-        </p>
-      </div>
-    </>
+          {estado === 'enviando' ? 'Enviando…' : 'Quiero recibir avisos'}
+        </button>
+
+        <label
+          style={{
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'flex-start',
+            marginTop: '10px',
+            fontSize: '11.5px',
+            color: '#1e40af',
+            cursor: 'pointer'
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={acepta}
+            onChange={(e) => setAcepta(e.target.checked)}
+            style={{ marginTop: '2px' }}
+            disabled={estado === 'enviando'}
+          />
+          <span>
+            Acepto recibir actualizaciones estadísticas por email. Puedo darme de baja cuando
+            quiera. He leído la{' '}
+            <a href="/privacidad" style={{ color: '#1e3a8a', fontWeight: 600 }}>
+              Política de Privacidad
+            </a>
+            .
+          </span>
+        </label>
+
+        {error && (
+          <p style={{ color: '#b91c1c', fontSize: '12px', marginTop: '8px' }}>{error}</p>
+        )}
+      </form>
+
+      <p
+        style={{
+          color: '#1e40af',
+          fontSize: '11px',
+          marginTop: '10px',
+          marginBottom: 0,
+          lineHeight: 1.4
+        }}
+      >
+        Recibirás únicamente notificaciones informativas sobre cambios de zona en esta empresa.
+        Puedes darte de baja en cualquier momento con un clic. Estas notificaciones no constituyen
+        una señal ni recomendación de inversión.
+      </p>
+    </div>
   );
 }
