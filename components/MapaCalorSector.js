@@ -30,8 +30,6 @@ function colorTexto(percentil) {
 }
 
 export default function MapaCalorSector({ sectoresData, sectoresOrden }) {
-  // sectoresOrden: array de nombres de sector ordenados por número de empresas
-  // sectoresData: objeto { [sector]: [items] }
   const [sectorActivo, setSectorActivo] = useState(
     sectoresOrden && sectoresOrden.length > 0 ? sectoresOrden[0] : null
   );
@@ -89,8 +87,11 @@ export default function MapaCalorSector({ sectoresData, sectoresOrden }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
-            gap: '8px'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+            gap: '8px',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0
           }}
         >
           {items.map((item) => (
@@ -105,10 +106,16 @@ export default function MapaCalorSector({ sectoresData, sectoresOrden }) {
                 color: colorTexto(item.percentil),
                 textDecoration: 'none',
                 fontSize: '12px',
-                minHeight: '60px'
+                minHeight: '60px',
+                minWidth: 0,
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                overflow: 'hidden'
               }}
             >
-              <div style={{ fontWeight: 700, lineHeight: 1.2 }}>{item.nombre}</div>
+              <div style={{ fontWeight: 700, lineHeight: 1.2, wordBreak: 'break-word' }}>
+                {item.nombre}
+              </div>
               <div style={{ opacity: 0.85, marginTop: '2px' }}>{item.ticker}</div>
               {item.percentil !== null && item.percentil !== undefined && (
                 <div style={{ opacity: 0.9, marginTop: '2px', fontSize: '11px' }}>
