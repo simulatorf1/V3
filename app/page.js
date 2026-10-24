@@ -23,9 +23,6 @@ function parseDatos(datos) {
 
 function calcularVariacion(velas, sesiones) {
   if (!velas || velas.length < 2) return null;
-
-  // Si sesiones >= velas.length, usamos primera y última vela disponible.
-  // Si sesiones < velas.length, usamos la vela de hace "sesiones" y la última.
   let primero;
   if (sesiones >= velas.length - 1) {
     primero = velas[0]?.close;
@@ -33,7 +30,6 @@ function calcularVariacion(velas, sesiones) {
     primero = velas[velas.length - sesiones - 1]?.close;
   }
   const ultimo = velas[velas.length - 1]?.close;
-
   if (!primero || primero === 0) return null;
   return ((ultimo - primero) / primero) * 100;
 }
@@ -54,8 +50,8 @@ async function cargarDatos() {
     extremosAltos: [],
     extremosBajos: [],
     cambiosZona: [],
-    mapaSector: [],
-    sectorTop: null
+    sectoresData: {},
+    sectoresOrden: []
   };
 
   try {
@@ -88,6 +84,7 @@ async function cargarDatos() {
     const ranking = [];
     const extremosAltos = [];
     const extremosBajos = [];
+    const porSector = {};
 
     for (const p of paginas) {
       const datos = parseDatos(p.datos);
@@ -119,10 +116,14 @@ async function cargarDatos() {
       if (percentil !== null) {
         if (percentil >= 90) extremosAltos.push(item);
         if (percentil <= 10) extremosBajos.push(item);
+
+        if (emp.sector) {
+          if (!porSector[emp.sector]) porSector[emp.sector] = [];
+          porSector[emp.sector].push(item);
+        }
       }
     }
 
-    // ORDENAR ANTES DE CORTAR
     const rankingOrdenado = ranking
       .filter((i) => i.variacion60 !== null)
       .sort((a, b) => b.variacion60 - a.variacion60);
@@ -155,17 +156,28 @@ async function cargarDatos() {
       if (!e || !e.sector) continue;
       conteoSectores[e.sector] = (conteoSectores[e.sector] || 0) + 1;
     }
+
+    // Sectores con datos de percentil, ordenados por número de empresas
+    const sectoresConDatos = Object.keys(porSector)
+      .filter((s) => porSector[s].length > 0)
+      .sort((a, b) => {
+        const na = conteoSectores[a] || 0;
+        const nb = conteoSectores[b] || 0;
+        return nb - na;
+      })
+      .slice(0, 12);
+
+    const sectoresData = {};
+    for (const s of sectoresConDatos) {
+      sectoresData[s] = porSector[s]
+        .sort((a, b) => b.percentil - a.percentil)
+        .slice(0, 30);
+    }
+
     const sectores = Object.entries(conteoSectores)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 12)
       .map(([sector, empresas]) => ({ sector, empresas }));
-
-    const sectorTop = sectores[0]?.sector || null;
-    const mapaSector = sectorTop
-      ? ranking
-          .filter((r) => r.sector === sectorTop && r.percentil !== null)
-          .slice(0, 24)
-      : [];
 
     return {
       sectores,
@@ -174,8 +186,8 @@ async function cargarDatos() {
       extremosAltos: extremosAltos.slice(0, 8),
       extremosBajos: extremosBajos.slice(0, 8),
       cambiosZona,
-      mapaSector,
-      sectorTop
+      sectoresData,
+      sectoresOrden: sectoresConDatos
     };
   } catch (e) {
     console.error('[home] Error cargando datos:', e.message);
@@ -226,8 +238,11 @@ export default async function Home() {
 
       <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
 
-      {datos.sectorTop && (
-        <MapaCalorSector items={datos.mapaSector} sector={datos.sectorTop} />
+      {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
+        <MapaCalorSector
+          sectoresData={datos.sectoresData}
+          sectoresOrden={datos.sectoresOrden}
+        />
       )}
 
       <SectoresPrincipales sectores={datos.sectores} />
