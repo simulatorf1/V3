@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import ListaCambiosZona from '../../components/ListaCambiosZona';
 import RankingTabla from '../../components/RankingTabla';
@@ -18,10 +17,17 @@ function parseDatos(datos) {
 }
 
 function calcularVariacion(velas, sesiones) {
-  if (!velas || velas.length < sesiones + 1) return null;
-  const primero = velas[velas.length - sesiones - 1]?.close;
+  if (!velas || velas.length < 2) return null;
+
+  let primero;
+  if (sesiones >= velas.length - 1) {
+    primero = velas[0]?.close;
+  } else {
+    primero = velas[velas.length - sesiones - 1]?.close;
+  }
   const ultimo = velas[velas.length - 1]?.close;
-  if (!primero) return null;
+
+  if (!primero || primero === 0) return null;
   return ((ultimo - primero) / primero) * 100;
 }
 
@@ -52,8 +58,18 @@ async function cargarCambios24h() {
       ticker: c.ticker,
       nombre: map[c.ticker]?.nombre || c.ticker,
       sector: map[c.ticker]?.sector || null,
-      categoriaAnterior: c.movimiento_anterior === 'venta' ? 'A' : c.movimiento_anterior === 'compra' ? 'C' : 'B',
-      categoriaNueva: c.movimiento_nuevo === 'venta' ? 'A' : c.movimiento_nuevo === 'compra' ? 'C' : 'B'
+      categoriaAnterior:
+        c.movimiento_anterior === 'venta'
+          ? 'A'
+          : c.movimiento_anterior === 'compra'
+          ? 'C'
+          : 'B',
+      categoriaNueva:
+        c.movimiento_nuevo === 'venta'
+          ? 'A'
+          : c.movimiento_nuevo === 'compra'
+          ? 'C'
+          : 'B'
     }));
   } catch (e) {
     console.error('[hoy] Error cambios:', e.message);
@@ -67,9 +83,9 @@ async function cargarTop5() {
       .from('paginas')
       .select('ticker, datos')
       .order('actualizado_at', { ascending: false })
-      .limit(300);
+      .limit(500);
 
-    if (!paginas || paginas.length === 0) return [];
+    if (!paginas || paginas.length === 0) return { items: [], total: 0 };
 
     const tickers = paginas.map((p) => p.ticker);
     const { data: empresas } = await supabaseAdmin
@@ -102,10 +118,11 @@ async function cargarTop5() {
       });
     }
 
-    return items.sort((a, b) => b.variacion5 - a.variacion5).slice(0, 10);
+    const ordenado = items.sort((a, b) => b.variacion5 - a.variacion5);
+    return { items: ordenado.slice(0, 10), total: ordenado.length };
   } catch (e) {
     console.error('[hoy] Error top:', e.message);
-    return [];
+    return { items: [], total: 0 };
   }
 }
 
@@ -121,7 +138,12 @@ export default async function PaginaHoy() {
       </p>
 
       <ListaCambiosZona cambios={cambios} />
-      <RankingTabla items={top} tipo="variacion5" titulo="Top 10 por variación en 5 sesiones" />
+      <RankingTabla
+        items={top.items}
+        tipo="variacion5"
+        titulo="Top 10 por variación en 5 sesiones"
+        total={top.total}
+      />
     </main>
   );
 }
