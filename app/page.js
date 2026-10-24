@@ -4,6 +4,7 @@ import RankingTabla from '../components/RankingTabla';
 import ListaExtremos from '../components/ListaExtremos';
 import ListaCambiosZona from '../components/ListaCambiosZona';
 import MapaCalorSector from '../components/MapaCalorSector';
+import WatchlistBloque from '../components/WatchlistBloque';
 import { supabase } from '../lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,8 @@ async function cargarDatos() {
     extremosBajos: [],
     cambiosZona: [],
     sectoresData: {},
-    sectoresOrden: []
+    sectoresOrden: [],
+    empresas: []
   };
 
   try {
@@ -83,6 +85,7 @@ async function cargarDatos() {
     const extremosAltos = [];
     const extremosBajos = [];
     const porSector = {};
+    const empresasLigeras = [];
 
     for (const p of paginas) {
       const datos = parseDatos(p.datos);
@@ -110,6 +113,14 @@ async function cargarDatos() {
       };
 
       ranking.push(item);
+
+      empresasLigeras.push({
+        ticker: p.ticker,
+        nombre: emp.nombre,
+        sector: emp.sector,
+        precio: datos.precioActual,
+        zona: datos.zona
+      });
 
       if (percentil !== null) {
         if (percentil >= 90) extremosAltos.push(item);
@@ -178,7 +189,8 @@ async function cargarDatos() {
       extremosBajos: extremosBajos.slice(0, 8),
       cambiosZona,
       sectoresData,
-      sectoresOrden: sectoresConDatos
+      sectoresOrden: sectoresConDatos,
+      empresas: empresasLigeras
     };
   } catch (e) {
     console.error('[home] Error cargando datos:', e.message);
@@ -219,6 +231,10 @@ export default async function Home() {
       </div>
 
       <div className="v3-home-grid">
+        <div className="v3-span-2">
+          <WatchlistBloque empresas={datos.empresas} />
+        </div>
+
         <div>
           <RankingTabla
             items={datos.ranking}
