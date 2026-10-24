@@ -11,9 +11,9 @@ function construirSlug(item) {
 }
 
 function situacionDesdeZona(zona) {
-  if (zona === 'alta') return 'parte alta del rango';
-  if (zona === 'baja') return 'parte baja del rango';
-  return 'parte intermedia del rango';
+  if (zona === 'alta') return 'parte alta';
+  if (zona === 'baja') return 'parte baja';
+  return 'parte intermedia';
 }
 
 function fmtPct(v, decimales = 2) {
@@ -21,7 +21,7 @@ function fmtPct(v, decimales = 2) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(decimales)}%`;
 }
 
-export default function RankingTabla({ items, tipo, titulo }) {
+export default function RankingTabla({ items, titulo, total }) {
   if (!items || items.length === 0) {
     return (
       <section className="v3-seccion">
@@ -37,7 +37,10 @@ export default function RankingTabla({ items, tipo, titulo }) {
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">{titulo || 'Ranking'}</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Datos históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
+        Ordenado de mayor a menor variación en 60 sesiones.
+        {total !== undefined && total !== null && (
+          <span> Mostrando {items.length} de {total} empresas con datos disponibles.</span>
+        )}
       </p>
 
       <div
@@ -83,11 +86,15 @@ export default function RankingTabla({ items, tipo, titulo }) {
                     {item.sector && ` · ${item.sector}`}
                   </div>
                 </td>
-                <td>{item.precio !== null ? `${item.precio.toFixed(2)} €` : '—'}</td>
+                <td>
+                  {item.precio !== null && item.precio !== undefined
+                    ? `${Number(item.precio).toFixed(2)} €`
+                    : '—'}
+                </td>
                 <td>{fmtPct(item.variacion5)}</td>
                 <td>{fmtPct(item.variacion60)}</td>
                 <td>{item.zona ? situacionDesdeZona(item.zona) : '—'}</td>
-                <td>{item.percentil !== null ? item.percentil : '—'}</td>
+                <td>{item.percentil !== null && item.percentil !== undefined ? item.percentil : '—'}</td>
               </tr>
             ))}
           </tbody>
