@@ -429,248 +429,89 @@ export default async function PaginaEmpresa({ params }) {
           {desdeCache && ' · desde caché'}
         </p>
 
+        {/* CABECERA: precio, variación, situación y percentil (texto, sin barras) */}
         <section className="v3-seccion" style={{ marginTop: '20px' }}>
           <div className="v3-card" style={{ padding: '20px' }}>
             <div style={{ fontSize: '30px', fontWeight: 800, marginBottom: '4px' }}>
               {precioActual?.toFixed(2) ?? '—'} €
             </div>
-            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
               Precio actual · {empresa.mercado || ''}
             </p>
-
-            <BarraEscala
-              etiqueta="Variación 5 sesiones"
-              ayuda="Diferencia porcentual entre el precio actual y el de hace 5 sesiones."
-              valor={variacion5}
-              valorTexto={`${variacion5 >= 0 ? '+' : ''}${variacion5.toFixed(2)}%`}
-              min={-10}
-              max={10}
-            />
-
-            <BarraEscala
-              etiqueta="Variación 60 sesiones"
-              ayuda="Diferencia porcentual entre el precio actual y el de hace 60 sesiones (aproximadamente 3 meses de bolsa)."
-              valor={variacion60}
-              valorTexto={`${variacion60 >= 0 ? '+' : ''}${variacion60.toFixed(2)}%`}
-              min={-15}
-              max={15}
-            />
-
-            <BarraEscala
-              etiqueta={`Sector 60 sesiones · empresa ${
-                variacion60 >= 0 ? '+' : ''
-              }${variacion60.toFixed(2)}% vs media del sector ${
-                variacionSector60 !== null
-                  ? `${variacionSector60 >= 0 ? '+' : ''}${variacionSector60.toFixed(2)}%`
-                  : '—'
-              }`}
-              ayuda="Compara la variación porcentual de la empresa en 60 sesiones con la media de las empresas de su sector en el mismo periodo."
-              valor={variacionSector60}
-              valorTexto={
-                variacionSector60 !== null
-                  ? `${variacionSector60 >= 0 ? '+' : ''}${variacionSector60.toFixed(2)}%`
-                  : '—'
-              }
-              min={-10}
-              max={10}
-            />
-
-            <BarraEscala
-              etiqueta={`Indicador Equaty · ${situacionActual}`}
-              ayuda="El indicador Equaty es un oscilador técnico que mide dónde se ha movido el precio dentro de su rango reciente. Va de -100 a +100. Valores altos = cerca de máximos recientes; valores bajos = cerca de mínimos recientes."
-              valor={smiActual}
-              valorTexto={`${smiActual?.toFixed(0) ?? '—'}`}
-              min={-100}
-              max={100}
-            />
-
-            <BarraEscala
-              etiqueta={`Pendiente de la línea del precio (5 sesiones) · ${
-                pendientePrecio === null
-                  ? '—'
-                  : pendientePrecio > 0
-                  ? 'sube'
-                  : pendientePrecio < 0
-                  ? 'baja'
-                  : 'plana'
-              }`}
-              ayuda="Indica si el precio ha subido o bajado en las últimas 5 sesiones, medido en porcentaje. Positivo = la línea del gráfico sube; negativo = baja."
-              valor={pendientePrecio}
-              valorTexto={
-                pendientePrecio !== null
-                  ? `${pendientePrecio >= 0 ? '+' : ''}${pendientePrecio.toFixed(2)}%`
-                  : '—'
-              }
-              min={-10}
-              max={10}
-            />
-
-            <BarraEscala
-              etiqueta={`Pendiente de la línea del indicador (5 sesiones) · ${
-                pendienteIndicador === null
-                  ? '—'
-                  : pendienteIndicador > 0
-                  ? 'sube'
-                  : pendienteIndicador < 0
-                  ? 'baja'
-                  : 'plana'
-              }`}
-              ayuda="Indica si el valor del indicador Equaty ha subido o bajado en las últimas 5 sesiones, en porcentaje. Positivo = el indicador sube; negativo = baja."
-              valor={pendienteIndicador}
-              valorTexto={
-                pendienteIndicador !== null
-                  ? `${pendienteIndicador >= 0 ? '+' : ''}${pendienteIndicador.toFixed(1)}%`
-                  : '—'
-              }
-              min={-50}
-              max={50}
-            />
-
-            <BarraEscala
-              etiqueta="Posición dentro del rango 60 sesiones"
-              ayuda="Indica en qué punto del rango de precios de las últimas 60 sesiones está el precio actual. 0% = está en el mínimo del rango; 100% = está en el máximo."
-              valor={posicionRango}
-              valorTexto={`${posicionRango.toFixed(0)}%`}
-              min={0}
-              max={100}
-            />
-
-            <BarraEscala
-              etiqueta="Amplitud del rango 60 sesiones"
-              ayuda="Mide cuánto ha oscilado el precio en las últimas 60 sesiones, en porcentaje entre su mínimo y su máximo. Cuanto mayor, más volátil ha sido el rango."
-              valor={amplitudRango}
-              valorTexto={amplitudRango !== null ? `${amplitudRango.toFixed(2)}%` : '—'}
-              min={0}
-              max={50}
-            />
-
-            <BarraEscala
-              etiqueta="Distancia al máximo de 60 sesiones"
-              ayuda="Diferencia porcentual entre el precio actual y el máximo de las últimas 60 sesiones. Negativo = está por debajo del máximo."
-              valor={distanciaMax}
-              valorTexto={
-                distanciaMax !== null
-                  ? `${distanciaMax >= 0 ? '+' : ''}${distanciaMax.toFixed(2)}%`
-                  : '—'
-              }
-              min={-50}
-              max={0}
-            />
-
-            <BarraEscala
-              etiqueta="Distancia al mínimo de 60 sesiones"
-              ayuda="Diferencia porcentual entre el precio actual y el mínimo de las últimas 60 sesiones. Positivo = está por encima del mínimo."
-              valor={distanciaMin}
-              valorTexto={
-                distanciaMin !== null
-                  ? `${distanciaMin >= 0 ? '+' : ''}${distanciaMin.toFixed(2)}%`
-                  : '—'
-              }
-              min={0}
-              max={50}
-            />
-
-            <BarraEscala
-              etiqueta="Volatilidad diaria media (60 sesiones)"
-              ayuda="Desviación típica de los retornos diarios en las últimas 60 sesiones. Indica cuánto se mueve el precio de media cada día, en porcentaje."
-              valor={volatilidad}
-              valorTexto={`${volatilidad.toFixed(2)}%`}
-              min={0}
-              max={5}
-            />
-
-            {volatilidadSemanal !== null && (
-              <BarraEscala
-                etiqueta="Volatilidad semanal media"
-                ayuda="Desviación típica de los retornos semanales en las últimas 104 semanas. Indica cuánto se mueve el precio de media cada semana, en porcentaje."
-                valor={volatilidadSemanal}
-                valorTexto={`${volatilidadSemanal.toFixed(2)}%`}
-                min={0}
-                max={15}
-              />
-            )}
-
-            {volumenRelativo !== null && (
-              <BarraEscala
-                etiqueta={`Volumen · última sesión ${
-                  volumenUltimo ? volumenUltimo.toLocaleString('es-ES') : '—'
-                } vs media 60 ${
-                  volumenMedio60 ? Math.round(volumenMedio60).toLocaleString('es-ES') : '—'
-                }`}
-                ayuda="Compara el volumen negociado en la última sesión con la media de las últimas 60 sesiones. 100% = volumen medio; más de 100% = más actividad de lo habitual; menos de 100% = menos actividad."
-                valor={volumenRelativo - 100}
-                valorTexto={`${volumenRelativo.toFixed(0)}% de la media`}
-                min={-100}
-                max={100}
-              />
-            )}
-
-            <BarraEscala
-              etiqueta={`Sesiones alcistas vs bajistas (60 sesiones) · ${sesionesAlcistas} alcistas de ${totalSesionesMov}`}
-              ayuda="Porcentaje de sesiones en las que el precio cerró por encima del cierre anterior. Por encima del 50% indica mayoría de sesiones alcistas en el periodo."
-              valor={ratioAlcistas}
-              valorTexto={`${sesionesAlcistas} de ${totalSesionesMov}`}
-              min={0}
-              max={100}
-            />
-
-            <BarraEscala
-              etiqueta={`Racha actual · ${
-                racha > 0 && direccionRacha
-                  ? `${racha} ${racha === 1 ? 'sesión' : 'sesiones'} ${direccionRacha}${racha === 1 ? '' : 's'}`
-                  : '—'
-              }`}
-              ayuda="Número de sesiones consecutivas en las que el precio ha cerrado en la misma dirección (alcista o bajista). Indica la duración del movimiento actual."
-              valor={racha}
-              valorTexto={`${racha}`}
-              min={0}
-              max={10}
-            />
-
-            <BarraEscala
-              etiqueta={`Veces en esta misma zona (${totalSesionesValidas} sesiones)`}
-              ayuda="Número de sesiones de las últimas 60 en las que el indicador ha estado en la misma zona (alta, intermedia o baja) que ahora. Sirve para saber si la situación actual es habitual o poco frecuente."
-              valor={
-                totalSesionesValidas > 0
-                  ? Math.round((sesionesEnZona / totalSesionesValidas) * 100)
-                  : 0
-              }
-              valorTexto={`${sesionesEnZona} de ${totalSesionesValidas} sesiones`}
-              min={0}
-              max={100}
-            />
-
-            <BarraEscala
-              etiqueta={`Cambios de zona en 60 sesiones · ${
-                diasDesdeUltimoCambio !== null
-                  ? `hace ${diasDesdeUltimoCambio} días`
-                  : '—'
-              }`}
-              ayuda="Cuántas veces ha cambiado el precio de zona (alta, intermedia o baja) en las últimas 60 sesiones. Indica la frecuencia con la que el indicador ha cruzado los umbrales."
-              valor={cambiosZona60}
-              valorTexto={`${cambiosZona60}`}
-              min={0}
-              max={20}
-            />
-
-            <p
+        
+            <div
               style={{
-                margin: '14px 0 0 0',
-                fontSize: '11.5px',
-                color: 'var(--v3-text-mute)',
-                lineHeight: 1.5
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '12px',
+                marginBottom: '12px'
               }}
             >
-              El color indica signo o posición en el rango. No implica valoración.
-            </p>
-            <p
-              style={{
-                margin: '4px 0 0 0',
-                fontSize: '11.5px',
-                color: 'var(--v3-text-mute)',
-                lineHeight: 1.5
-              }}
-            >
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--v3-text-mute)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px'
+                  }}
+                >
+                  Variación 5 sesiones
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700 }}>
+                  {variacion5 >= 0 ? '+' : ''}
+                  {variacion5.toFixed(2)}%
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--v3-text-mute)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px'
+                  }}
+                >
+                  Variación 60 sesiones
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700 }}>
+                  {variacion60 >= 0 ? '+' : ''}
+                  {variacion60.toFixed(2)}%
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--v3-text-mute)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px'
+                  }}
+                >
+                  Situación actual
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700 }}>{situacionActual}</div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--v3-text-mute)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px'
+                  }}
+                >
+                  Percentil 60
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700 }}>{percentil}</div>
+              </div>
+            </div>
+        
+            <p style={{ margin: '8px 0 0 0', fontSize: '11.5px', color: 'var(--v3-text-mute)' }}>
               Datos históricos descriptivos. No predictivos. No constituyen recomendación de
               inversión.
             </p>
@@ -693,7 +534,7 @@ export default async function PaginaEmpresa({ params }) {
             smis={analisis.smisSemanales || []}
           />
         )}
-
+        <Comparador tickerActual={empresa.ticker} nombreActual={empresa.nombre} />
         <details open style={estiloAcordeon}>
           <summary style={estiloSummary}>Historial de cambios de esta empresa</summary>
           <div style={{ padding: '0 20px 20px 20px' }}>
