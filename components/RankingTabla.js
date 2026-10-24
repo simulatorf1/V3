@@ -1,0 +1,102 @@
+import Link from 'next/link';
+
+function construirSlug(item) {
+  const nombreLimpio = (item.nombre || item.ticker)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
+}
+
+function situacionDesdeZona(zona) {
+  if (zona === 'alta') return 'parte alta del rango';
+  if (zona === 'baja') return 'parte baja del rango';
+  return 'parte intermedia del rango';
+}
+
+function fmtPct(v, decimales = 2) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(decimales)}%`;
+}
+
+export default function RankingTabla({ items, tipo, titulo }) {
+  if (!items || items.length === 0) {
+    return (
+      <section className="v3-seccion">
+        <h2 className="v3-seccion-titulo">{titulo || 'Ranking'}</h2>
+        <p style={{ color: 'var(--v3-text-soft)' }}>
+          Sin datos disponibles todavía. Vuelve en unos minutos.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="v3-seccion">
+      <h2 className="v3-seccion-titulo">{titulo || 'Ranking'}</h2>
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
+        Datos históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
+      </p>
+
+      <div
+        style={{
+          border: '1px solid var(--v3-border)',
+          borderRadius: 'var(--v3-radius-sm)',
+          overflowX: 'auto',
+          marginTop: '12px'
+        }}
+      >
+        <table className="v3-table" style={{ margin: 0 }}>
+          <thead
+            style={{
+              background: 'var(--v3-bg-soft)',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1
+            }}
+          >
+            <tr>
+              <th>#</th>
+              <th>Empresa</th>
+              <th>Precio</th>
+              <th>Var. 5 ses.</th>
+              <th>Var. 60 ses.</th>
+              <th>Situación</th>
+              <th>Percentil</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, i) => (
+              <tr key={item.ticker}>
+                <td style={{ color: 'var(--v3-text-mute)' }}>{i + 1}</td>
+                <td>
+                  <Link
+                    href={`/analisis/${construirSlug(item)}`}
+                    style={{ color: 'var(--v3-text)', fontWeight: 600 }}
+                  >
+                    {item.nombre}
+                  </Link>
+                  <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
+                    {item.ticker}
+                    {item.sector && ` · ${item.sector}`}
+                  </div>
+                </td>
+                <td>{item.precio !== null ? `${item.precio.toFixed(2)} €` : '—'}</td>
+                <td>{fmtPct(item.variacion5)}</td>
+                <td>{fmtPct(item.variacion60)}</td>
+                <td>{item.zona ? situacionDesdeZona(item.zona) : '—'}</td>
+                <td>{item.percentil !== null ? item.percentil : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
+        El color y las cifras indican hechos históricos. No implican valoración ni acción.
+      </p>
+    </section>
+  );
+}
