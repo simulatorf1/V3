@@ -5,6 +5,7 @@ import ListaExtremos from '../components/ListaExtremos';
 import ListaCambiosZona from '../components/ListaCambiosZona';
 import MapaCalorSector from '../components/MapaCalorSector';
 import WatchlistBloque from '../components/WatchlistBloque';
+import CambiosDesdeUltimaVisita from '../components/CambiosDesdeUltimaVisita';
 import { supabase } from '../lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -24,11 +25,8 @@ function parseDatos(datos) {
 function calcularVariacion(velas, sesiones) {
   if (!velas || velas.length < 2) return null;
   let primero;
-  if (sesiones >= velas.length - 1) {
-    primero = velas[0]?.close;
-  } else {
-    primero = velas[velas.length - sesiones - 1]?.close;
-  }
+  if (sesiones >= velas.length - 1) primero = velas[0]?.close;
+  else primero = velas[velas.length - sesiones - 1]?.close;
   const ultimo = velas[velas.length - 1]?.close;
   if (!primero || primero === 0) return null;
   return ((ultimo - primero) / primero) * 100;
@@ -125,7 +123,6 @@ async function cargarDatos() {
       if (percentil !== null) {
         if (percentil >= 90) extremosAltos.push(item);
         if (percentil <= 10) extremosBajos.push(item);
-
         if (emp.sector) {
           if (!porSector[emp.sector]) porSector[emp.sector] = [];
           porSector[emp.sector].push(item);
@@ -232,6 +229,10 @@ export default async function Home() {
 
       <div className="v3-home-grid">
         <div className="v3-span-2">
+          <CambiosDesdeUltimaVisita empresas={datos.empresas} />
+        </div>
+
+        <div className="v3-span-2">
           <WatchlistBloque empresas={datos.empresas} />
         </div>
 
@@ -242,6 +243,7 @@ export default async function Home() {
             titulo="Top 15 por variación en 60 sesiones"
             total={datos.totalRanking}
             colapsable={true}
+            verTodasHref="/empresas"
           />
         </div>
         <div>
