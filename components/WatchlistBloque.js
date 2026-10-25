@@ -14,10 +14,10 @@ function construirSlug(item) {
   return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function situacionDesdeZona(zona) {
-  if (zona === 'alta') return 'parte alta';
-  if (zona === 'baja') return 'parte baja';
-  return 'parte intermedia';
+function etiquetaZona(zona) {
+  if (zona === 'alta') return { texto: 'parte alta', clase: 'v3-zona-alta' };
+  if (zona === 'baja') return { texto: 'parte baja', clase: 'v3-zona-baja' };
+  return { texto: 'parte intermedia', clase: 'v3-zona-intermedia' };
 }
 
 export default function WatchlistBloque({ empresas }) {
@@ -39,7 +39,7 @@ export default function WatchlistBloque({ empresas }) {
   if (!lista || lista.length === 0) {
     return (
       <section className="v3-seccion">
-        <h2 className="v3-seccion-titulo">Mi lista</h2>
+        <h2 className="v3-seccion-titulo">Mis favoritas</h2>
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px' }}>
           Aún no has añadido empresas. Entra en la ficha de cualquier empresa y pulsa "Añadir a mi
           lista" para verlas aquí cuando vuelvas.
@@ -51,10 +51,11 @@ export default function WatchlistBloque({ empresas }) {
   if (items.length === 0) {
     return (
       <section className="v3-seccion">
-        <h2 className="v3-seccion-titulo">Mi lista</h2>
+        <h2 className="v3-seccion-titulo">Mis favoritas</h2>
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-          Tienes {lista.length} empresa{lista.length === 1 ? '' : 's'} en tu lista, pero todavía
-          no hay datos disponibles. Abre sus fichas para actualizarlas.
+          Tienes {lista.length} empresa{lista.length === 1 ? '' : 's'} marcada
+          {lista.length === 1 ? '' : 's'} como favorita{lista.length === 1 ? '' : 's'}, pero
+          todavía no hay datos disponibles. Abre sus fichas para actualizarlas.
         </p>
       </section>
     );
@@ -62,9 +63,9 @@ export default function WatchlistBloque({ empresas }) {
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Mi lista</h2>
+      <h2 className="v3-seccion-titulo">Mis favoritas</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Empresas que has marcado. Se guardan solo en este navegador.
+        Empresas que has marcado como favoritas. Se guardan solo en este navegador.
       </p>
 
       <div
@@ -81,6 +82,7 @@ export default function WatchlistBloque({ empresas }) {
         {items.map((item) => {
           const zonaAnterior = zonas[item.ticker];
           const haCambiado = zonaAnterior && item.zona && zonaAnterior !== item.zona;
+          const zona = etiquetaZona(item.zona);
           return (
             <Link
               key={item.ticker}
@@ -118,7 +120,8 @@ export default function WatchlistBloque({ empresas }) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'baseline',
-                  marginTop: '8px'
+                  marginTop: '8px',
+                  gap: '8px'
                 }}
               >
                 <span style={{ fontSize: '16px', fontWeight: 700 }}>
@@ -127,9 +130,7 @@ export default function WatchlistBloque({ empresas }) {
                     : '—'}
                 </span>
                 {item.zona && (
-                  <span style={{ fontSize: '11px', color: 'var(--v3-text-soft)' }}>
-                    {situacionDesdeZona(item.zona)}
-                  </span>
+                  <span className={`v3-zona-tag ${zona.clase}`}>{zona.texto}</span>
                 )}
               </div>
               {haCambiado && (
