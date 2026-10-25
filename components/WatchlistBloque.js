@@ -21,7 +21,7 @@ function situacionDesdeZona(zona) {
 }
 
 export default function WatchlistBloque({ empresas }) {
-  const { lista, listo } = useWatchlist();
+  const { lista, listo, zonas } = useWatchlist();
   const [items, setItems] = useState([]);
 
   useEffect(() => {
@@ -78,59 +78,77 @@ export default function WatchlistBloque({ empresas }) {
           minWidth: 0
         }}
       >
-        {items.map((item) => (
-          <Link
-            key={item.ticker}
-            href={`/analisis/${construirSlug(item)}`}
-            style={{
-              display: 'block',
-              padding: '12px 14px',
-              background: '#fff',
-              border: '1px solid var(--v3-border)',
-              borderRadius: 'var(--v3-radius-sm)',
-              textDecoration: 'none',
-              color: 'var(--v3-text)',
-              minWidth: 0,
-              maxWidth: '100%',
-              boxSizing: 'border-box'
-            }}
-          >
-            <div
+        {items.map((item) => {
+          const zonaAnterior = zonas[item.ticker];
+          const haCambiado = zonaAnterior && item.zona && zonaAnterior !== item.zona;
+          return (
+            <Link
+              key={item.ticker}
+              href={`/analisis/${construirSlug(item)}`}
               style={{
-                fontWeight: 700,
-                fontSize: '14px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
+                display: 'block',
+                padding: '12px 14px',
+                background: '#fff',
+                border: '1px solid var(--v3-border)',
+                borderRadius: 'var(--v3-radius-sm)',
+                textDecoration: 'none',
+                color: 'var(--v3-text)',
+                minWidth: 0,
+                maxWidth: '100%',
+                boxSizing: 'border-box'
               }}
             >
-              {item.nombre}
-            </div>
-            <div style={{ color: 'var(--v3-text-soft)', fontSize: '11px', marginTop: '2px' }}>
-              {item.ticker}
-              {item.sector && ` · ${item.sector}`}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                marginTop: '8px'
-              }}
-            >
-              <span style={{ fontSize: '16px', fontWeight: 700 }}>
-                {item.precio !== null && item.precio !== undefined
-                  ? `${Number(item.precio).toFixed(2)} €`
-                  : '—'}
-              </span>
-              {item.zona && (
-                <span style={{ fontSize: '11px', color: 'var(--v3-text-soft)' }}>
-                  {situacionDesdeZona(item.zona)}
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {item.nombre}
+              </div>
+              <div style={{ color: 'var(--v3-text-soft)', fontSize: '11px', marginTop: '2px' }}>
+                {item.ticker}
+                {item.sector && ` · ${item.sector}`}
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  marginTop: '8px'
+                }}
+              >
+                <span style={{ fontSize: '16px', fontWeight: 700 }}>
+                  {item.precio !== null && item.precio !== undefined
+                    ? `${Number(item.precio).toFixed(2)} €`
+                    : '—'}
                 </span>
+                {item.zona && (
+                  <span style={{ fontSize: '11px', color: 'var(--v3-text-soft)' }}>
+                    {situacionDesdeZona(item.zona)}
+                  </span>
+                )}
+              </div>
+              {haCambiado && (
+                <div
+                  style={{
+                    marginTop: '8px',
+                    paddingTop: '6px',
+                    borderTop: '1px solid #bfdbfe',
+                    fontSize: '11px',
+                    color: '#1e40af',
+                    fontWeight: 600
+                  }}
+                >
+                  Ha cambiado desde tu última visita
+                </div>
               )}
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
