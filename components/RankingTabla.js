@@ -37,7 +37,8 @@ export default function RankingTabla({
   total,
   colapsable = true,
   tipo,
-  mostrarPercentil = true
+  mostrarPercentil = true,
+  verTodasHref = null
 }) {
   const [expandido, setExpandido] = useState(!colapsable);
 
@@ -54,6 +55,7 @@ export default function RankingTabla({
 
   const itemsVisibles = expandido ? items : items.slice(0, 3);
   const hayMas = items.length > 3;
+  const hayBotones = (colapsable && hayMas) || verTodasHref;
 
   return (
     <section className="v3-seccion">
@@ -136,23 +138,50 @@ export default function RankingTabla({
         </table>
       </div>
 
-      {colapsable && hayMas && (
-        <div style={{ marginTop: '12px', textAlign: 'center' }}>
-          <button
-            onClick={() => setExpandido(!expandido)}
-            style={{
-              padding: '8px 16px',
-              fontSize: '13px',
-              fontWeight: 600,
-              borderRadius: 'var(--v3-radius-sm)',
-              border: '1px solid var(--v3-border-strong)',
-              background: '#fff',
-              color: 'var(--v3-text)',
-              cursor: 'pointer'
-            }}
-          >
-            {expandido ? 'Ver solo los 3 primeros' : `Ver los ${items.length} primeros`}
-          </button>
+      {hayBotones && (
+        <div
+          style={{
+            marginTop: '12px',
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}
+        >
+          {colapsable && hayMas && (
+            <button
+              onClick={() => setExpandido(!expandido)}
+              style={{
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                borderRadius: 'var(--v3-radius-sm)',
+                border: '1px solid var(--v3-border-strong)',
+                background: '#fff',
+                color: 'var(--v3-text)',
+                cursor: 'pointer'
+              }}
+            >
+              {expandido ? 'Ver solo los 3 primeros' : `Ver los ${items.length} primeros`}
+            </button>
+          )}
+          {verTodasHref && (
+            <Link
+              href={verTodasHref}
+              style={{
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                borderRadius: 'var(--v3-radius-sm)',
+                border: '1px solid #2563eb',
+                background: '#2563eb',
+                color: '#fff',
+                textDecoration: 'none'
+              }}
+            >
+              Ver todas las empresas ({total || items.length})
+            </Link>
+          )}
         </div>
       )}
 
