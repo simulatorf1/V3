@@ -7,6 +7,7 @@ export default function Cabecera() {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   const enlaces = [
+    { href: '/hoy', texto: 'Hoy' },
     { href: '/empresas', texto: 'Empresas' },
     { href: '/sectores', texto: 'Sectores' },
     { href: '/noticias', texto: 'Noticias' },
