@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import Buscador from '../components/Buscador';
 import RankingTabla from '../components/RankingTabla';
 import ListaExtremos from '../components/ListaExtremos';
@@ -67,7 +66,7 @@ async function cargarDatos() {
         .select('ticker, movimiento_anterior, movimiento_nuevo, detectado_at')
         .gte('detectado_at', hace24h)
         .order('detectado_at', { ascending: false })
-        .limit(20)
+        .limit(40)
     ]);
 
     const paginas = paginasRes?.data || [];
@@ -198,6 +197,14 @@ async function cargarDatos() {
 export default async function Home() {
   const datos = await cargarDatos();
 
+  // Dividir cambios de zona en dos grupos: de baja a alta y de alta a baja
+  const cambiosABajaAlta = datos.cambiosZona.filter(
+    (c) => c.categoriaAnterior === 'C' && c.categoriaNueva === 'A'
+  );
+  const cambiosAAltaBaja = datos.cambiosZona.filter(
+    (c) => c.categoriaAnterior === 'A' && c.categoriaNueva === 'C'
+  );
+
   return (
     <main className="v3-container">
       <section className="v3-hero">
@@ -210,24 +217,7 @@ export default async function Home() {
 
       <Buscador />
 
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
-        <Link
-          href="/hoy"
-          style={{
-            padding: '10px 16px',
-            background: '#2563eb',
-            color: '#fff',
-            borderRadius: 'var(--v3-radius-sm)',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: '14px'
-          }}
-        >
-          Ver resumen de hoy →
-        </Link>
-      </div>
-
-      <div className="v3-home-grid">
+      <div style={{ marginTop: '12px' }} className="v3-home-grid">
         <div className="v3-span-2">
           <CambiosDesdeUltimaVisita empresas={datos.empresas} />
         </div>
