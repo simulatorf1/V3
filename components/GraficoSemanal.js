@@ -46,7 +46,6 @@ export default function GraficoSemanal({ velas, smis }) {
         }
       });
 
-      // VELAS del precio (semanal)
       const velasSeries = chart.addCandlestickSeries({
         upColor: '#2563eb',
         downColor: '#9ca3af',
@@ -58,7 +57,6 @@ export default function GraficoSemanal({ velas, smis }) {
       });
       velasSeries.setData(velasData);
 
-      // Área superior del rango (azul)
       const zonaSuperior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
         topFillColor1: 'rgba(37, 99, 235, 0.35)',
@@ -75,7 +73,6 @@ export default function GraficoSemanal({ velas, smis }) {
       });
       zonaSuperior.setData(smiData);
 
-      // Área inferior del rango (gris)
       const zonaInferior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: -40 },
         topFillColor1: 'rgba(156, 163, 175, 0)',
@@ -92,7 +89,6 @@ export default function GraficoSemanal({ velas, smis }) {
       });
       zonaInferior.setData(smiData);
 
-      // Línea del indicador semanal
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
@@ -161,19 +157,13 @@ export default function GraficoSemanal({ velas, smis }) {
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Evolución semanal del precio</h2>
-      <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
-        Cada vela representa una semana: azul si cerró por encima de su apertura, gris si cerró
-        por debajo. La línea morada es el indicador calculado con velas semanales. Esta vista
-        permite observar el comportamiento del precio en un periodo más amplio.
+      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
+        Cada vela representa una semana. La línea morada es el indicador calculado con velas
+        semanales. Para más detalle, consulta el "Cómo leer este gráfico" del gráfico diario.
       </p>
       <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
-      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '10px' }}>
-        Este gráfico representa exclusivamente información histórica ya ocurrida. No identifica
-        oportunidades de inversión, no anticipa movimientos futuros y no constituye recomendación
-        de inversión.
-      </p>
     </section>
   );
 }
