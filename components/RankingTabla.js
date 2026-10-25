@@ -13,10 +13,10 @@ function construirSlug(item) {
   return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function situacionDesdeZona(zona) {
-  if (zona === 'alta') return 'parte alta';
-  if (zona === 'baja') return 'parte baja';
-  return 'parte intermedia';
+function etiquetaZona(zona) {
+  if (zona === 'alta') return { texto: 'parte alta', clase: 'v3-zona-alta' };
+  if (zona === 'baja') return { texto: 'parte baja', clase: 'v3-zona-baja' };
+  return { texto: 'parte intermedia', clase: 'v3-zona-intermedia' };
 }
 
 function fmtPct(v, decimales = 2) {
@@ -38,7 +38,8 @@ export default function RankingTabla({
   colapsable = true,
   tipo,
   mostrarPercentil = true,
-  verTodasHref = null
+  verTodasHref = null,
+  filasIniciales = 3
 }) {
   const [expandido, setExpandido] = useState(!colapsable);
 
@@ -53,8 +54,8 @@ export default function RankingTabla({
     );
   }
 
-  const itemsVisibles = expandido ? items : items.slice(0, 3);
-  const hayMas = items.length > 3;
+  const itemsVisibles = expandido ? items : items.slice(0, filasIniciales);
+  const hayMas = items.length > filasIniciales;
   const hayBotones = (colapsable && hayMas) || verTodasHref;
 
   return (
@@ -102,38 +103,47 @@ export default function RankingTabla({
             </tr>
           </thead>
           <tbody>
-            {itemsVisibles.map((item, i) => (
-              <tr key={item.ticker}>
-                <td style={{ color: 'var(--v3-text-mute)' }}>{i + 1}</td>
-                <td>
-                  <Link
-                    href={`/analisis/${construirSlug(item)}`}
-                    style={{ color: 'var(--v3-text)', fontWeight: 600 }}
-                  >
-                    {item.nombre}
-                  </Link>
-                  <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
-                    {item.ticker}
-                    {item.sector && ` · ${item.sector}`}
-                  </div>
-                </td>
-                <td>
-                  {item.precio !== null && item.precio !== undefined
-                    ? `${Number(item.precio).toFixed(2)} €`
-                    : '—'}
-                </td>
-                <td>{fmtPct(item.variacion5)}</td>
-                <td>{fmtPct(item.variacion60)}</td>
-                <td>{item.zona ? situacionDesdeZona(item.zona) : '—'}</td>
-                {mostrarPercentil && (
+            {itemsVisibles.map((item, i) => {
+              const zona = etiquetaZona(item.zona);
+              return (
+                <tr key={item.ticker}>
+                  <td style={{ color: 'var(--v3-text-mute)' }}>{i + 1}</td>
                   <td>
-                    {item.percentil !== null && item.percentil !== undefined
-                      ? item.percentil
+                    <Link
+                      href={`/analisis/${construirSlug(item)}`}
+                      style={{ color: 'var(--v3-text)', fontWeight: 600 }}
+                    >
+                      {item.nombre}
+                    </Link>
+                    <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
+                      {item.ticker}
+                      {item.sector && ` · ${item.sector}`}
+                    </div>
+                  </td>
+                  <td>
+                    {item.precio !== null && item.precio !== undefined
+                      ? `${Number(item.precio).toFixed(2)} €`
                       : '—'}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td>{fmtPct(item.variacion5)}</td>
+                  <td>{fmtPct(item.variacion60)}</td>
+                  <td>
+                    {item.zona ? (
+                      <span className={`v3-zona-tag ${zona.clase}`}>{zona.texto}</span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  {mostrarPercentil && (
+                    <td>
+                      {item.percentil !== null && item.percentil !== undefined
+                        ? item.percentil
+                        : '—'}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -162,7 +172,9 @@ export default function RankingTabla({
                 cursor: 'pointer'
               }}
             >
-              {expandido ? 'Ver solo los 3 primeros' : `Ver los ${items.length} primeros`}
+              {expandido
+                ? `Ver solo los ${filasIniciales} primeros`
+                : `Ver los ${items.length} primeros`}
             </button>
           )}
           {verTodasHref && (
