@@ -10,10 +10,72 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function situacionDesdeCategoria(cat) {
-  if (cat === 'A') return 'parte alta';
-  if (cat === 'C') return 'parte baja';
-  return 'parte intermedia';
+function etiquetaCategoria(cat) {
+  if (cat === 'A') return { texto: 'parte alta', clase: 'v3-zona-alta' };
+  if (cat === 'C') return { texto: 'parte baja', clase: 'v3-zona-baja' };
+  return { texto: 'parte intermedia', clase: 'v3-zona-intermedia' };
+}
+
+function Bloque({ titulo, items }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div>
+      <h3
+        style={{
+          fontSize: '12px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+          color: 'var(--v3-text-mute)',
+          margin: '0 0 8px 0'
+        }}
+      >
+        {titulo}
+      </h3>
+      <div style={{ display: 'grid', gap: '6px' }}>
+        {items.map((c) => {
+          const ant = etiquetaCategoria(c.categoriaAnterior);
+          const nue = etiquetaCategoria(c.categoriaNueva);
+          return (
+            <Link
+              key={c.ticker}
+              href={`/analisis/${construirSlug(c)}`}
+              style={{
+                display: 'block',
+                padding: '10px 12px',
+                background: '#fff',
+                border: '1px solid var(--v3-border)',
+                borderRadius: 'var(--v3-radius-sm)',
+                textDecoration: 'none',
+                color: 'var(--v3-text)'
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {c.nombre}
+              </div>
+              <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px', marginTop: '2px' }}>
+                {c.ticker}
+                {c.sector && ` · ${c.sector}`}
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '11px' }}>
+                <span className={`v3-zona-tag ${ant.clase}`}>{ant.texto}</span>
+                <span style={{ margin: '0 4px', color: 'var(--v3-text-mute)' }}>→</span>
+                <span className={`v3-zona-tag ${nue.clase}`}>{nue.texto}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function ListaCambiosZona({ cambios }) {
@@ -21,30 +83,26 @@ export default function ListaCambiosZona({ cambios }) {
     return (
       <section className="v3-seccion">
         <h2 className="v3-seccion-titulo">Cambios de zona de hoy</h2>
-        <p style={{ color: 'var(--v3-text-soft)' }}>
+        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
           Ninguna empresa ha cambiado de zona en las últimas 24 horas.
         </p>
-        <div style={{ marginTop: '12px', textAlign: 'center' }}>
-          <Link
-            href="/cambios"
-            style={{
-              display: 'inline-block',
-              padding: '8px 16px',
-              fontSize: '13px',
-              fontWeight: 600,
-              borderRadius: 'var(--v3-radius-sm)',
-              border: '1px solid var(--v3-border-strong)',
-              background: '#fff',
-              color: 'var(--v3-text)',
-              textDecoration: 'none'
-            }}
-          >
-            Ver historial completo
-          </Link>
-        </div>
       </section>
     );
   }
+
+  const haciaArriba = cambios.filter(
+    (c) => c.categoriaAnterior === 'C' && c.categoriaNueva === 'A'
+  );
+  const haciaAbajo = cambios.filter(
+    (c) => c.categoriaAnterior === 'A' && c.categoriaNueva === 'C'
+  );
+  const otros = cambios.filter(
+    (c) =>
+      !(c.categoriaAnterior === 'C' && c.categoriaNueva === 'A') &&
+      !(c.categoriaAnterior === 'A' && c.categoriaNueva === 'C')
+  );
+
+  const hayGrupos = haciaArriba.length > 0 || haciaAbajo.length > 0;
 
   return (
     <section className="v3-seccion">
@@ -53,58 +111,52 @@ export default function ListaCambiosZona({ cambios }) {
         Empresas que han cambiado de zona respecto a la sesión anterior. Dato descriptivo.
       </p>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: '10px',
-          marginTop: '12px',
-          width: '100%',
-          maxWidth: '100%',
-          minWidth: 0
-        }}
-      >
-        {cambios.map((c) => (
-          <Link
-            key={c.ticker}
-            href={`/analisis/${construirSlug(c)}`}
-            style={{
-              display: 'block',
-              padding: '12px 14px',
-              background: '#fff',
-              border: '1px solid var(--v3-border)',
-              borderRadius: 'var(--v3-radius-sm)',
-              textDecoration: 'none',
-              color: 'var(--v3-text)',
-              minWidth: 0,
-              maxWidth: '100%',
-              boxSizing: 'border-box'
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: '14px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {c.nombre}
-            </div>
-            <div style={{ color: 'var(--v3-text-soft)', fontSize: '11px', marginTop: '2px' }}>
-              {c.ticker}
-              {c.sector && ` · ${c.sector}`}
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '6px' }}>
-              Antes: {situacionDesdeCategoria(c.categoriaAnterior)}
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--v3-text)', fontWeight: 600 }}>
-              Ahora: {situacionDesdeCategoria(c.categoriaNueva)}
-            </div>
-          </Link>
-        ))}
-      </div>
+      {hayGrupos ? (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '16px',
+            marginTop: '12px'
+          }}
+        >
+          <Bloque titulo="De parte baja a parte alta" items={haciaArriba} />
+          <Bloque titulo="De parte alta a parte baja" items={haciaAbajo} />
+        </div>
+      ) : (
+        <div style={{ marginTop: '12px', display: 'grid', gap: '6px' }}>
+          {otros.map((c) => {
+            const ant = etiquetaCategoria(c.categoriaAnterior);
+            const nue = etiquetaCategoria(c.categoriaNueva);
+            return (
+              <Link
+                key={c.ticker}
+                href={`/analisis/${construirSlug(c)}`}
+                style={{
+                  display: 'block',
+                  padding: '10px 12px',
+                  background: '#fff',
+                  border: '1px solid var(--v3-border)',
+                  borderRadius: 'var(--v3-radius-sm)',
+                  textDecoration: 'none',
+                  color: 'var(--v3-text)'
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '13px' }}>{c.nombre}</div>
+                <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
+                  {c.ticker}
+                  {c.sector && ` · ${c.sector}`}
+                </div>
+                <div style={{ marginTop: '6px', fontSize: '11px' }}>
+                  <span className={`v3-zona-tag ${ant.clase}`}>{ant.texto}</span>
+                  <span style={{ margin: '0 4px', color: 'var(--v3-text-mute)' }}>→</span>
+                  <span className={`v3-zona-tag ${nue.clase}`}>{nue.texto}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ marginTop: '12px', textAlign: 'center' }}>
         <Link
