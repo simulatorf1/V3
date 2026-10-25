@@ -449,11 +449,6 @@ export default async function PaginaEmpresa({ params }) {
 
           <section className="v3-seccion">
             <h2 className="v3-seccion-titulo">Evolución del precio y del indicador Equaty</h2>
-            <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
-              La <strong>línea azul</strong> es el precio. La <strong>línea morada</strong> es el
-              indicador Equaty: cuanto más arriba está, más cerca ha cotizado el precio de sus
-              máximos recientes; cuanto más abajo, más cerca de sus mínimos.
-            </p>
             <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
           </section>
 
