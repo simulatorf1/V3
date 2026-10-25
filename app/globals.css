@@ -456,3 +456,34 @@ ul {
     align-items: start;
   }
 }
+/* Etiquetas de zona coloreadas (parte alta / parte baja / intermedia) */
+.v3-zona-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.v3-zona-alta {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+.v3-zona-baja {
+  background: #f3f4f6;
+  color: #374151;
+}
+.v3-zona-intermedia {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* Botón "añadir a mi lista" con pulso suave */
+@keyframes v3-pulso-favorito {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+}
+.v3-btn-favorito {
+  animation: v3-pulso-favorito 2s ease-in-out infinite;
+}
