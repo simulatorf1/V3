@@ -234,6 +234,7 @@ export default async function Home() {
             total={datos.totalRanking}
             colapsable={true}
             verTodasHref="/empresas"
+            filasIniciales={6}
           />
         </div>
         <div>
