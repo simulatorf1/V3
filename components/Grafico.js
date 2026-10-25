@@ -46,7 +46,6 @@ export default function Grafico({ velas, smis }) {
         }
       });
 
-      // VELAS del precio (diario)
       const velasSeries = chart.addCandlestickSeries({
         upColor: '#2563eb',
         downColor: '#9ca3af',
@@ -58,7 +57,6 @@ export default function Grafico({ velas, smis }) {
       });
       velasSeries.setData(velasData);
 
-      // Área superior del rango (azul)
       const zonaSuperior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: 40 },
         topFillColor1: 'rgba(37, 99, 235, 0.35)',
@@ -75,7 +73,6 @@ export default function Grafico({ velas, smis }) {
       });
       zonaSuperior.setData(smiData);
 
-      // Área inferior del rango (gris)
       const zonaInferior = chart.addBaselineSeries({
         baseValue: { type: 'price', price: -40 },
         topFillColor1: 'rgba(156, 163, 175, 0)',
@@ -92,7 +89,6 @@ export default function Grafico({ velas, smis }) {
       });
       zonaInferior.setData(smiData);
 
-      // Línea del indicador
       const smiLine = chart.addLineSeries({
         color: '#7b1fa2',
         lineWidth: 2,
@@ -161,16 +157,37 @@ export default function Grafico({ velas, smis }) {
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico principal (diario)</h2>
+
+      <details
+        style={{
+          marginBottom: '8px',
+          fontSize: '13px',
+          color: 'var(--v3-text-soft)'
+        }}
+      >
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+          Cómo leer este gráfico
+        </summary>
+        <div style={{ paddingTop: '8px', lineHeight: 1.6 }}>
+          <p style={{ margin: '0 0 6px 0' }}>
+            Cada vela representa una sesión: azul si cerró por encima de su apertura, gris si
+            cerró por debajo.
+          </p>
+          <p style={{ margin: '0 0 6px 0' }}>
+            La línea morada es el indicador Equaty. Cuanto más arriba está, más cerca ha cotizado
+            el precio de sus máximos recientes; cuanto más abajo, más cerca de sus mínimos.
+          </p>
+          <p style={{ margin: 0 }}>
+            Este gráfico representa exclusivamente información histórica ya ocurrida. No
+            identifica oportunidades de inversión, no anticipa movimientos futuros y no
+            constituye recomendación de inversión.
+          </p>
+        </div>
+      </details>
+
       <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
-      <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '10px' }}>
-        Cada vela representa una sesión: azul si cerró por encima de su apertura, gris si cerró
-        por debajo. La línea morada es el indicador: cuanto más arriba está, más cerca ha cotizado
-        el precio de sus máximos recientes; cuanto más abajo, más cerca de sus mínimos. Esta
-        representación es exclusivamente descriptiva de datos históricos y no constituye
-        recomendación de inversión.
-      </p>
     </section>
   );
 }
