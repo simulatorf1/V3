@@ -38,25 +38,50 @@ export default function Buscador() {
 
   return (
     <div className="v3-card" style={{ marginTop: '20px' }}>
-      <form onSubmit={buscar} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      <form
+        onSubmit={buscar}
+        style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          alignItems: 'stretch'
+        }}
+      >
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Busca por nombre o ticker (ej. Microsoft, Apple, Audax)"
           style={{
-            flex: 1,
-            minWidth: '220px',
-            padding: '12px 14px',
-            fontSize: '15px',
+            flex: '1 1 260px',
+            maxWidth: '420px',
+            padding: '10px 14px',
+            fontSize: '14px',
             border: '1px solid var(--v3-border-strong)',
             borderRadius: 'var(--v3-radius-sm)',
             outline: 'none'
           }}
         />
-        <button type="submit" className="v3-btn">
+        <button type="submit" className="v3-btn" style={{ whiteSpace: 'nowrap' }}>
           Buscar
         </button>
+        <Link
+          href="/hoy"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '10px 16px',
+            background: '#2563eb',
+            color: '#fff',
+            borderRadius: 'var(--v3-radius-sm)',
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: '14px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Ver resumen de hoy →
+        </Link>
       </form>
 
       {cargando && (
