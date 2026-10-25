@@ -51,10 +51,20 @@ function calcularRachaZona(smis, zonaActual) {
   return { racha, zona: zonaActual };
 }
 
-function situacionDesdeZona(zona) {
-  if (zona === 'alta') return 'parte alta';
-  if (zona === 'baja') return 'parte baja';
-  return 'parte intermedia';
+function etiquetaZona(zona) {
+  if (zona === 'alta') return { texto: 'parte alta', clase: 'v3-zona-alta' };
+  if (zona === 'baja') return { texto: 'parte baja', clase: 'v3-zona-baja' };
+  return { texto: 'parte intermedia', clase: 'v3-zona-intermedia' };
+}
+
+function construirSlug(item) {
+  const nombreLimpio = (item.nombre || item.ticker)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
 async function cargarCambios24h() {
@@ -65,7 +75,7 @@ async function cargarCambios24h() {
       .select('ticker, movimiento_anterior, movimiento_nuevo, detectado_at')
       .gte('detectado_at', hace24h)
       .order('detectado_at', { ascending: false })
-      .limit(20);
+      .limit(40);
 
     if (!cambios || cambios.length === 0) return [];
 
@@ -185,7 +195,7 @@ async function cargarRachas() {
       });
     }
 
-    return items.sort((a, b) => b.racha - a.racha).slice(0, 10);
+    return items.sort((a, b) => b.racha - a.racha);
   } catch (e) {
     console.error('[hoy] Error rachas:', e.message);
     return [];
@@ -199,6 +209,9 @@ export default async function PaginaHoy() {
     cargarRachas()
   ]);
 
+  const rachasAltas = rachas.filter((r) => r.zona === 'alta').slice(0, 5);
+  const rachasBajas = rachas.filter((r) => r.zona === 'baja').slice(0, 5);
+
   return (
     <main className="v3-container" style={{ maxWidth: '900px', margin: '0 auto' }}>
       <h1>Hoy</h1>
@@ -209,47 +222,101 @@ export default async function PaginaHoy() {
 
       <ListaCambiosZona cambios={cambios} />
 
-      {rachas.length > 0 && (
+      {(rachasAltas.length > 0 || rachasBajas.length > 0) && (
         <section className="v3-seccion">
           <h2 className="v3-seccion-titulo">Rachas más largas</h2>
           <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
             Empresas con más sesiones consecutivas en la misma zona del rango de 60 sesiones.
           </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0', display: 'grid', gap: '6px' }}>
-            {rachas.map((r) => {
-              const slug = `${r.ticker.toLowerCase()}__${(r.nombre || r.ticker)
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')}`;
-              return (
-                <li key={r.ticker}>
-                  <Link
-                    href={`/analisis/${slug}`}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 14px',
-                      background: '#fff',
-                      border: '1px solid var(--v3-border)',
-                      borderRadius: 'var(--v3-radius-sm)',
-                      textDecoration: 'none',
-                      color: 'var(--v3-text)',
-                      fontSize: '13px'
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>{r.nombre}</span>
-                    <span style={{ color: 'var(--v3-text-soft)', fontSize: '12px' }}>
-                      {r.racha} sesiones en {situacionDesdeZona(r.zona)}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '16px',
+              marginTop: '12px'
+            }}
+          >
+            {rachasAltas.length > 0 && (
+              <div>
+                <h3
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'var(--v3-text-mute)',
+                    margin: '0 0 8px 0'
+                  }}
+                >
+                  En parte alta
+                </h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '6px' }}>
+                  {rachasAltas.map((r) => (
+                    <li key={r.ticker}>
+                      <Link
+                        href={`/analisis/${construirSlug(r)}`}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          background: '#fff',
+                          border: '1px solid var(--v3-border)',
+                          borderRadius: 'var(--v3-radius-sm)',
+                          textDecoration: 'none',
+                          color: 'var(--v3-text)',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>{r.nombre}</span>
+                        <span style={{ color: 'var(--v3-text-soft)', fontSize: '12px' }}>
+                          {r.racha} sesiones
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {rachasBajas.length > 0 && (
+              <div>
+                <h3
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'var(--v3-text-mute)',
+                    margin: '0 0 8px 0'
+                  }}
+                >
+                  En parte baja
+                </h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '6px' }}>
+                  {rachasBajas.map((r) => (
+                    <li key={r.ticker}>
+                      <Link
+                        href={`/analisis/${construirSlug(r)}`}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          background: '#fff',
+                          border: '1px solid var(--v3-border)',
+                          borderRadius: 'var(--v3-radius-sm)',
+                          textDecoration: 'none',
+                          color: 'var(--v3-text)',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>{r.nombre}</span>
+                        <span style={{ color: 'var(--v3-text-soft)', fontSize: '12px' }}>
+                          {r.racha} sesiones
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
