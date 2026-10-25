@@ -10,10 +10,78 @@ function construirSlug(item) {
   return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function situacionDesdeZona(zona) {
-  if (zona === 'alta') return 'parte alta del rango';
-  if (zona === 'baja') return 'parte baja del rango';
-  return 'parte intermedia del rango';
+function Bloque({ titulo, items, color }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="v3-card" style={{ padding: '16px' }}>
+      <h3
+        style={{
+          margin: '0 0 12px 0',
+          fontSize: '13px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+          color
+        }}
+      >
+        {titulo}
+      </h3>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+          gap: '8px'
+        }}
+      >
+        {items.map((item) => (
+          <Link
+            key={item.ticker}
+            href={`/analisis/${construirSlug(item)}`}
+            style={{
+              display: 'block',
+              padding: '10px 12px',
+              background: '#fff',
+              border: '1px solid var(--v3-border)',
+              borderRadius: 'var(--v3-radius-sm)',
+              textDecoration: 'none',
+              color: 'var(--v3-text)'
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: '13px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {item.nombre}
+            </div>
+            <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px', marginTop: '2px' }}>
+              {item.ticker}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginTop: '8px'
+              }}
+            >
+              <span style={{ fontSize: '14px', fontWeight: 700 }}>P{item.percentil}</span>
+              <span
+                className="v3-zona-tag v3-zona-alta"
+                style={{ fontSize: '10px' }}
+              >
+                {item.percentil >= 90 ? 'alta' : 'baja'}
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function ListaExtremos({ altos, bajos }) {
@@ -49,57 +117,10 @@ export default function ListaExtremos({ altos, bajos }) {
         }}
       >
         {hayAltos && (
-          <div
-            className="v3-card"
-            style={{ padding: '16px', borderLeft: '3px solid #2563eb' }}
-          >
-            <h3 style={{ marginTop: 0, fontSize: '14px' }}>
-              Percentil ≥ 90 · parte alta
-            </h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {altos.map((item) => (
-                <li key={item.ticker} style={{ marginBottom: '8px' }}>
-                  <Link
-                    href={`/analisis/${construirSlug(item)}`}
-                    style={{ color: 'var(--v3-text)', fontWeight: 600 }}
-                  >
-                    {item.nombre}
-                  </Link>
-                  <span style={{ color: 'var(--v3-text-mute)', fontSize: '12px' }}>
-                    {' '}
-                    · {item.percentil}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Bloque titulo="Percentil ≥ 90 · parte alta" items={altos} color="#1e3a8a" />
         )}
-
         {hayBajos && (
-          <div
-            className="v3-card"
-            style={{ padding: '16px', borderLeft: '3px solid #9ca3af' }}
-          >
-            <h3 style={{ marginTop: 0, fontSize: '14px' }}>
-              Percentil ≤ 10 · parte baja
-            </h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {bajos.map((item) => (
-                <li key={item.ticker} style={{ marginBottom: '8px' }}>
-                  <Link
-                    href={`/analisis/${construirSlug(item)}`}
-                    style={{ color: 'var(--v3-text)', fontWeight: 600 }}
-                  >
-                    {item.nombre}
-                  </Link>
-                  <span style={{ color: 'var(--v3-text-mute)', fontSize: '12px' }}>
-                    {' '}
-                    · {item.percentil}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Bloque titulo="Percentil ≤ 10 · parte baja" items={bajos} color="#374151" />
         )}
       </div>
     </section>
