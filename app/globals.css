@@ -432,3 +432,27 @@ ul {
     grid-column: 1 / -1;
   }
 }
+/* Layout de dos columnas para la ficha. En móvil se apila. */
+.v3-ficha-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.v3-ficha-grid > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .v3-ficha-grid {
+    grid-template-columns: 1.6fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+}
