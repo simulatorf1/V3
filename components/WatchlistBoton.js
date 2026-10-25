@@ -18,7 +18,8 @@ export default function WatchlistBoton({ ticker, nombre }) {
   return (
     <button
       onClick={toggle}
-      title={enLista ? 'Quitar de mi lista' : 'Añadir a mi lista'}
+      className={enLista ? '' : 'v3-btn-favorito'}
+      title={enLista ? 'Quitar de mis favoritas' : 'Añadir a mis favoritas'}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -27,13 +28,13 @@ export default function WatchlistBoton({ ticker, nombre }) {
         fontSize: '13px',
         fontWeight: 600,
         borderRadius: 'var(--v3-radius-sm)',
-        border: enLista ? '1px solid #2563eb' : '1px solid var(--v3-border-strong)',
+        border: enLista ? '1px solid #2563eb' : '1px solid #2563eb',
         background: enLista ? '#2563eb' : '#fff',
-        color: enLista ? '#fff' : 'var(--v3-text)',
+        color: enLista ? '#fff' : '#2563eb',
         cursor: 'pointer'
       }}
     >
-      {enLista ? '★ En mi lista' : '☆ Añadir a mi lista'}
+      {enLista ? '★ En mis favoritas' : '☆ Añadir a mis favoritas'}
     </button>
   );
 }
