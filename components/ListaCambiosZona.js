@@ -24,6 +24,24 @@ export default function ListaCambiosZona({ cambios }) {
         <p style={{ color: 'var(--v3-text-soft)' }}>
           Ninguna empresa ha cambiado de zona en las últimas 24 horas.
         </p>
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          <Link
+            href="/cambios"
+            style={{
+              display: 'inline-block',
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: 600,
+              borderRadius: 'var(--v3-radius-sm)',
+              border: '1px solid var(--v3-border-strong)',
+              background: '#fff',
+              color: 'var(--v3-text)',
+              textDecoration: 'none'
+            }}
+          >
+            Ver historial completo
+          </Link>
+        </div>
       </section>
     );
   }
@@ -86,6 +104,25 @@ export default function ListaCambiosZona({ cambios }) {
             </div>
           </Link>
         ))}
+      </div>
+
+      <div style={{ marginTop: '12px', textAlign: 'center' }}>
+        <Link
+          href="/cambios"
+          style={{
+            display: 'inline-block',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: 600,
+            borderRadius: 'var(--v3-radius-sm)',
+            border: '1px solid var(--v3-border-strong)',
+            background: '#fff',
+            color: 'var(--v3-text)',
+            textDecoration: 'none'
+          }}
+        >
+          Ver historial completo
+        </Link>
       </div>
     </section>
   );
