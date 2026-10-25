@@ -3,11 +3,9 @@ import Link from 'next/link';
 import Grafico from '../../../components/Grafico';
 import GraficoSemanal from '../../../components/GraficoSemanal';
 import ContextoReciente from '../../../components/ContextoReciente';
-import TablaSenales from '../../../components/TablaSenales';
 import RegistrarVisita from '../../../components/RegistrarVisita';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
-import MovimientosHoyCliente from '../../../components/MovimientosHoyCliente';
 import FormularioAlerta from '../../../components/FormularioAlerta';
 import Comparador from '../../../components/Comparador';
 import WatchlistBoton from '../../../components/WatchlistBoton';
@@ -158,7 +156,6 @@ async function cargarContextoSector(tickerActual, sector) {
       .sort((a, b) => a.percentil - b.percentil)
       .slice(0, 8);
 
-    // Cambios de zona del sector en los últimos 7 días
     const hace7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data: cambiosRaw } = await supabaseAdmin
       .from('cambios_movimiento')
@@ -339,19 +336,10 @@ export default async function PaginaEmpresa({ params }) {
   const situacionActual = situacionDesdeZona(analisis.zona);
   const consenso = await cargarConsenso(empresa.ticker);
 
-  const senales = analisis.senales || [];
-  const ultimaSenal = senales.length > 0 ? senales[senales.length - 1] : null;
-
   const primerCierre = velas[0]?.close;
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre ? ((ultimoCierre - primerCierre) / primerCierre) * 100 : 0;
 
-  const variacionSector60 =
-    analisis.sectorInfo && analisis.sectorInfo.variacionSector60 !== null
-      ? analisis.sectorInfo.variacionSector60
-      : null;
-
-  // Contexto de sector
   const contexto = await cargarContextoSector(empresa.ticker, empresa.sector);
 
   const estiloAcordeon = {
@@ -404,9 +392,7 @@ export default async function PaginaEmpresa({ params }) {
         {desdeCache && ' · desde caché'}
       </p>
 
-      {/* GRID DE DOS COLUMNAS */}
       <div className="v3-ficha-grid">
-        {/* COLUMNA IZQUIERDA: contenido principal */}
         <div>
           <section className="v3-seccion" style={{ marginTop: '20px' }}>
             <div className="v3-card" style={{ padding: '20px' }}>
@@ -477,20 +463,6 @@ export default async function PaginaEmpresa({ params }) {
 
           <Comparador tickerActual={empresa.ticker} nombreActual={empresa.nombre} />
 
-          <details open style={estiloAcordeon}>
-            <summary style={estiloSummary}>Historial de cambios de esta empresa</summary>
-            <div style={{ padding: '0 20px 20px 20px' }}>
-              <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: 0 }}>
-                Cada fila muestra una sesión en la que el precio cambió de situación dentro de su rango.
-              </p>
-              <TablaSenales senales={analisis.senales} precioActual={null} />
-            </div>
-          </details>
-
-          <section style={{ marginTop: '16px' }}>
-            <MovimientosHoyCliente variante="home" />
-          </section>
-
           {analisis.noticias && analisis.noticias.length > 0 && (
             <ContextoReciente noticias={analisis.noticias} />
           )}
@@ -535,7 +507,6 @@ export default async function PaginaEmpresa({ params }) {
           </details>
         </div>
 
-        {/* COLUMNA DERECHA: contexto de sector, alertas, encuesta, compartir */}
         <div>
           <ContextoSector
             tickerActual={empresa.ticker}
