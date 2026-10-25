@@ -456,7 +456,12 @@ export default async function PaginaEmpresa({ params }) {
             <GraficoSemanal velas={analisis.velasSemanales} smis={analisis.smisSemanales || []} />
           )}
 
-          <Comparador tickerActual={empresa.ticker} nombreActual={empresa.nombre} />
+          <Comparador
+            tickerActual={empresa.ticker}
+            nombreActual={empresa.nombre}
+            tickerMejorSector={contexto.ranking[0]?.ticker || null}
+            nombreMejorSector={contexto.ranking[0]?.nombre || null}
+          />
 
           {analisis.noticias && analisis.noticias.length > 0 && (
             <ContextoReciente noticias={analisis.noticias} />
