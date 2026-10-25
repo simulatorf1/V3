@@ -7,13 +7,21 @@ const WatchlistContext = createContext({
   agregar: () => {},
   quitar: () => {},
   tiene: () => false,
-  listo: false
+  listo: false,
+  zonas: {},
+  ultimaVisita: null,
+  actualizarZonas: () => {},
+  marcarVisita: () => {},
+  getZonaAnterior: () => null
 });
 
 const STORAGE_KEY = 'equaty_watchlist_v1';
+const ESTADO_KEY = 'equaty_watchlist_estado_v1';
 
 export function WatchlistProvider({ children }) {
   const [lista, setLista] = useState([]);
+  const [zonas, setZonas] = useState({});
+  const [ultimaVisita, setUltimaVisita] = useState(null);
   const [listo, setListo] = useState(false);
 
   useEffect(() => {
@@ -25,15 +33,37 @@ export function WatchlistProvider({ children }) {
           setLista(parsed.map((t) => String(t).toUpperCase()));
         }
       }
-    } catch (e) {
-      // si falla el parseo, empezamos vacío
-    }
+      const rawEstado = window.localStorage.getItem(ESTADO_KEY);
+      if (rawEstado) {
+        const parsedEstado = JSON.parse(rawEstado);
+        if (parsedEstado && typeof parsedEstado === 'object') {
+          if (parsedEstado.zonas && typeof parsedEstado.zonas === 'object') {
+            setZonas(parsedEstado.zonas);
+          }
+          if (parsedEstado.ultimaVisita) {
+            setUltimaVisita(parsedEstado.ultimaVisita);
+          }
+        }
+      }
+    } catch (e) {}
     setListo(true);
   }, []);
 
-  function persistir(nuevaLista) {
+  function persistirLista(nuevaLista) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevaLista));
+    } catch (e) {}
+  }
+
+  function persistirEstado(nuevasZonas, nuevaUltimaVisita) {
+    try {
+      window.localStorage.setItem(
+        ESTADO_KEY,
+        JSON.stringify({
+          zonas: nuevasZonas,
+          ultimaVisita: nuevaUltimaVisita
+        })
+      );
     } catch (e) {}
   }
 
@@ -43,7 +73,7 @@ export function WatchlistProvider({ children }) {
     setLista((prev) => {
       if (prev.includes(t)) return prev;
       const nueva = [...prev, t];
-      persistir(nueva);
+      persistirLista(nueva);
       return nueva;
     });
   }
@@ -53,8 +83,14 @@ export function WatchlistProvider({ children }) {
     const t = String(ticker).toUpperCase();
     setLista((prev) => {
       const nueva = prev.filter((x) => x !== t);
-      persistir(nueva);
+      persistirLista(nueva);
       return nueva;
+    });
+    setZonas((prev) => {
+      const nuevas = { ...prev };
+      delete nuevas[t];
+      persistirEstado(nuevas, ultimaVisita);
+      return nuevas;
     });
   }
 
@@ -63,8 +99,41 @@ export function WatchlistProvider({ children }) {
     return lista.includes(String(ticker).toUpperCase());
   }
 
+  function actualizarZonas(nuevasZonas) {
+    if (!nuevasZonas || typeof nuevasZonas !== 'object') return;
+    setZonas((prev) => {
+      const combinado = { ...prev, ...nuevasZonas };
+      persistirEstado(combinado, ultimaVisita);
+      return combinado;
+    });
+  }
+
+  function marcarVisita() {
+    const ahora = new Date().toISOString();
+    setUltimaVisita(ahora);
+    persistirEstado(zonas, ahora);
+  }
+
+  function getZonaAnterior(ticker) {
+    if (!ticker) return null;
+    return zonas[String(ticker).toUpperCase()] || null;
+  }
+
   return (
-    <WatchlistContext.Provider value={{ lista, agregar, quitar, tiene, listo }}>
+    <WatchlistContext.Provider
+      value={{
+        lista,
+        agregar,
+        quitar,
+        tiene,
+        listo,
+        zonas,
+        ultimaVisita,
+        actualizarZonas,
+        marcarVisita,
+        getZonaAnterior
+      }}
+    >
       {children}
     </WatchlistContext.Provider>
   );
