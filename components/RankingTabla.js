@@ -24,7 +24,21 @@ function fmtPct(v, decimales = 2) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(decimales)}%`;
 }
 
-export default function RankingTabla({ items, titulo, total, colapsable = true }) {
+function textoSubtitulo(tipo) {
+  if (tipo === 'variacion5') return 'Ordenado de mayor a menor variación en 5 sesiones.';
+  if (tipo === 'variacion60') return 'Ordenado de mayor a menor variación en 60 sesiones.';
+  if (tipo === 'percentil') return 'Ordenado de mayor a menor percentil.';
+  return 'Ordenado de mayor a menor variación.';
+}
+
+export default function RankingTabla({
+  items,
+  titulo,
+  total,
+  colapsable = true,
+  tipo,
+  mostrarPercentil = true
+}) {
   const [expandido, setExpandido] = useState(!colapsable);
 
   if (!items || items.length === 0) {
@@ -45,9 +59,12 @@ export default function RankingTabla({ items, titulo, total, colapsable = true }
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">{titulo || 'Ranking'}</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Ordenado de mayor a menor variación en 60 sesiones.
+        {textoSubtitulo(tipo)}
         {total !== undefined && total !== null && (
-          <span> Mostrando {itemsVisibles.length} de {total} empresas con datos disponibles.</span>
+          <span>
+            {' '}
+            Mostrando {itemsVisibles.length} de {total} empresas con datos disponibles.
+          </span>
         )}
       </p>
 
@@ -79,7 +96,7 @@ export default function RankingTabla({ items, titulo, total, colapsable = true }
               <th>Var. 5 ses.</th>
               <th>Var. 60 ses.</th>
               <th>Situación</th>
-              <th>Percentil</th>
+              {mostrarPercentil && <th>Percentil</th>}
             </tr>
           </thead>
           <tbody>
@@ -106,11 +123,13 @@ export default function RankingTabla({ items, titulo, total, colapsable = true }
                 <td>{fmtPct(item.variacion5)}</td>
                 <td>{fmtPct(item.variacion60)}</td>
                 <td>{item.zona ? situacionDesdeZona(item.zona) : '—'}</td>
-                <td>
-                  {item.percentil !== null && item.percentil !== undefined
-                    ? item.percentil
-                    : '—'}
-                </td>
+                {mostrarPercentil && (
+                  <td>
+                    {item.percentil !== null && item.percentil !== undefined
+                      ? item.percentil
+                      : '—'}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
