@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import { WatchlistProvider } from '../components/WatchlistContext';
+import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -64,6 +65,7 @@ export default function RootLayout({ children }) {
         }}
       >
         <WatchlistProvider>
+          <RegistrarVisitaGlobal />
           <Cabecera />
           <div style={{ minHeight: '60vh' }}>{children}</div>
           <Pie />
