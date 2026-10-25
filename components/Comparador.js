@@ -79,7 +79,14 @@ function BarraComparativa({ etiqueta, ayuda, valores, min, max, formato }) {
           }
           const izquierda = Math.min(ceroPct, pct);
           const ancho = Math.abs(pct - ceroPct);
-          const color = clamped === null ? '#e5e7eb' : clamped >= 0 ? '#2563eb' : '#9ca3af';
+          const color =
+            clamped === null
+              ? '#e5e7eb'
+              : v.esMejorSector
+              ? '#16a34a'
+              : clamped >= 0
+              ? '#2563eb'
+              : '#9ca3af';
 
           return (
             <div key={v.ticker} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -91,7 +98,8 @@ function BarraComparativa({ etiqueta, ayuda, valores, min, max, formato }) {
                   flexShrink: 0,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  fontWeight: v.esMejorSector ? 700 : 400
                 }}
                 title={v.nombre}
               >
@@ -163,13 +171,24 @@ function BarraComparativa({ etiqueta, ayuda, valores, min, max, formato }) {
   );
 }
 
-export default function Comparador({ tickerActual, nombreActual }) {
-  const [tickers, setTickers] = useState([tickerActual]);
+export default function Comparador({
+  tickerActual,
+  nombreActual,
+  tickerMejorSector = null,
+  nombreMejorSector = null
+}) {
+  const tickerInicialMejor =
+    tickerMejorSector && tickerMejorSector !== tickerActual ? tickerMejorSector : null;
+
+  const [tickers, setTickers] = useState(
+    tickerInicialMejor ? [tickerActual, tickerInicialMejor] : [tickerActual]
+  );
   const [empresas, setEmpresas] = useState([]);
   const [noEncontrados, setNoEncontrados] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
 
+  const [mostrarBuscador, setMostrarBuscador] = useState(!tickerInicialMejor);
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState([]);
   const [buscando, setBuscando] = useState(false);
@@ -214,9 +233,7 @@ export default function Comparador({ tickerActual, nombreActual }) {
     debounceRef.current = setTimeout(() => {
       fetch(`/api/buscar?q=${encodeURIComponent(valor.trim())}`)
         .then((r) => r.json())
-        .then((d) => {
-          setResultados(d.resultados || []);
-        })
+        .then((d) => setResultados(d.resultados || []))
         .catch(() => setResultados([]))
         .finally(() => setBuscando(false));
     }, 300);
@@ -238,6 +255,7 @@ export default function Comparador({ tickerActual, nombreActual }) {
     setBusqueda('');
     setResultados([]);
     setMostrarResultados(false);
+    setMostrarBuscador(false);
   }
 
   function quitarTicker(t) {
@@ -245,12 +263,16 @@ export default function Comparador({ tickerActual, nombreActual }) {
     setTickers(tickers.filter((x) => x !== t));
   }
 
+  const tieneMejorSector = tickerInicialMejor && tickers.includes(tickerInicialMejor);
+  const puedeAgregar = tickers.length < 3;
+
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Comparar con otras empresas</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Añade hasta 2 empresas más para comparar sus datos con {nombreActual}. Dato descriptivo,
-        no recomendación.
+        {tieneMejorSector
+          ? `Comparando ${nombreActual} con la mejor del sector por variación 60 (${nombreMejorSector}). Puedes añadir otra empresa si lo prefieres.`
+          : `Compara ${nombreActual} con hasta 2 empresas más. Dato descriptivo, no recomendación.`}
       </p>
 
       <div className="v3-card" style={{ padding: '16px', marginTop: '12px', overflow: 'hidden' }}>
@@ -265,6 +287,19 @@ export default function Comparador({ tickerActual, nombreActual }) {
         >
           {tickers.map((t) => {
             const esActual = t === tickerActual;
+            const esMejorSector = t === tickerInicialMejor;
+            let bg = 'var(--v3-bg-soft)';
+            let color = 'var(--v3-text)';
+            let borde = '1px solid var(--v3-border)';
+            if (esActual) {
+              bg = '#2563eb';
+              color = '#fff';
+              borde = '1px solid #2563eb';
+            } else if (esMejorSector) {
+              bg = '#dcfce7';
+              color = '#166534';
+              borde = '1px solid #16a34a';
+            }
             return (
               <span
                 key={t}
@@ -272,15 +307,19 @@ export default function Comparador({ tickerActual, nombreActual }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '4px 10px',
-                  background: esActual ? '#2563eb' : 'var(--v3-bg-soft)',
-                  color: esActual ? '#fff' : 'var(--v3-text)',
+                  padding: '6px 12px',
+                  background: bg,
+                  color,
+                  border: borde,
                   borderRadius: '999px',
-                  fontSize: '12px',
+                  fontSize: '13px',
                   fontWeight: 600
                 }}
               >
                 {t}
+                {esMejorSector && !esActual && (
+                  <span style={{ fontSize: '10px', opacity: 0.8 }}>mejor sector</span>
+                )}
                 {!esActual && (
                   <button
                     onClick={() => quitarTicker(t)}
@@ -301,82 +340,100 @@ export default function Comparador({ tickerActual, nombreActual }) {
             );
           })}
 
-          {tickers.length < 3 && (
-            <div ref={buscarRef} style={{ position: 'relative', minWidth: '220px', flex: 1 }}>
-              <input
-                type="text"
-                value={busqueda}
-                onChange={onBusquedaChange}
-                onFocus={() => setMostrarResultados(true)}
-                placeholder="Buscar empresa por nombre o ticker…"
-                style={{
-                  width: '100%',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  border: '1px solid var(--v3-border-strong)',
-                  borderRadius: '999px',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-              {mostrarResultados && (resultados.length > 0 || buscando) && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: '4px',
-                    background: '#fff',
-                    border: '1px solid var(--v3-border-strong)',
-                    borderRadius: 'var(--v3-radius-sm)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                    zIndex: 20,
-                    maxHeight: '240px',
-                    overflowY: 'auto'
-                  }}
-                >
-                  {buscando && (
-                    <div
-                      style={{
-                        padding: '8px 12px',
-                        fontSize: '12px',
-                        color: 'var(--v3-text-soft)'
-                      }}
-                    >
-                      Buscando…
-                    </div>
-                  )}
-                  {!buscando &&
-                    resultados.map((emp) => (
-                      <button
-                        key={emp.ticker}
-                        onClick={() => agregarEmpresa(emp)}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 12px',
-                          background: '#fff',
-                          border: 'none',
-                          borderBottom: '1px solid var(--v3-border)',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          color: 'var(--v3-text)'
-                        }}
-                      >
-                        <div style={{ fontWeight: 600 }}>{emp.nombre}</div>
-                        <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
-                          {emp.ticker}
-                          {emp.mercado && ` · ${emp.mercado}`}
-                        </div>
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
+          {puedeAgregar && (
+            <button
+              onClick={() => setMostrarBuscador(!mostrarBuscador)}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                fontWeight: 600,
+                borderRadius: '999px',
+                border: '1px dashed #2563eb',
+                background: '#fff',
+                color: '#2563eb',
+                cursor: 'pointer'
+              }}
+            >
+              + Añadir otra empresa
+            </button>
           )}
         </div>
+
+        {mostrarBuscador && puedeAgregar && (
+          <div ref={buscarRef} style={{ position: 'relative', marginBottom: '12px' }}>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={onBusquedaChange}
+              onFocus={() => setMostrarResultados(true)}
+              placeholder="Buscar empresa por nombre o ticker…"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                fontSize: '14px',
+                border: '2px solid #2563eb',
+                borderRadius: 'var(--v3-radius-sm)',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+            {mostrarResultados && (resultados.length > 0 || buscando) && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: '4px',
+                  background: '#fff',
+                  border: '1px solid var(--v3-border-strong)',
+                  borderRadius: 'var(--v3-radius-sm)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  zIndex: 20,
+                  maxHeight: '240px',
+                  overflowY: 'auto'
+                }}
+              >
+                {buscando && (
+                  <div
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      color: 'var(--v3-text-soft)'
+                    }}
+                  >
+                    Buscando…
+                  </div>
+                )}
+                {!buscando &&
+                  resultados.map((emp) => (
+                    <button
+                      key={emp.ticker}
+                      onClick={() => agregarEmpresa(emp)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 12px',
+                        background: '#fff',
+                        border: 'none',
+                        borderBottom: '1px solid var(--v3-border)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: 'var(--v3-text)'
+                      }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{emp.nombre}</div>
+                      <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
+                        {emp.ticker}
+                        {emp.mercado && ` · ${emp.mercado}`}
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {noEncontrados.length > 0 && (
           <p style={{ color: '#b91c1c', fontSize: '12px', margin: '0 0 12px 0' }}>
@@ -417,9 +474,19 @@ export default function Comparador({ tickerActual, nombreActual }) {
                     padding: '2px 0'
                   }}
                 >
-                  <span style={{ color: 'var(--v3-text-soft)' }}>
+                  <span
+                    style={{
+                      color: 'var(--v3-text-soft)',
+                      fontWeight: e.ticker === tickerInicialMejor ? 700 : 400
+                    }}
+                  >
                     {e.ticker}
                     {e.sector && ` · ${e.sector}`}
+                    {e.ticker === tickerInicialMejor && (
+                      <span style={{ color: '#16a34a', marginLeft: '6px', fontSize: '11px' }}>
+                        mejor del sector
+                      </span>
+                    )}
                   </span>
                   <span style={{ fontWeight: 700 }}>{fmtPrecio(e.precio)}</span>
                 </div>
@@ -435,7 +502,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.variacion5
+                valor: e.variacion5,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -448,7 +516,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.variacion60
+                valor: e.variacion60,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -461,7 +530,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.variacionSector60
+                valor: e.variacionSector60,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -474,7 +544,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.smiActual
+                valor: e.smiActual,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -487,7 +558,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.percentil
+                valor: e.percentil,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -500,7 +572,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.posicionRango
+                valor: e.posicionRango,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -513,7 +586,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.amplitudRango
+                valor: e.amplitudRango,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -526,7 +600,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.distanciaMax
+                valor: e.distanciaMax,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -539,7 +614,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.distanciaMin
+                valor: e.distanciaMin,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -552,7 +628,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.volatilidad
+                valor: e.volatilidad,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -565,7 +642,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.volatilidadSemanal
+                valor: e.volatilidadSemanal,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -578,7 +656,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.ratioAlcistas
+                valor: e.ratioAlcistas,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -591,7 +670,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.racha
+                valor: e.racha,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -604,7 +684,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.pendienteIndicador
+                valor: e.pendienteIndicador,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -617,7 +698,8 @@ export default function Comparador({ tickerActual, nombreActual }) {
               valores={empresas.map((e) => ({
                 ticker: e.ticker,
                 nombre: e.nombre,
-                valor: e.sesionesEnZona
+                valor: e.sesionesEnZona,
+                esMejorSector: e.ticker === tickerInicialMejor
               }))}
             />
 
@@ -655,8 +737,9 @@ export default function Comparador({ tickerActual, nombreActual }) {
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        El color indica signo o posición en el rango. No implica valoración. Datos históricos
-        descriptivos. No predictivos. No constituyen recomendación de inversión.
+        El color indica signo o posición en el rango. El verde señala la mejor empresa del sector
+        por variación 60, solo como referencia descriptiva. No implica valoración ni recomendación
+        de inversión.
       </p>
     </section>
   );
