@@ -18,17 +18,20 @@ function parseDatos(datos) {
 
 function calcularVariacion(velas, sesiones) {
   if (!velas || velas.length < 2) return null;
-
   let primero;
-  if (sesiones >= velas.length - 1) {
-    primero = velas[0]?.close;
-  } else {
-    primero = velas[velas.length - sesiones - 1]?.close;
-  }
+  if (sesiones >= velas.length - 1) primero = velas[0]?.close;
+  else primero = velas[velas.length - sesiones - 1]?.close;
   const ultimo = velas[velas.length - 1]?.close;
-
   if (!primero || primero === 0) return null;
   return ((ultimo - primero) / primero) * 100;
+}
+
+function calcularPercentil(smis, smiActual) {
+  if (!smis || smis.length === 0 || smiActual === null || smiActual === undefined) return null;
+  const validos = smis.filter((v) => v !== null && v !== undefined);
+  if (validos.length === 0) return null;
+  const menores = validos.filter((v) => v < smiActual).length;
+  return Math.round((menores / validos.length) * 100);
 }
 
 async function cargarCambios24h() {
@@ -104,8 +107,12 @@ async function cargarTop5() {
       if (!datos) continue;
       const emp = map[p.ticker];
       const velas = datos.velasUltimas60 || [];
+      const smis = datos.smisUltimos60 || [];
       const v5 = calcularVariacion(velas, 5);
       if (v5 === null) continue;
+
+      const percentil = calcularPercentil(smis, datos.smiActual);
+
       items.push({
         ticker: p.ticker,
         nombre: emp?.nombre || p.ticker,
@@ -113,7 +120,7 @@ async function cargarTop5() {
         precio: datos.precioActual,
         variacion5: v5,
         variacion60: calcularVariacion(velas, 60),
-        percentil: null,
+        percentil,
         zona: datos.zona
       });
     }
