@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import ListaCambiosZona from '../../components/ListaCambiosZona';
 import RankingTabla from '../../components/RankingTabla';
@@ -34,6 +35,28 @@ function calcularPercentil(smis, smiActual) {
   return Math.round((menores / validos.length) * 100);
 }
 
+function calcularRachaZona(smis, zonaActual) {
+  if (!smis || smis.length === 0 || !zonaActual) return { racha: 0, zona: null };
+  let racha = 0;
+  for (let i = smis.length - 1; i >= 0; i--) {
+    const s = smis[i];
+    if (s === null || s === undefined) break;
+    let zona;
+    if (s > 40) zona = 'alta';
+    else if (s < -40) zona = 'baja';
+    else zona = 'intermedia';
+    if (zona === zonaActual) racha++;
+    else break;
+  }
+  return { racha, zona: zonaActual };
+}
+
+function situacionDesdeZona(zona) {
+  if (zona === 'alta') return 'parte alta';
+  if (zona === 'baja') return 'parte baja';
+  return 'parte intermedia';
+}
+
 async function cargarCambios24h() {
   try {
     const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -62,17 +85,9 @@ async function cargarCambios24h() {
       nombre: map[c.ticker]?.nombre || c.ticker,
       sector: map[c.ticker]?.sector || null,
       categoriaAnterior:
-        c.movimiento_anterior === 'venta'
-          ? 'A'
-          : c.movimiento_anterior === 'compra'
-          ? 'C'
-          : 'B',
+        c.movimiento_anterior === 'venta' ? 'A' : c.movimiento_anterior === 'compra' ? 'C' : 'B',
       categoriaNueva:
-        c.movimiento_nuevo === 'venta'
-          ? 'A'
-          : c.movimiento_nuevo === 'compra'
-          ? 'C'
-          : 'B'
+        c.movimiento_nuevo === 'venta' ? 'A' : c.movimiento_nuevo === 'compra' ? 'C' : 'B'
     }));
   } catch (e) {
     console.error('[hoy] Error cambios:', e.message);
@@ -110,9 +125,6 @@ async function cargarTop5() {
       const smis = datos.smisUltimos60 || [];
       const v5 = calcularVariacion(velas, 5);
       if (v5 === null) continue;
-
-      const percentil = calcularPercentil(smis, datos.smiActual);
-
       items.push({
         ticker: p.ticker,
         nombre: emp?.nombre || p.ticker,
@@ -120,7 +132,7 @@ async function cargarTop5() {
         precio: datos.precioActual,
         variacion5: v5,
         variacion60: calcularVariacion(velas, 60),
-        percentil,
+        percentil: calcularPercentil(smis, datos.smiActual),
         zona: datos.zona
       });
     }
@@ -133,8 +145,59 @@ async function cargarTop5() {
   }
 }
 
+async function cargarRachas() {
+  try {
+    const { data: paginas } = await supabaseAdmin
+      .from('paginas')
+      .select('ticker, datos')
+      .order('actualizado_at', { ascending: false })
+      .limit(500);
+
+    if (!paginas || paginas.length === 0) return [];
+
+    const tickers = paginas.map((p) => p.ticker);
+    const { data: empresas } = await supabaseAdmin
+      .from('empresas')
+      .select('ticker, nombre, sector')
+      .in('ticker', tickers);
+
+    const map = {};
+    for (const e of empresas || []) {
+      if (e && e.ticker) map[e.ticker] = e;
+    }
+
+    const items = [];
+    for (const p of paginas) {
+      const datos = parseDatos(p.datos);
+      if (!datos) continue;
+      const emp = map[p.ticker];
+      const smis = datos.smisUltimos60 || [];
+      const zona = datos.zona;
+      if (!zona) continue;
+      const { racha } = calcularRachaZona(smis, zona);
+      if (racha < 3) continue;
+      items.push({
+        ticker: p.ticker,
+        nombre: emp?.nombre || p.ticker,
+        sector: emp?.sector || null,
+        zona,
+        racha
+      });
+    }
+
+    return items.sort((a, b) => b.racha - a.racha).slice(0, 10);
+  } catch (e) {
+    console.error('[hoy] Error rachas:', e.message);
+    return [];
+  }
+}
+
 export default async function PaginaHoy() {
-  const [cambios, top] = await Promise.all([cargarCambios24h(), cargarTop5()]);
+  const [cambios, top, rachas] = await Promise.all([
+    cargarCambios24h(),
+    cargarTop5(),
+    cargarRachas()
+  ]);
 
   return (
     <main className="v3-container" style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -145,12 +208,76 @@ export default async function PaginaHoy() {
       </p>
 
       <ListaCambiosZona cambios={cambios} />
+
+      {rachas.length > 0 && (
+        <section className="v3-seccion">
+          <h2 className="v3-seccion-titulo">Rachas más largas</h2>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
+            Empresas con más sesiones consecutivas en la misma zona del rango de 60 sesiones.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0', display: 'grid', gap: '6px' }}>
+            {rachas.map((r) => {
+              const slug = `${r.ticker.toLowerCase()}__${(r.nombre || r.ticker)
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')}`;
+              return (
+                <li key={r.ticker}>
+                  <Link
+                    href={`/analisis/${slug}`}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 14px',
+                      background: '#fff',
+                      border: '1px solid var(--v3-border)',
+                      borderRadius: 'var(--v3-radius-sm)',
+                      textDecoration: 'none',
+                      color: 'var(--v3-text)',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>{r.nombre}</span>
+                    <span style={{ color: 'var(--v3-text-soft)', fontSize: '12px' }}>
+                      {r.racha} sesiones en {situacionDesdeZona(r.zona)}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <RankingTabla
         items={top.items}
         tipo="variacion5"
         titulo="Top 10 por variación en 5 sesiones"
         total={top.total}
       />
+
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <Link
+          href="/cambios"
+          style={{
+            display: 'inline-block',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: 600,
+            borderRadius: 'var(--v3-radius-sm)',
+            border: '1px solid var(--v3-border-strong)',
+            background: '#fff',
+            color: 'var(--v3-text)',
+            textDecoration: 'none'
+          }}
+        >
+          Ver historial completo de cambios de zona
+        </Link>
+      </div>
     </main>
   );
 }
