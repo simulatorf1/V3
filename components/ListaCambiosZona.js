@@ -11,8 +11,10 @@ function construirSlug(cambio) {
 }
 
 function etiquetaPendiente(cat) {
-  if (cat === 'C') return { texto: 'pendiente negativa', clase: 'v3-zona-baja' };
-  if (cat === 'A') return { texto: 'pendiente positiva', clase: 'v3-zona-alta' };
+  // 'C' viene de movimiento 'compra' = pendiente pasa a POSITIVA
+  if (cat === 'C') return { texto: 'pendiente positiva', clase: 'v3-zona-alta' };
+  // 'A' viene de movimiento 'venta' = pendiente pasa a NEGATIVA
+  if (cat === 'A') return { texto: 'pendiente negativa', clase: 'v3-zona-baja' };
   return { texto: 'sin pendiente', clase: 'v3-zona-intermedia' };
 }
 
@@ -90,16 +92,12 @@ export default function ListaCambiosZona({ cambios }) {
     );
   }
 
-  const aPositiva = cambios.filter(
-    (c) => c.categoriaAnterior === 'C' && c.categoriaNueva === 'A'
-  );
-  const aNegativa = cambios.filter(
-    (c) => c.categoriaAnterior === 'A' && c.categoriaNueva === 'C'
-  );
+  // 'compra' = pendiente pasa a positiva. Se guarda como categoriaNueva = 'C'.
+  const aPositiva = cambios.filter((c) => c.categoriaNueva === 'C');
+  // 'venta' = pendiente pasa a negativa. Se guarda como categoriaNueva = 'A'.
+  const aNegativa = cambios.filter((c) => c.categoriaNueva === 'A');
   const otros = cambios.filter(
-    (c) =>
-      !(c.categoriaAnterior === 'C' && c.categoriaNueva === 'A') &&
-      !(c.categoriaAnterior === 'A' && c.categoriaNueva === 'C')
+    (c) => c.categoriaNueva !== 'C' && c.categoriaNueva !== 'A'
   );
 
   const hayGrupos = aPositiva.length > 0 || aNegativa.length > 0;
