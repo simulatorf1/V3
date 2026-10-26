@@ -30,7 +30,7 @@ export async function POST(request) {
 
     if (zonaObjetivo !== 'alta' && zonaObjetivo !== 'baja') {
       return Response.json(
-        { error: 'Zona objetivo no válida' },
+        { error: 'Pendiente objetivo no válida' },
         { status: 400 }
       );
     }
@@ -42,7 +42,6 @@ export async function POST(request) {
       return Response.json({ error: 'Email no válido' }, { status: 400 });
     }
 
-    // Leer zona actual del ticker en paginas
     let zonaActual = null;
     try {
       const { data: pagina } = await supabaseAdmin
@@ -98,14 +97,15 @@ export async function POST(request) {
     const linkConfirmar = `${siteUrl}/api/alertas/confirmar?token=${tokenConfirmacion}`;
     const linkBaja = `${siteUrl}/api/alertas/baja?token=${tokenBaja}`;
 
-    const zonaTexto = zonaObjetivo === 'baja' ? 'parte baja' : 'parte alta';
+    const pendienteTexto =
+      zonaObjetivo === 'baja' ? 'pendiente negativa' : 'pendiente positiva';
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
         <h2 style="font-size: 20px; margin-bottom: 16px;">Confirma tu alerta para ${tickerUpper}</h2>
         <p style="font-size: 14px; line-height: 1.6;">
           Has solicitado recibir una notificación cuando <strong>${tickerUpper}</strong> cambie
-          de zona en su rango de 60 sesiones y salga de la <strong>${zonaTexto}</strong>.
+          de pendiente y salga de la <strong>${pendienteTexto}</strong>.
         </p>
         <p style="font-size: 14px; line-height: 1.6;">
           Pulsa el siguiente enlace para confirmar tu suscripción:
@@ -119,8 +119,9 @@ export async function POST(request) {
           Si no has solicitado esto, ignora este email. No recibirás nada más.
         </p>
         <p style="font-size: 12px; line-height: 1.6; color: #888; margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
-          Recibirás únicamente notificaciones informativas sobre cambios de zona en esta empresa.
-          Puedes darte de baja en cualquier momento desde este enlace: <a href="${linkBaja}" style="color: #888;">darme de baja</a>.
+          Recibirás únicamente notificaciones informativas sobre cambios de pendiente en esta
+          empresa. Puedes darte de baja en cualquier momento desde este enlace:
+          <a href="${linkBaja}" style="color: #888;">darme de baja</a>.
         </p>
         <p style="font-size: 11px; line-height: 1.6; color: #aaa; margin-top: 16px;">
           Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
