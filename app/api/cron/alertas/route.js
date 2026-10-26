@@ -12,33 +12,33 @@ function parseDatos(datos) {
   return datos;
 }
 
-function zonaDesdeMovimiento(movimiento) {
-  if (movimiento === 'venta') return 'alta';
-  if (movimiento === 'compra') return 'baja';
-  return 'intermedia';
+function pendienteDesdeMovimiento(movimiento) {
+  if (movimiento === 'venta') return 'positiva';
+  if (movimiento === 'compra') return 'negativa';
+  return 'neutra';
 }
 
-async function enviarEmailCambioZona(
+async function enviarEmailCambioPendiente(
   apiKey,
   from,
   siteUrl,
   suscriptor,
   ticker,
-  zonaAnterior,
-  zonaNueva,
+  pendienteAnterior,
+  pendienteNueva,
   tokenBaja
 ) {
   const linkBaja = `${siteUrl}/api/alertas/baja?token=${tokenBaja}`;
 
-  const zonaTextoAnterior = zonaAnterior === 'alta' ? 'parte alta' : 'parte baja';
-  const zonaTextoNueva = zonaNueva === 'alta' ? 'parte alta' : 'parte baja';
+  const pendienteTextoAnterior = `pendiente ${pendienteAnterior}`;
+  const pendienteTextoNueva = `pendiente ${pendienteNueva}`;
 
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
-      <h2 style="font-size: 20px; margin-bottom: 16px;">Alerta Equaty: cambio de zona en ${ticker}</h2>
+      <h2 style="font-size: 20px; margin-bottom: 16px;">Alerta Equaty: cambio de pendiente en ${ticker}</h2>
       <p style="font-size: 14px; line-height: 1.6;">
-        <strong>${ticker}</strong> ha cambiado de zona en su rango de 60 sesiones: ha pasado de
-        la <strong>${zonaTextoAnterior}</strong> a la <strong>${zonaTextoNueva}</strong>.
+        El indicador Equaty de <strong>${ticker}</strong> ha cambiado de pendiente: ha pasado de
+        <strong>${pendienteTextoAnterior}</strong> a <strong>${pendienteTextoNueva}</strong>.
       </p>
       <p style="font-size: 14px; line-height: 1.6;">
         Puedes ver la ficha completa aquí:
@@ -68,7 +68,7 @@ async function enviarEmailCambioZona(
     body: JSON.stringify({
       sender: { email: from, name: 'Equaty' },
       to: [{ email: suscriptor.email }],
-      subject: `Alerta Equaty: cambio de zona en ${ticker}`,
+      subject: `Alerta Equaty: cambio de pendiente en ${ticker}`,
       htmlContent: emailHtml
     })
   });
@@ -127,7 +127,6 @@ export async function GET(request) {
     const movimientoActual = senales[senales.length - 1].tipo;
     const movimientoAyer = p.ultimo_movimiento_anterior;
 
-    // Primera vez: inicializar sin enviar email
     if (!movimientoAyer) {
       await supabaseAdmin
         .from('paginas')
@@ -137,13 +136,12 @@ export async function GET(request) {
       continue;
     }
 
-    // Sin cambio desde ayer: no hacer nada
     if (movimientoActual === movimientoAyer) continue;
 
-    const zonaAnterior = zonaDesdeMovimiento(movimientoAyer);
-    const zonaNueva = zonaDesdeMovimiento(movimientoActual);
+    const pendienteAnterior = pendienteDesdeMovimiento(movimientoAyer);
+    const pendienteNueva = pendienteDesdeMovimiento(movimientoActual);
 
-    // Buscar suscriptores que quieren aviso cuando salga de la zona anterior
+    const zonaAnterior = movimientoAyer === 'venta' ? 'alta' : 'baja';
     const { data: suscriptores } = await supabaseAdmin
       .from('alertas')
       .select('email, token_baja, zona_objetivo, ultima_enviada_at')
@@ -153,14 +151,14 @@ export async function GET(request) {
       .eq('zona_objetivo', zonaAnterior);
 
     for (const s of suscriptores || []) {
-      const ok = await enviarEmailCambioZona(
+      const ok = await enviarEmailCambioPendiente(
         apiKey,
         from,
         siteUrl,
         s,
         p.ticker,
-        zonaAnterior,
-        zonaNueva,
+        pendienteAnterior,
+        pendienteNueva,
         s.token_baja
       );
       if (ok) {
@@ -176,7 +174,6 @@ export async function GET(request) {
       }
     }
 
-    // Guardar el cambio en cambios_movimiento (para el home y /hoy)
     await supabaseAdmin.from('cambios_movimiento').insert({
       ticker: p.ticker,
       movimiento_anterior: movimientoAyer,
@@ -184,7 +181,6 @@ export async function GET(request) {
     });
     cambiosGuardados++;
 
-    // Actualizar "ayer" con el movimiento actual
     await supabaseAdmin
       .from('paginas')
       .update({ ultimo_movimiento_anterior: movimientoActual })
