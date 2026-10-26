@@ -4,8 +4,10 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin';
 export const dynamic = 'force-dynamic';
 
 function pendienteDesdeCategoria(cat) {
-  if (cat === 'A') return 'pendiente positiva';
-  if (cat === 'C') return 'pendiente negativa';
+  // 'C' = compra = pendiente pasa a positiva
+  if (cat === 'C') return 'pendiente positiva';
+  // 'A' = venta = pendiente pasa a negativa
+  if (cat === 'A') return 'pendiente negativa';
   return 'sin pendiente';
 }
 
@@ -48,9 +50,17 @@ async function cargarCambios() {
       nombre: map[c.ticker]?.nombre || c.ticker,
       sector: map[c.ticker]?.sector || null,
       categoriaAnterior:
-        c.movimiento_anterior === 'venta' ? 'A' : c.movimiento_anterior === 'compra' ? 'C' : 'B',
+        c.movimiento_anterior === 'venta'
+          ? 'A'
+          : c.movimiento_anterior === 'compra'
+          ? 'C'
+          : 'B',
       categoriaNueva:
-        c.movimiento_nuevo === 'venta' ? 'A' : c.movimiento_nuevo === 'compra' ? 'C' : 'B',
+        c.movimiento_nuevo === 'venta'
+          ? 'A'
+          : c.movimiento_nuevo === 'compra'
+          ? 'C'
+          : 'B',
       detectado_at: c.detectado_at
     }));
   } catch (e) {
