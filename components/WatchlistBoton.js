@@ -1,11 +1,18 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useWatchlist } from './WatchlistContext';
 
 export default function WatchlistBoton({ ticker, nombre }) {
   const { tiene, agregar, quitar, listo } = useWatchlist();
+  const [montado, setMontado] = useState(false);
+
+  useEffect(() => {
+    setMontado(true);
+  }, []);
 
   if (!ticker) return null;
+  if (!montado) return null;
   if (!listo) return null;
 
   const enLista = tiene(ticker);
@@ -28,7 +35,7 @@ export default function WatchlistBoton({ ticker, nombre }) {
         fontSize: '13px',
         fontWeight: 600,
         borderRadius: 'var(--v3-radius-sm)',
-        border: enLista ? '1px solid #2563eb' : '1px solid #2563eb',
+        border: '1px solid #2563eb',
         background: enLista ? '#2563eb' : '#fff',
         color: enLista ? '#fff' : '#2563eb',
         cursor: 'pointer'
