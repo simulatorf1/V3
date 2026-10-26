@@ -1,13 +1,14 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useMemo, useCallback } from 'react';
+import { useLocalStorage } from '../lib/useLocalStorage';
 
 const WatchlistContext = createContext({
   lista: [],
   agregar: () => {},
   quitar: () => {},
   tiene: () => false,
-  listo: false,
+  listo: true,
   estados: {},
   ultimaVisita: null,
   actualizarEstados: () => {},
@@ -15,176 +16,126 @@ const WatchlistContext = createContext({
   getEstadoAnterior: () => null
 });
 
-const STORAGE_KEY = 'equaty_watchlist_v1';
-const ESTADO_KEY = 'equaty_watchlist_estado_v2';
-const ESTADO_KEY_VIEJA = 'equaty_watchlist_estado_v1';
-
-function limpiarClave(clave) {
-  try {
-    window.localStorage.removeItem(clave);
-  } catch (e) {}
-}
-
 export function WatchlistProvider({ children }) {
-  const [lista, setLista] = useState([]);
-  const [estados, setEstados] = useState({});
-  const [ultimaVisita, setUltimaVisita] = useState(null);
-  const [listo, setListo] = useState(false);
+  const [listaRaw, setListaRaw] = useLocalStorage('equaty_watchlist_v1', '[]');
+  const [estadoRaw, setEstadoRaw] = useLocalStorage('equaty_watchlist_estado_v2', '{}');
 
-  useEffect(() => {
-    // 1. Cargar lista
+  const lista = useMemo(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          const limpia = parsed
-            .filter((t) => typeof t === 'string' && t.length > 0)
-            .map((t) => t.toUpperCase());
-          setLista(limpia);
-        }
-      }
-    } catch (e) {
-      limpiarClave(STORAGE_KEY);
-    }
-
-    // 2. Cargar estados (v2) o migrar desde v1
-    try {
-      const rawV2 = window.localStorage.getItem(ESTADO_KEY);
-      if (rawV2) {
-        const parsed = JSON.parse(rawV2);
-        if (parsed && typeof parsed === 'object') {
-          if (parsed.estados && typeof parsed.estados === 'object') {
-            setEstados(parsed.estados);
-          }
-          if (parsed.ultimaVisita && typeof parsed.ultimaVisita === 'string') {
-            setUltimaVisita(parsed.ultimaVisita);
-          }
-        }
-      } else {
-        // Intento de migración desde v1
-        const rawV1 = window.localStorage.getItem(ESTADO_KEY_VIEJA);
-        if (rawV1) {
-          try {
-            const parsedV1 = JSON.parse(rawV1);
-            if (parsedV1 && typeof parsedV1 === 'object' && parsedV1.zonas && typeof parsedV1.zonas === 'object') {
-              const migrados = {};
-              for (const [ticker, zona] of Object.entries(parsedV1.zonas)) {
-                if (typeof ticker === 'string' && typeof zona === 'string') {
-                  migrados[ticker.toUpperCase()] = {
-                    zona,
-                    variacion60: null,
-                    indicador: null,
-                    percentil: null
-                  };
-                }
-              }
-              setEstados(migrados);
-              if (parsedV1.ultimaVisita && typeof parsedV1.ultimaVisita === 'string') {
-                setUltimaVisita(parsedV1.ultimaVisita);
-              }
-            }
-          } catch (e) {
-            // si v1 está corrupto, se ignora
-          }
-        }
-      }
-    } catch (e) {
-      limpiarClave(ESTADO_KEY);
-    }
-
-    setListo(true);
-  }, []);
-
-  function persistirLista(nuevaLista) {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevaLista));
-    } catch (e) {}
-  }
-
-  function persistirEstado(nuevosEstados, nuevaUltimaVisita) {
-    try {
-      window.localStorage.setItem(
-        ESTADO_KEY,
-        JSON.stringify({
-          estados: nuevosEstados,
-          ultimaVisita: nuevaUltimaVisita
-        })
-      );
-      // Limpiar la clave vieja si existe
-      if (window.localStorage.getItem(ESTADO_KEY_VIEJA)) {
-        window.localStorage.removeItem(ESTADO_KEY_VIEJA);
+      const parsed = JSON.parse(listaRaw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((t) => typeof t === 'string' && t.length > 0)
+          .map((t) => t.toUpperCase());
       }
     } catch (e) {}
-  }
+    return [];
+  }, [listaRaw]);
 
-  function agregar(ticker) {
+  const estado = useMemo(() => {
+    try {
+      const parsed = JSON.parse(estadoRaw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          estados: parsed.estados && typeof parsed.estados === 'object' ? parsed.estados : {},
+          ultimaVisita: parsed.ultimaVisita || null
+        };
+      }
+    } catch (e) {}
+    return { estados: {}, ultimaVisita: null };
+  }, [estadoRaw]);
+
+  const agregar = useCallback((ticker) => {
     if (!ticker) return;
     const t = String(ticker).toUpperCase();
-    setLista((prev) => {
-      if (prev.includes(t)) return prev;
-      const nueva = [...prev, t];
-      persistirLista(nueva);
-      return nueva;
+    setListaRaw((prevRaw) => {
+      try {
+        const prev = JSON.parse(prevRaw);
+        if (Array.isArray(prev) && prev.includes(t)) return prevRaw;
+        const nueva = [...(Array.isArray(prev) ? prev : []), t];
+        return JSON.stringify(nueva);
+      } catch (e) {
+        return JSON.stringify([t]);
+      }
     });
-  }
+  }, [setListaRaw]);
 
-  function quitar(ticker) {
+  const quitar = useCallback((ticker) => {
     if (!ticker) return;
     const t = String(ticker).toUpperCase();
-    setLista((prev) => {
-      const nueva = prev.filter((x) => x !== t);
-      persistirLista(nueva);
-      return nueva;
+    setListaRaw((prevRaw) => {
+      try {
+        const prev = JSON.parse(prevRaw);
+        if (Array.isArray(prev)) {
+          return JSON.stringify(prev.filter((x) => x !== t));
+        }
+      } catch (e) {}
+      return prevRaw;
     });
-    setEstados((prev) => {
-      const nuevos = { ...prev };
-      delete nuevos[t];
-      persistirEstado(nuevos, ultimaVisita);
-      return nuevos;
+    setEstadoRaw((prevRaw) => {
+      try {
+        const prev = JSON.parse(prevRaw);
+        if (prev && prev.estados) {
+          const nuevos = { ...prev.estados };
+          delete nuevos[t];
+          return JSON.stringify({ ...prev, estados: nuevos });
+        }
+      } catch (e) {}
+      return prevRaw;
     });
-  }
+  }, [setListaRaw, setEstadoRaw]);
 
-  function tiene(ticker) {
+  const tiene = useCallback((ticker) => {
     if (!ticker) return false;
     return lista.includes(String(ticker).toUpperCase());
-  }
+  }, [lista]);
 
-  function actualizarEstados(nuevosEstados) {
+  const actualizarEstados = useCallback((nuevosEstados) => {
     if (!nuevosEstados || typeof nuevosEstados !== 'object') return;
-    setEstados((prev) => {
-      const combinado = { ...prev, ...nuevosEstados };
-      persistirEstado(combinado, ultimaVisita);
-      return combinado;
+    setEstadoRaw((prevRaw) => {
+      try {
+        const prev = JSON.parse(prevRaw);
+        const estadosPrev = prev && prev.estados ? prev.estados : {};
+        const combinado = { ...estadosPrev, ...nuevosEstados };
+        return JSON.stringify({ ...prev, estados: combinado });
+      } catch (e) {
+        return JSON.stringify({ estados: nuevosEstados, ultimaVisita: null });
+      }
     });
-  }
+  }, [setEstadoRaw]);
 
-  function marcarVisita() {
+  const marcarVisita = useCallback(() => {
     const ahora = new Date().toISOString();
-    setUltimaVisita(ahora);
-    persistirEstado(estados, ahora);
-  }
+    setEstadoRaw((prevRaw) => {
+      try {
+        const prev = JSON.parse(prevRaw);
+        return JSON.stringify({ ...prev, ultimaVisita: ahora });
+      } catch (e) {
+        return JSON.stringify({ estados: {}, ultimaVisita: ahora });
+      }
+    });
+  }, [setEstadoRaw]);
 
-  function getEstadoAnterior(ticker) {
+  const getEstadoAnterior = useCallback((ticker) => {
     if (!ticker) return null;
-    return estados[String(ticker).toUpperCase()] || null;
-  }
+    return estado.estados[String(ticker).toUpperCase()] || null;
+  }, [estado]);
+
+  const value = useMemo(() => ({
+    lista,
+    agregar,
+    quitar,
+    tiene,
+    listo: true,
+    estados: estado.estados,
+    ultimaVisita: estado.ultimaVisita,
+    actualizarEstados,
+    marcarVisita,
+    getEstadoAnterior
+  }), [lista, agregar, quitar, tiene, estado, actualizarEstados, marcarVisita, getEstadoAnterior]);
 
   return (
-    <WatchlistContext.Provider
-      value={{
-        lista,
-        agregar,
-        quitar,
-        tiene,
-        listo,
-        estados,
-        ultimaVisita,
-        actualizarEstados,
-        marcarVisita,
-        getEstadoAnterior
-      }}
-    >
+    <WatchlistContext.Provider value={value}>
       {children}
     </WatchlistContext.Provider>
   );
