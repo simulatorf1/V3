@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWatchlist } from './WatchlistContext';
 
@@ -21,27 +20,7 @@ function etiquetaZona(zona) {
 }
 
 export default function WatchlistBloque({ empresas }) {
-  const { lista, listo, estados } = useWatchlist();
-  const [montado, setMontado] = useState(false);
-  const [items, setItems] = useState([]);
-
-  useEffect(() => {
-    setMontado(true);
-  }, []);
-
-  useEffect(() => {
-    if (!listo) return;
-    if (!empresas || empresas.length === 0) {
-      setItems([]);
-      return;
-    }
-    const filtrados = empresas.filter((e) => lista.includes(e.ticker));
-    setItems(filtrados);
-  }, [lista, empresas, listo]);
-
-  // Evitar mismatch de hidratación: no renderizar nada hasta que el cliente esté montado
-  if (!montado) return null;
-  if (!listo) return null;
+  const { lista, estados } = useWatchlist();
 
   if (!lista || lista.length === 0) {
     return (
@@ -54,6 +33,8 @@ export default function WatchlistBloque({ empresas }) {
       </section>
     );
   }
+
+  const items = (empresas || []).filter((e) => lista.includes(e.ticker));
 
   if (items.length === 0) {
     return (
