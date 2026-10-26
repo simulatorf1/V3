@@ -3,10 +3,10 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
-function situacionDesdeCategoria(cat) {
-  if (cat === 'A') return 'parte alta';
-  if (cat === 'C') return 'parte baja';
-  return 'parte intermedia';
+function pendienteDesdeCategoria(cat) {
+  if (cat === 'A') return 'pendiente positiva';
+  if (cat === 'C') return 'pendiente negativa';
+  return 'sin pendiente';
 }
 
 function fechaLegible(iso) {
@@ -64,10 +64,10 @@ export default async function PaginaCambios() {
 
   return (
     <main className="v3-container">
-      <h1>Historial de cambios de zona</h1>
+      <h1>Historial de cambios de pendiente</h1>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-        Registro histórico de todos los cambios de zona de las empresas. Datos históricos
-        descriptivos. No predictivos. No constituyen recomendación de inversión.
+        Registro histórico de todos los cambios de pendiente del indicador Equaty. Datos
+        históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
       </p>
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px' }}>
         {cambios.length} cambios registrados.
@@ -117,9 +117,16 @@ export default async function PaginaCambios() {
                       {c.sector && ` · ${c.sector}`}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--v3-text-soft)' }}>
+                  <div
+                    style={{
+                      textAlign: 'right',
+                      fontSize: '12px',
+                      color: 'var(--v3-text-soft)'
+                    }}
+                  >
                     <div>
-                      {situacionDesdeCategoria(c.categoriaAnterior)} → {situacionDesdeCategoria(c.categoriaNueva)}
+                      {pendienteDesdeCategoria(c.categoriaAnterior)} →{' '}
+                      {pendienteDesdeCategoria(c.categoriaNueva)}
                     </div>
                     <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
                       {fechaLegible(c.detectado_at)}
