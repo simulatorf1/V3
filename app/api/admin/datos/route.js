@@ -189,8 +189,9 @@ export async function GET(request) {
 
     const { data: comentarios } = await supabaseAdmin
       .from('comentarios')
-      .select('id, ticker, autor, texto, created_at')
-      .eq('aprobado', false)
+      .select('id, ticker, autor, texto, created_at, ip_hash')
+      .eq('aprobado', true)
+      .order('created_at', { ascending: false })
       .limit(100);
 
     return Response.json({
