@@ -2,7 +2,6 @@ import '../app/globals.css';
 import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
-// import { WatchlistProvider } from '../components/WatchlistContext';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
 
 const inter = Inter({
@@ -64,12 +63,10 @@ export default function RootLayout({ children }) {
           background: '#fff'
         }}
       >
-        {/* <WatchlistProvider> */}
         <RegistrarVisitaGlobal />
         <Cabecera />
         <div style={{ minHeight: '60vh' }}>{children}</div>
         <Pie />
-        {/* </WatchlistProvider> */}
       </body>
     </html>
   );
