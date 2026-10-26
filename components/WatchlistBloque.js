@@ -151,6 +151,24 @@ export default function WatchlistBloque({ empresas }) {
           );
         })}
       </div>
+      <div style={{ marginTop: '12px', textAlign: 'center' }}>
+        <Link
+          href="/favoritos"
+          style={{
+            display: 'inline-block',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: 600,
+            borderRadius: 'var(--v3-radius-sm)',
+            border: '1px solid #2563eb',
+            background: '#2563eb',
+            color: '#fff',
+            textDecoration: 'none'
+          }}
+        >
+          Ver centro de seguimiento completo
+        </Link>
+      </div>          
     </section>
   );
 }
