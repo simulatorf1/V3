@@ -36,12 +36,7 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
     }
   }
 
-  if (
-    cambiadoZona === 0 &&
-    entradoAlta === 0 &&
-    entradoBaja === 0 &&
-    nuevosMaximos === 0
-  ) {
+  if (cambiadoZona === 0 && entradoAlta === 0 && entradoBaja === 0 && nuevosMaximos === 0) {
     return null;
   }
 
@@ -56,15 +51,25 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
           marginBottom: '16px'
         }}
       >
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#1e40af', marginBottom: '4px' }}>
+        <div
+          style={{
+            fontSize: '12px',
+            fontWeight: 700,
+            color: '#1e40af',
+            marginBottom: '4px'
+          }}
+        >
           Actividad reciente en tus favoritos
         </div>
         <div style={{ fontSize: '13px', color: 'var(--v3-text)' }}>
           {cambiadoZona === 1
-            ? '1 empresa ha cambiado de zona esta semana.'
-            : `${cambiadoZona} empresas han cambiado de zona esta semana.`}
+            ? '1 empresa ha cambiado de estado esta semana.'
+            : `${cambiadoZona} empresas han cambiado de estado esta semana.`}
           {' '}
-          <Link href="/favoritos" style={{ color: '#1e40af', fontWeight: 600, textDecoration: 'underline' }}>
+          <Link
+            href="/favoritos"
+            style={{ color: '#1e40af', fontWeight: 600, textDecoration: 'underline' }}
+          >
             Ver detalle
           </Link>
         </div>
@@ -82,18 +87,25 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
         marginBottom: '20px'
       }}
     >
-      <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e40af', marginBottom: '8px' }}>
+      <div
+        style={{
+          fontSize: '14px',
+          fontWeight: 700,
+          color: '#1e40af',
+          marginBottom: '8px'
+        }}
+      >
         En tus favoritos esta semana
       </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '4px', fontSize: '13px' }}>
         {cambiadoZona > 0 && (
-          <li>• {cambiadoZona} empresa{cambiadoZona === 1 ? '' : 's'} han cambiado de zona.</li>
+          <li>• {cambiadoZona} empresa{cambiadoZona === 1 ? '' : 's'} han cambiado de estado.</li>
         )}
         {entradoAlta > 0 && (
-          <li>• {entradoAlta} empresa{entradoAlta === 1 ? '' : 's'} han entrado en zona alta.</li>
+          <li>• {entradoAlta} empresa{entradoAlta === 1 ? '' : 's'} están ahora en parte alta.</li>
         )}
         {entradoBaja > 0 && (
-          <li>• {entradoBaja} empresa{entradoBaja === 1 ? '' : 's'} han entrado en zona baja.</li>
+          <li>• {entradoBaja} empresa{entradoBaja === 1 ? '' : 's'} están ahora en parte baja.</li>
         )}
         {nuevosMaximos > 0 && (
           <li>• {nuevosMaximos} empresa{nuevosMaximos === 1 ? '' : 's'} han mejorado su variación 60 en más de 5 puntos.</li>
