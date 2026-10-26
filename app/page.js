@@ -5,8 +5,9 @@ import ListaCambiosZona from '../components/ListaCambiosZona';
 import MapaCalorSector from '../components/MapaCalorSector';
 import WatchlistBloque from '../components/WatchlistBloque';
 import CambiosDesdeUltimaVisita from '../components/CambiosDesdeUltimaVisita';
-import { supabase } from '../lib/supabase';
 import ActividadFavoritos from '../components/ActividadFavoritos';
+import WatchlistZona from '../components/WatchlistZona';
+import { supabase } from '../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,7 +118,8 @@ async function cargarDatos() {
         nombre: emp.nombre,
         sector: emp.sector,
         precio: datos.precioActual,
-        zona: datos.zona
+        zona: datos.zona,
+        variacion60
       });
 
       if (percentil !== null) {
@@ -198,14 +200,6 @@ async function cargarDatos() {
 export default async function Home() {
   const datos = await cargarDatos();
 
-  // Dividir cambios de zona en dos grupos: de baja a alta y de alta a baja
-  const cambiosABajaAlta = datos.cambiosZona.filter(
-    (c) => c.categoriaAnterior === 'C' && c.categoriaNueva === 'A'
-  );
-  const cambiosAAltaBaja = datos.cambiosZona.filter(
-    (c) => c.categoriaAnterior === 'A' && c.categoriaNueva === 'C'
-  );
-
   return (
     <main className="v3-container">
       <section className="v3-hero">
@@ -218,45 +212,45 @@ export default async function Home() {
 
       <Buscador />
 
-      <div style={{ marginTop: '12px' }} className="v3-home-grid">
-        <div className="v3-span-2">
-          <CambiosDesdeUltimaVisita empresas={datos.empresas} />
-        </div>
-        <div className="v3-span-2">
-          <ActividadFavoritos empresas={datos.empresas} modo="completo" />
-        </div>
-        <div className="v3-span-2">
-          <WatchlistBloque empresas={datos.empresas} />
-        </div>
-
-        <div>
-          <RankingTabla
-            items={datos.ranking}
-            tipo="variacion60"
-            titulo="Top 15 por variación en 60 sesiones"
-            total={datos.totalRanking}
-            colapsable={true}
-            verTodasHref="/empresas"
-            filasIniciales={6}
-          />
-        </div>
-        <div>
-          <ListaCambiosZona cambios={datos.cambiosZona} />
-        </div>
-
-        <div className="v3-span-2">
-          <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
-        </div>
-
-        {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
+      <WatchlistZona>
+        <div className="v3-home-grid" style={{ marginTop: '16px' }}>
           <div className="v3-span-2">
-            <MapaCalorSector
-              sectoresData={datos.sectoresData}
-              sectoresOrden={datos.sectoresOrden}
+            <ActividadFavoritos empresas={datos.empresas} modo="completo" />
+          </div>
+
+          <div className="v3-span-2">
+            <WatchlistBloque empresas={datos.empresas} />
+          </div>
+
+          <div>
+            <RankingTabla
+              items={datos.ranking}
+              tipo="variacion60"
+              titulo="Top 15 por variación en 60 sesiones"
+              total={datos.totalRanking}
+              colapsable={true}
+              verTodasHref="/empresas"
+              filasIniciales={6}
             />
           </div>
-        )}
-      </div>
+          <div>
+            <ListaCambiosZona cambios={datos.cambiosZona} />
+          </div>
+
+          <div className="v3-span-2">
+            <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
+          </div>
+
+          {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
+            <div className="v3-span-2">
+              <MapaCalorSector
+                sectoresData={datos.sectoresData}
+                sectoresOrden={datos.sectoresOrden}
+              />
+            </div>
+          )}
+        </div>
+      </WatchlistZona>
 
       <p className="v3-aviso" style={{ marginTop: '60px' }}>
         Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
