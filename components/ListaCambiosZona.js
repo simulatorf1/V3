@@ -10,10 +10,10 @@ function construirSlug(cambio) {
   return `${cambio.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function etiquetaCategoria(cat) {
-  if (cat === 'A') return { texto: 'parte alta', clase: 'v3-zona-alta' };
-  if (cat === 'C') return { texto: 'parte baja', clase: 'v3-zona-baja' };
-  return { texto: 'parte intermedia', clase: 'v3-zona-intermedia' };
+function etiquetaPendiente(cat) {
+  if (cat === 'C') return { texto: 'pendiente negativa', clase: 'v3-zona-baja' };
+  if (cat === 'A') return { texto: 'pendiente positiva', clase: 'v3-zona-alta' };
+  return { texto: 'sin pendiente', clase: 'v3-zona-intermedia' };
 }
 
 function Bloque({ titulo, items }) {
@@ -34,8 +34,8 @@ function Bloque({ titulo, items }) {
       </h3>
       <div style={{ display: 'grid', gap: '6px' }}>
         {items.map((c) => {
-          const ant = etiquetaCategoria(c.categoriaAnterior);
-          const nue = etiquetaCategoria(c.categoriaNueva);
+          const ant = etiquetaPendiente(c.categoriaAnterior);
+          const nue = etiquetaPendiente(c.categoriaNueva);
           return (
             <Link
               key={c.ticker}
@@ -82,18 +82,18 @@ export default function ListaCambiosZona({ cambios }) {
   if (!cambios || cambios.length === 0) {
     return (
       <section className="v3-seccion">
-        <h2 className="v3-seccion-titulo">Cambios de zona de hoy</h2>
+        <h2 className="v3-seccion-titulo">Cambios de pendiente de hoy</h2>
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-          Ninguna empresa ha cambiado de zona en las últimas 24 horas.
+          Ninguna empresa ha cambiado de pendiente en las últimas 24 horas.
         </p>
       </section>
     );
   }
 
-  const haciaArriba = cambios.filter(
+  const aPositiva = cambios.filter(
     (c) => c.categoriaAnterior === 'C' && c.categoriaNueva === 'A'
   );
-  const haciaAbajo = cambios.filter(
+  const aNegativa = cambios.filter(
     (c) => c.categoriaAnterior === 'A' && c.categoriaNueva === 'C'
   );
   const otros = cambios.filter(
@@ -102,13 +102,14 @@ export default function ListaCambiosZona({ cambios }) {
       !(c.categoriaAnterior === 'A' && c.categoriaNueva === 'C')
   );
 
-  const hayGrupos = haciaArriba.length > 0 || haciaAbajo.length > 0;
+  const hayGrupos = aPositiva.length > 0 || aNegativa.length > 0;
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Cambios de zona de hoy</h2>
+      <h2 className="v3-seccion-titulo">Cambios de pendiente de hoy</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Empresas que han cambiado de zona respecto a la sesión anterior. Dato descriptivo.
+        Empresas cuyo indicador Equaty ha cambiado de pendiente en las últimas 24 horas. Dato
+        descriptivo.
       </p>
 
       {hayGrupos ? (
@@ -120,14 +121,14 @@ export default function ListaCambiosZona({ cambios }) {
             marginTop: '12px'
           }}
         >
-          <Bloque titulo="De parte baja a parte alta" items={haciaArriba} />
-          <Bloque titulo="De parte alta a parte baja" items={haciaAbajo} />
+          <Bloque titulo="Pendiente pasa a positiva" items={aPositiva} />
+          <Bloque titulo="Pendiente pasa a negativa" items={aNegativa} />
         </div>
       ) : (
         <div style={{ marginTop: '12px', display: 'grid', gap: '6px' }}>
           {otros.map((c) => {
-            const ant = etiquetaCategoria(c.categoriaAnterior);
-            const nue = etiquetaCategoria(c.categoriaNueva);
+            const ant = etiquetaPendiente(c.categoriaAnterior);
+            const nue = etiquetaPendiente(c.categoriaNueva);
             return (
               <Link
                 key={c.ticker}
