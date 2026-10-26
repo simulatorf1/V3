@@ -1,19 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useWatchlist } from './WatchlistContext';
 
 export default function WatchlistBoton({ ticker, nombre }) {
-  const { tiene, agregar, quitar, listo } = useWatchlist();
-  const [montado, setMontado] = useState(false);
-
-  useEffect(() => {
-    setMontado(true);
-  }, []);
+  const { tiene, agregar, quitar } = useWatchlist();
 
   if (!ticker) return null;
-  if (!montado) return null;
-  if (!listo) return null;
 
   const enLista = tiene(ticker);
 
