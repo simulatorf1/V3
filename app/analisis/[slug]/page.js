@@ -10,6 +10,9 @@ import FormularioAlerta from '../../../components/FormularioAlerta';
 import Comparador from '../../../components/Comparador';
 import WatchlistBoton from '../../../components/WatchlistBoton';
 import ContextoSector from '../../../components/ContextoSector';
+import BarraIndicadorVisual from '../../../components/BarraIndicadorVisual';
+import ActividadFavoritos from '../../../components/ActividadFavoritos';
+import { generarTextoSituacion } from '../../../lib/textoSituacion';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -250,9 +253,6 @@ export default async function PaginaEmpresa({ params }) {
         <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px', fontSize: '17px' }}>
           Cargando empresa por primera vez…
         </p>
-        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
-          Esto solo ocurre la primera vez. Unos segundos.
-        </p>
       </div>
     );
   }
@@ -274,9 +274,6 @@ export default async function PaginaEmpresa({ params }) {
         <h1>{empresa.nombre} ({empresa.ticker})</h1>
         <p style={{ color: 'var(--v3-text-soft)', marginTop: '20px', fontSize: '17px' }}>
           Cargando análisis por primera vez…
-        </p>
-        <p style={{ color: 'var(--v3-text-mute)', fontSize: '13px', marginTop: '12px' }}>
-          Esto solo ocurre la primera vez. Unos segundos.
         </p>
       </div>
     );
@@ -340,7 +337,46 @@ export default async function PaginaEmpresa({ params }) {
   const ultimoCierre = velas[velas.length - 1]?.close;
   const variacion60 = primerCierre ? ((ultimoCierre - primerCierre) / primerCierre) * 100 : 0;
 
+  const max60 = velas.length > 0 ? Math.max(...velas.map((v) => v.high)) : null;
+  const min60 = velas.length > 0 ? Math.min(...velas.map((v) => v.low)) : null;
+  const distanciaMax = max60 ? ((precioActual - max60) / max60) * 100 : null;
+  const distanciaMin = min60 ? ((precioActual - min60) / min60) * 100 : null;
+
+  const smi5Atras = smis.length >= 6 ? smis[smis.length - 6] : null;
+  const pendienteIndicador =
+    smi5Atras !== null && smi5Atras !== undefined && smi5Atras !== 0 && analisis.smiActual !== null
+      ? ((analisis.smiActual - smi5Atras) / Math.abs(smi5Atras)) * 100
+      : null;
+
+  const variacionSector60 =
+    analisis.sectorInfo && analisis.sectorInfo.variacionSector60 !== null
+      ? analisis.sectorInfo.variacionSector60
+      : null;
+
+  const textoSituacion = generarTextoSituacion({
+    nombre: empresa.nombre,
+    zona: analisis.zona,
+    percentil,
+    smiActual: analisis.smiActual,
+    pendienteIndicador,
+    posicionRango: null,
+    distanciaMax,
+    distanciaMin,
+    variacionSector60,
+    variacion60
+  });
+
   const contexto = await cargarContextoSector(empresa.ticker, empresa.sector);
+
+  const empresasParaActividad = [
+    {
+      ticker: empresa.ticker,
+      nombre: empresa.nombre,
+      sector: empresa.sector,
+      zona: analisis.zona,
+      variacion60
+    }
+  ];
 
   const estiloAcordeon = {
     marginTop: '16px',
@@ -392,6 +428,20 @@ export default async function PaginaEmpresa({ params }) {
         {desdeCache && ' · desde caché'}
       </p>
 
+      {textoSituacion && (
+        <p
+          style={{
+            marginTop: '16px',
+            marginBottom: '16px',
+            fontSize: '15px',
+            lineHeight: 1.7,
+            color: 'var(--v3-text)'
+          }}
+        >
+          {textoSituacion}
+        </p>
+      )}
+
       <div className="v3-ficha-grid">
         <div>
           <section className="v3-seccion" style={{ marginTop: '20px' }}>
@@ -439,6 +489,22 @@ export default async function PaginaEmpresa({ params }) {
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 700 }}>{percentil}</div>
                 </div>
+              </div>
+
+              <div style={{ marginTop: '12px', marginBottom: '8px' }}>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--v3-text-mute)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
+                    marginBottom: '4px'
+                  }}
+                >
+                  Indicador Equaty · valor {analisis.smiActual?.toFixed(0) ?? '—'}
+                </div>
+                <BarraIndicadorVisual valor={analisis.smiActual} />
               </div>
 
               <p style={{ margin: '8px 0 0 0', fontSize: '11.5px', color: 'var(--v3-text-mute)' }}>
@@ -508,6 +574,8 @@ export default async function PaginaEmpresa({ params }) {
         </div>
 
         <div>
+          <ActividadFavoritos empresas={empresasParaActividad} modo="compacto" />
+
           <ContextoSector
             tickerActual={empresa.ticker}
             sector={empresa.sector}
