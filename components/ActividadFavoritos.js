@@ -4,19 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWatchlist } from './WatchlistContext';
 
-function construirSlug(item) {
-  const nombreLimpio = (item.nombre || item.ticker)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
-}
-
 export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
   const { lista, listo, estados } = useWatchlist();
+  const [montado, setMontado] = useState(false);
   const [actividad, setActividad] = useState(null);
+
+  useEffect(() => {
+    setMontado(true);
+  }, []);
 
   useEffect(() => {
     if (!listo) return;
@@ -24,7 +19,10 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
       setActividad(null);
       return;
     }
-    if (!empresas || empresas.length === 0) return;
+    if (!empresas || empresas.length === 0) {
+      setActividad(null);
+      return;
+    }
 
     const empresasDeLista = empresas.filter((e) => lista.includes(e.ticker));
 
@@ -52,11 +50,27 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
       }
     }
 
-    setActividad({ cambiadoZona, entradoAlta, entradoBaja, nuevosMaximos, total: empresasDeLista.length });
+    setActividad({
+      cambiadoZona,
+      entradoAlta,
+      entradoBaja,
+      nuevosMaximos,
+      total: empresasDeLista.length
+    });
   }, [listo, lista, empresas, estados]);
 
+  // Evitar mismatch de hidratación
+  if (!montado) return null;
+
   if (!actividad) return null;
-  if (actividad.cambiadoZona === 0 && actividad.entradoAlta === 0 && actividad.entradoBaja === 0) return null;
+  if (
+    actividad.cambiadoZona === 0 &&
+    actividad.entradoAlta === 0 &&
+    actividad.entradoBaja === 0 &&
+    actividad.nuevosMaximos === 0
+  ) {
+    return null;
+  }
 
   if (modo === 'compacto') {
     return (
