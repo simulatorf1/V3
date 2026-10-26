@@ -1,73 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWatchlist } from './WatchlistContext';
 
 export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
-  const { lista, listo, estados } = useWatchlist();
-  const [montado, setMontado] = useState(false);
-  const [actividad, setActividad] = useState(null);
+  const { lista, estados } = useWatchlist();
 
-  useEffect(() => {
-    setMontado(true);
-  }, []);
+  if (!lista || lista.length === 0) return null;
+  if (!empresas || empresas.length === 0) return null;
 
-  useEffect(() => {
-    if (!listo) return;
-    if (!lista || lista.length === 0) {
-      setActividad(null);
-      return;
+  const empresasDeLista = empresas.filter((e) => lista.includes(e.ticker));
+  if (empresasDeLista.length === 0) return null;
+
+  let cambiadoZona = 0;
+  let entradoAlta = 0;
+  let entradoBaja = 0;
+  let nuevosMaximos = 0;
+
+  for (const e of empresasDeLista) {
+    const ant = estados[e.ticker];
+    if (!ant) continue;
+    if (ant.zona && e.zona && ant.zona !== e.zona) {
+      cambiadoZona++;
+      if (e.zona === 'alta') entradoAlta++;
+      if (e.zona === 'baja') entradoBaja++;
     }
-    if (!empresas || empresas.length === 0) {
-      setActividad(null);
-      return;
+    if (
+      ant.variacion60 !== null &&
+      ant.variacion60 !== undefined &&
+      e.variacion60 !== null &&
+      e.variacion60 !== undefined &&
+      e.variacion60 > ant.variacion60 + 5
+    ) {
+      nuevosMaximos++;
     }
+  }
 
-    const empresasDeLista = empresas.filter((e) => lista.includes(e.ticker));
-
-    let cambiadoZona = 0;
-    let entradoAlta = 0;
-    let entradoBaja = 0;
-    let nuevosMaximos = 0;
-
-    for (const e of empresasDeLista) {
-      const ant = estados[e.ticker];
-      if (!ant) continue;
-      if (ant.zona && e.zona && ant.zona !== e.zona) {
-        cambiadoZona++;
-        if (e.zona === 'alta') entradoAlta++;
-        if (e.zona === 'baja') entradoBaja++;
-      }
-      if (
-        ant.variacion60 !== null &&
-        ant.variacion60 !== undefined &&
-        e.variacion60 !== null &&
-        e.variacion60 !== undefined &&
-        e.variacion60 > ant.variacion60 + 5
-      ) {
-        nuevosMaximos++;
-      }
-    }
-
-    setActividad({
-      cambiadoZona,
-      entradoAlta,
-      entradoBaja,
-      nuevosMaximos,
-      total: empresasDeLista.length
-    });
-  }, [listo, lista, empresas, estados]);
-
-  // Evitar mismatch de hidratación
-  if (!montado) return null;
-
-  if (!actividad) return null;
   if (
-    actividad.cambiadoZona === 0 &&
-    actividad.entradoAlta === 0 &&
-    actividad.entradoBaja === 0 &&
-    actividad.nuevosMaximos === 0
+    cambiadoZona === 0 &&
+    entradoAlta === 0 &&
+    entradoBaja === 0 &&
+    nuevosMaximos === 0
   ) {
     return null;
   }
@@ -87,9 +60,9 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
           Actividad reciente en tus favoritos
         </div>
         <div style={{ fontSize: '13px', color: 'var(--v3-text)' }}>
-          {actividad.cambiadoZona === 1
+          {cambiadoZona === 1
             ? '1 empresa ha cambiado de zona esta semana.'
-            : `${actividad.cambiadoZona} empresas han cambiado de zona esta semana.`}
+            : `${cambiadoZona} empresas han cambiado de zona esta semana.`}
           {' '}
           <Link href="/favoritos" style={{ color: '#1e40af', fontWeight: 600, textDecoration: 'underline' }}>
             Ver detalle
@@ -113,17 +86,17 @@ export default function ActividadFavoritos({ empresas, modo = 'completo' }) {
         En tus favoritos esta semana
       </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '4px', fontSize: '13px' }}>
-        {actividad.cambiadoZona > 0 && (
-          <li>• {actividad.cambiadoZona} empresa{actividad.cambiadoZona === 1 ? '' : 's'} han cambiado de zona.</li>
+        {cambiadoZona > 0 && (
+          <li>• {cambiadoZona} empresa{cambiadoZona === 1 ? '' : 's'} han cambiado de zona.</li>
         )}
-        {actividad.entradoAlta > 0 && (
-          <li>• {actividad.entradoAlta} empresa{actividad.entradoAlta === 1 ? '' : 's'} han entrado en zona alta.</li>
+        {entradoAlta > 0 && (
+          <li>• {entradoAlta} empresa{entradoAlta === 1 ? '' : 's'} han entrado en zona alta.</li>
         )}
-        {actividad.entradoBaja > 0 && (
-          <li>• {actividad.entradoBaja} empresa{actividad.entradoBaja === 1 ? '' : 's'} han entrado en zona baja.</li>
+        {entradoBaja > 0 && (
+          <li>• {entradoBaja} empresa{entradoBaja === 1 ? '' : 's'} han entrado en zona baja.</li>
         )}
-        {actividad.nuevosMaximos > 0 && (
-          <li>• {actividad.nuevosMaximos} empresa{actividad.nuevosMaximos === 1 ? '' : 's'} han mejorado su variación 60 en más de 5 puntos.</li>
+        {nuevosMaximos > 0 && (
+          <li>• {nuevosMaximos} empresa{nuevosMaximos === 1 ? '' : 's'} han mejorado su variación 60 en más de 5 puntos.</li>
         )}
       </ul>
       <Link
