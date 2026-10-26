@@ -51,12 +51,6 @@ function calcularRachaZona(smis, zonaActual) {
   return { racha, zona: zonaActual };
 }
 
-function etiquetaZona(zona) {
-  if (zona === 'alta') return { texto: 'parte alta', clase: 'v3-zona-alta' };
-  if (zona === 'baja') return { texto: 'parte baja', clase: 'v3-zona-baja' };
-  return { texto: 'parte intermedia', clase: 'v3-zona-intermedia' };
-}
-
 function construirSlug(item) {
   const nombreLimpio = (item.nombre || item.ticker)
     .toLowerCase()
@@ -342,7 +336,7 @@ export default async function PaginaHoy() {
             textDecoration: 'none'
           }}
         >
-          Ver historial completo de cambios de zona
+          Ver historial completo de cambios de pendiente
         </Link>
       </div>
     </main>
