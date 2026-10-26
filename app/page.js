@@ -6,6 +6,7 @@ import MapaCalorSector from '../components/MapaCalorSector';
 import WatchlistBloque from '../components/WatchlistBloque';
 import CambiosDesdeUltimaVisita from '../components/CambiosDesdeUltimaVisita';
 import { supabase } from '../lib/supabase';
+import ActividadFavoritos from '../components/ActividadFavoritos';
 
 export const dynamic = 'force-dynamic';
 
@@ -221,7 +222,9 @@ export default async function Home() {
         <div className="v3-span-2">
           <CambiosDesdeUltimaVisita empresas={datos.empresas} />
         </div>
-
+        <div className="v3-span-2">
+          <ActividadFavoritos empresas={datos.empresas} modo="completo" />
+        </div>
         <div className="v3-span-2">
           <WatchlistBloque empresas={datos.empresas} />
         </div>
