@@ -8,19 +8,19 @@ const WatchlistContext = createContext({
   quitar: () => {},
   tiene: () => false,
   listo: false,
-  zonas: {},
+  estados: {},
   ultimaVisita: null,
-  actualizarZonas: () => {},
+  actualizarEstados: () => {},
   marcarVisita: () => {},
-  getZonaAnterior: () => null
+  getEstadoAnterior: () => null
 });
 
 const STORAGE_KEY = 'equaty_watchlist_v1';
-const ESTADO_KEY = 'equaty_watchlist_estado_v1';
+const ESTADO_KEY = 'equaty_watchlist_estado_v2';
 
 export function WatchlistProvider({ children }) {
   const [lista, setLista] = useState([]);
-  const [zonas, setZonas] = useState({});
+  const [estados, setEstados] = useState({});
   const [ultimaVisita, setUltimaVisita] = useState(null);
   const [listo, setListo] = useState(false);
 
@@ -37,8 +37,15 @@ export function WatchlistProvider({ children }) {
       if (rawEstado) {
         const parsedEstado = JSON.parse(rawEstado);
         if (parsedEstado && typeof parsedEstado === 'object') {
-          if (parsedEstado.zonas && typeof parsedEstado.zonas === 'object') {
-            setZonas(parsedEstado.zonas);
+          if (parsedEstado.estados && typeof parsedEstado.estados === 'object') {
+            setEstados(parsedEstado.estados);
+          } else if (parsedEstado.zonas && typeof parsedEstado.zonas === 'object') {
+            // Migración de v1 (solo zonas) a v2 (estados completos)
+            const migrados = {};
+            for (const [ticker, zona] of Object.entries(parsedEstado.zonas)) {
+              migrados[ticker] = { zona, variacion60: null, indicador: null, percentil: null };
+            }
+            setEstados(migrados);
           }
           if (parsedEstado.ultimaVisita) {
             setUltimaVisita(parsedEstado.ultimaVisita);
@@ -55,12 +62,12 @@ export function WatchlistProvider({ children }) {
     } catch (e) {}
   }
 
-  function persistirEstado(nuevasZonas, nuevaUltimaVisita) {
+  function persistirEstado(nuevosEstados, nuevaUltimaVisita) {
     try {
       window.localStorage.setItem(
         ESTADO_KEY,
         JSON.stringify({
-          zonas: nuevasZonas,
+          estados: nuevosEstados,
           ultimaVisita: nuevaUltimaVisita
         })
       );
@@ -86,11 +93,11 @@ export function WatchlistProvider({ children }) {
       persistirLista(nueva);
       return nueva;
     });
-    setZonas((prev) => {
-      const nuevas = { ...prev };
-      delete nuevas[t];
-      persistirEstado(nuevas, ultimaVisita);
-      return nuevas;
+    setEstados((prev) => {
+      const nuevos = { ...prev };
+      delete nuevos[t];
+      persistirEstado(nuevos, ultimaVisita);
+      return nuevos;
     });
   }
 
@@ -99,10 +106,10 @@ export function WatchlistProvider({ children }) {
     return lista.includes(String(ticker).toUpperCase());
   }
 
-  function actualizarZonas(nuevasZonas) {
-    if (!nuevasZonas || typeof nuevasZonas !== 'object') return;
-    setZonas((prev) => {
-      const combinado = { ...prev, ...nuevasZonas };
+  function actualizarEstados(nuevosEstados) {
+    if (!nuevosEstados || typeof nuevosEstados !== 'object') return;
+    setEstados((prev) => {
+      const combinado = { ...prev, ...nuevosEstados };
       persistirEstado(combinado, ultimaVisita);
       return combinado;
     });
@@ -111,12 +118,12 @@ export function WatchlistProvider({ children }) {
   function marcarVisita() {
     const ahora = new Date().toISOString();
     setUltimaVisita(ahora);
-    persistirEstado(zonas, ahora);
+    persistirEstado(estados, ahora);
   }
 
-  function getZonaAnterior(ticker) {
+  function getEstadoAnterior(ticker) {
     if (!ticker) return null;
-    return zonas[String(ticker).toUpperCase()] || null;
+    return estados[String(ticker).toUpperCase()] || null;
   }
 
   return (
@@ -127,11 +134,11 @@ export function WatchlistProvider({ children }) {
         quitar,
         tiene,
         listo,
-        zonas,
+        estados,
         ultimaVisita,
-        actualizarZonas,
+        actualizarEstados,
         marcarVisita,
-        getZonaAnterior
+        getEstadoAnterior
       }}
     >
       {children}
