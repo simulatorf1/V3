@@ -15,6 +15,7 @@ import ActividadFavoritos from '../../../components/ActividadFavoritos';
 import { generarTextoSituacion } from '../../../lib/textoSituacion';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import WatchlistZona from '../../../components/WatchlistZona';
+import Comentarios from '../../../components/Comentarios';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -534,8 +535,8 @@ export default async function PaginaEmpresa({ params }) {
 
           {analisis.noticias && analisis.noticias.length > 0 && (
             <ContextoReciente noticias={analisis.noticias} />
-          )}
-
+          )}     
+          <Comentarios ticker={empresa.ticker} nombreEmpresa={empresa.nombre} />          
           <details style={estiloAcordeon}>
             <summary style={estiloSummary}>Divulgación regulatoria y metodología</summary>
             <div style={{ padding: '0 20px 20px 20px', fontSize: '13px', lineHeight: 1.7 }}>
