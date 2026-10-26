@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import WatchlistZona from '../../components/WatchlistZona';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,5 +120,10 @@ export default async function PaginaFavoritos() {
         </Link>
       </div>
     </main>
+    <WatchlistZona>
+      <main className="v3-container">
+        {/* ... */}
+      </main>
+    </WatchlistZona>
   );
 }
