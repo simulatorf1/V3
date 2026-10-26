@@ -21,8 +21,13 @@ function etiquetaZona(zona) {
 }
 
 export default function WatchlistBloque({ empresas }) {
-  const { lista, listo, zonas } = useWatchlist();
+  const { lista, listo, estados } = useWatchlist();
+  const [montado, setMontado] = useState(false);
   const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    setMontado(true);
+  }, []);
 
   useEffect(() => {
     if (!listo) return;
@@ -34,6 +39,8 @@ export default function WatchlistBloque({ empresas }) {
     setItems(filtrados);
   }, [lista, empresas, listo]);
 
+  // Evitar mismatch de hidratación: no renderizar nada hasta que el cliente esté montado
+  if (!montado) return null;
   if (!listo) return null;
 
   if (!lista || lista.length === 0) {
@@ -41,8 +48,8 @@ export default function WatchlistBloque({ empresas }) {
       <section className="v3-seccion">
         <h2 className="v3-seccion-titulo">Mis favoritas</h2>
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px' }}>
-          Aún no has añadido empresas. Entra en la ficha de cualquier empresa y pulsa "Añadir a mi
-          lista" para verlas aquí cuando vuelvas.
+          Aún no has añadido empresas. Entra en la ficha de cualquier empresa y pulsa "Añadir a mis
+          favoritas" para verlas aquí cuando vuelvas.
         </p>
       </section>
     );
@@ -80,8 +87,12 @@ export default function WatchlistBloque({ empresas }) {
         }}
       >
         {items.map((item) => {
-          const zonaAnterior = zonas[item.ticker];
-          const haCambiado = zonaAnterior && item.zona && zonaAnterior !== item.zona;
+          const estadoAnterior = estados[item.ticker];
+          const haCambiado =
+            estadoAnterior &&
+            estadoAnterior.zona &&
+            item.zona &&
+            estadoAnterior.zona !== item.zona;
           const zona = etiquetaZona(item.zona);
           return (
             <Link
@@ -151,6 +162,7 @@ export default function WatchlistBloque({ empresas }) {
           );
         })}
       </div>
+
       <div style={{ marginTop: '12px', textAlign: 'center' }}>
         <Link
           href="/favoritos"
@@ -168,7 +180,7 @@ export default function WatchlistBloque({ empresas }) {
         >
           Ver centro de seguimiento completo
         </Link>
-      </div>          
+      </div>
     </section>
   );
 }
