@@ -14,6 +14,7 @@ import BarraIndicadorVisual from '../../../components/BarraIndicadorVisual';
 import ActividadFavoritos from '../../../components/ActividadFavoritos';
 import { generarTextoSituacion } from '../../../lib/textoSituacion';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import WatchlistZona from '../../../components/WatchlistZona';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -418,7 +419,9 @@ export default async function PaginaEmpresa({ params }) {
       <h1 style={{ marginBottom: '4px' }}>{empresa.nombre} ({empresa.ticker})</h1>
 
       <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-        <WatchlistBoton ticker={empresa.ticker} nombre={empresa.nombre} />
+        <WatchlistZona>
+          <WatchlistBoton ticker={empresa.ticker} nombre={empresa.nombre} />
+        </WatchlistZona>
       </div>
 
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: 0 }}>
@@ -574,7 +577,9 @@ export default async function PaginaEmpresa({ params }) {
         </div>
 
         <div>
-          <ActividadFavoritos empresas={empresasParaActividad} modo="compacto" />
+          <WatchlistZona>
+            <ActividadFavoritos empresas={empresasParaActividad} modo="compacto" />
+          </WatchlistZona>
 
           <ContextoSector
             tickerActual={empresa.ticker}
