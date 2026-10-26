@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useWatchlist } from './WatchlistContext';
 
 export default function WatchlistBoton({ ticker, nombre }) {
