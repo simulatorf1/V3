@@ -13,10 +13,10 @@ function construirSlug(item) {
   return `${item.ticker.toLowerCase()}__${nombreLimpio}`;
 }
 
-function situacionDesdeZona(zona) {
-  if (zona === 'alta') return 'parte alta';
-  if (zona === 'baja') return 'parte baja';
-  return 'parte intermedia';
+function pendienteDesdeCategoria(cat) {
+  if (cat === 'A') return 'pendiente positiva';
+  if (cat === 'C') return 'pendiente negativa';
+  return 'sin pendiente';
 }
 
 function fmtPct(v, decimales = 2) {
@@ -24,14 +24,21 @@ function fmtPct(v, decimales = 2) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(decimales)}%`;
 }
 
-export default function ContextoSector({ tickerActual, sector, ranking, cambiosZona, extremosAltos, extremosBajos }) {
+export default function ContextoSector({
+  tickerActual,
+  sector,
+  ranking,
+  cambiosZona,
+  extremosAltos,
+  extremosBajos
+}) {
   const [tab, setTab] = useState('ranking');
 
   if (!sector) return null;
 
   const tabs = [
     { key: 'ranking', label: 'Ranking del sector' },
-    { key: 'cambios', label: 'Cambios de zona' },
+    { key: 'cambios', label: 'Cambios de pendiente' },
     { key: 'extremos', label: 'Extremos del sector' }
   ];
 
@@ -115,7 +122,14 @@ export default function ContextoSector({ tickerActual, sector, ranking, cambiosZ
                         fontSize: '12px'
                       }}
                     >
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span
+                        style={{
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
                         <strong>{i + 1}.</strong> {item.nombre}
                       </span>
                       <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -134,7 +148,7 @@ export default function ContextoSector({ tickerActual, sector, ranking, cambiosZ
         <div>
           {!cambiosZona || cambiosZona.length === 0 ? (
             <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-              Sin cambios de zona recientes en este sector.
+              Sin cambios de pendiente recientes en este sector.
             </p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '4px' }}>
@@ -154,7 +168,8 @@ export default function ContextoSector({ tickerActual, sector, ranking, cambiosZ
                   >
                     <div style={{ fontWeight: 600 }}>{c.nombre}</div>
                     <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
-                      Antes: {situacionDesdeZona(c.categoriaAnterior === 'A' ? 'alta' : c.categoriaAnterior === 'C' ? 'baja' : 'intermedia')} · Ahora: {situacionDesdeZona(c.categoriaNueva === 'A' ? 'alta' : c.categoriaNueva === 'C' ? 'baja' : 'intermedia')}
+                      Antes: {pendienteDesdeCategoria(c.categoriaAnterior)} · Ahora:{' '}
+                      {pendienteDesdeCategoria(c.categoriaNueva)}
                     </div>
                   </Link>
                 </li>
@@ -168,7 +183,15 @@ export default function ContextoSector({ tickerActual, sector, ranking, cambiosZ
         <div style={{ display: 'grid', gap: '10px' }}>
           {extremosAltos && extremosAltos.length > 0 && (
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--v3-text-mute)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  marginBottom: '4px'
+                }}
+              >
                 Percentil ≥ 90
               </div>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '3px' }}>
@@ -187,7 +210,15 @@ export default function ContextoSector({ tickerActual, sector, ranking, cambiosZ
           )}
           {extremosBajos && extremosBajos.length > 0 && (
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--v3-text-mute)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  marginBottom: '4px'
+                }}
+              >
                 Percentil ≤ 10
               </div>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '3px' }}>
@@ -204,11 +235,12 @@ export default function ContextoSector({ tickerActual, sector, ranking, cambiosZ
               </ul>
             </div>
           )}
-          {(!extremosAltos || extremosAltos.length === 0) && (!extremosBajos || extremosBajos.length === 0) && (
-            <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-              Sin extremos en este sector.
-            </p>
-          )}
+          {(!extremosAltos || extremosAltos.length === 0) &&
+            (!extremosBajos || extremosBajos.length === 0) && (
+              <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+                Sin extremos en este sector.
+              </p>
+            )}
         </div>
       )}
 
