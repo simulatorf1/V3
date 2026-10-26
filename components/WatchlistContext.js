@@ -17,6 +17,13 @@ const WatchlistContext = createContext({
 
 const STORAGE_KEY = 'equaty_watchlist_v1';
 const ESTADO_KEY = 'equaty_watchlist_estado_v2';
+const ESTADO_KEY_VIEJA = 'equaty_watchlist_estado_v1';
+
+function limpiarClave(clave) {
+  try {
+    window.localStorage.removeItem(clave);
+  } catch (e) {}
+}
 
 export function WatchlistProvider({ children }) {
   const [lista, setLista] = useState([]);
@@ -25,34 +32,67 @@ export function WatchlistProvider({ children }) {
   const [listo, setListo] = useState(false);
 
   useEffect(() => {
+    // 1. Cargar lista
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          setLista(parsed.map((t) => String(t).toUpperCase()));
+          const limpia = parsed
+            .filter((t) => typeof t === 'string' && t.length > 0)
+            .map((t) => t.toUpperCase());
+          setLista(limpia);
         }
       }
-      const rawEstado = window.localStorage.getItem(ESTADO_KEY);
-      if (rawEstado) {
-        const parsedEstado = JSON.parse(rawEstado);
-        if (parsedEstado && typeof parsedEstado === 'object') {
-          if (parsedEstado.estados && typeof parsedEstado.estados === 'object') {
-            setEstados(parsedEstado.estados);
-          } else if (parsedEstado.zonas && typeof parsedEstado.zonas === 'object') {
-            // Migración de v1 (solo zonas) a v2 (estados completos)
-            const migrados = {};
-            for (const [ticker, zona] of Object.entries(parsedEstado.zonas)) {
-              migrados[ticker] = { zona, variacion60: null, indicador: null, percentil: null };
+    } catch (e) {
+      limpiarClave(STORAGE_KEY);
+    }
+
+    // 2. Cargar estados (v2) o migrar desde v1
+    try {
+      const rawV2 = window.localStorage.getItem(ESTADO_KEY);
+      if (rawV2) {
+        const parsed = JSON.parse(rawV2);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.estados && typeof parsed.estados === 'object') {
+            setEstados(parsed.estados);
+          }
+          if (parsed.ultimaVisita && typeof parsed.ultimaVisita === 'string') {
+            setUltimaVisita(parsed.ultimaVisita);
+          }
+        }
+      } else {
+        // Intento de migración desde v1
+        const rawV1 = window.localStorage.getItem(ESTADO_KEY_VIEJA);
+        if (rawV1) {
+          try {
+            const parsedV1 = JSON.parse(rawV1);
+            if (parsedV1 && typeof parsedV1 === 'object' && parsedV1.zonas && typeof parsedV1.zonas === 'object') {
+              const migrados = {};
+              for (const [ticker, zona] of Object.entries(parsedV1.zonas)) {
+                if (typeof ticker === 'string' && typeof zona === 'string') {
+                  migrados[ticker.toUpperCase()] = {
+                    zona,
+                    variacion60: null,
+                    indicador: null,
+                    percentil: null
+                  };
+                }
+              }
+              setEstados(migrados);
+              if (parsedV1.ultimaVisita && typeof parsedV1.ultimaVisita === 'string') {
+                setUltimaVisita(parsedV1.ultimaVisita);
+              }
             }
-            setEstados(migrados);
-          }
-          if (parsedEstado.ultimaVisita) {
-            setUltimaVisita(parsedEstado.ultimaVisita);
+          } catch (e) {
+            // si v1 está corrupto, se ignora
           }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      limpiarClave(ESTADO_KEY);
+    }
+
     setListo(true);
   }, []);
 
@@ -71,6 +111,10 @@ export function WatchlistProvider({ children }) {
           ultimaVisita: nuevaUltimaVisita
         })
       );
+      // Limpiar la clave vieja si existe
+      if (window.localStorage.getItem(ESTADO_KEY_VIEJA)) {
+        window.localStorage.removeItem(ESTADO_KEY_VIEJA);
+      }
     } catch (e) {}
   }
 
