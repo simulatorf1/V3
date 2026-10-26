@@ -104,7 +104,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           marginBottom: '8px'
         }}
       >
-        {esSidebar ? 'Avisos por email' : 'Avisos por email cuando cambie de zona'}
+        {esSidebar ? 'Avisos por email' : 'Avisos por email cuando cambie de pendiente'}
       </div>
 
       <p
@@ -115,7 +115,7 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           lineHeight: 1.5
         }}
       >
-        Elige de qué zona quieres que te avisemos cuando {empresa.nombre} salga de ella. Solo el
+        Elige de qué pendiente quieres que te avisemos cuando {empresa.nombre} cambie. Solo el
         dato, sin interpretación.
       </p>
 
@@ -130,13 +130,16 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               fontSize: '13px',
               fontWeight: 600,
               borderRadius: 'var(--v3-radius-sm)',
-              border: zonaObjetivo === 'baja' ? '2px solid #2563eb' : '1px solid var(--v3-border-strong)',
+              border:
+                zonaObjetivo === 'baja'
+                  ? '2px solid #2563eb'
+                  : '1px solid var(--v3-border-strong)',
               background: zonaObjetivo === 'baja' ? '#2563eb' : '#fff',
               color: zonaObjetivo === 'baja' ? '#fff' : 'var(--v3-text)',
               cursor: 'pointer'
             }}
           >
-            Salga de parte baja
+            Salga de pendiente negativa
           </button>
           <button
             type="button"
@@ -147,13 +150,16 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
               fontSize: '13px',
               fontWeight: 600,
               borderRadius: 'var(--v3-radius-sm)',
-              border: zonaObjetivo === 'alta' ? '2px solid #2563eb' : '1px solid var(--v3-border-strong)',
+              border:
+                zonaObjetivo === 'alta'
+                  ? '2px solid #2563eb'
+                  : '1px solid var(--v3-border-strong)',
               background: zonaObjetivo === 'alta' ? '#2563eb' : '#fff',
               color: zonaObjetivo === 'alta' ? '#fff' : 'var(--v3-text)',
               cursor: 'pointer'
             }}
           >
-            Salga de parte alta
+            Salga de pendiente positiva
           </button>
         </div>
 
@@ -235,9 +241,9 @@ export default function FormularioAlerta({ empresa, variante = 'pagina' }) {
           lineHeight: 1.4
         }}
       >
-        Recibirás únicamente notificaciones informativas sobre cambios de zona en esta empresa.
-        Puedes darte de baja en cualquier momento con un clic. Estas notificaciones no constituyen
-        una señal ni recomendación de inversión.
+        Recibirás únicamente notificaciones informativas sobre cambios de pendiente en esta
+        empresa. Puedes darte de baja en cualquier momento con un clic. Estas notificaciones no
+        constituyen una señal ni recomendación de inversión.
       </p>
     </div>
   );
