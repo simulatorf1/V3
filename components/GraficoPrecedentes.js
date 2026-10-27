@@ -36,17 +36,14 @@ function buscarPrecedente(velas, smis, smiActual, setDiag) {
   for (let i = idxActual - 1; i >= 0; i--) {
     totalRevisados++;
 
-    // Condición 1: hay 5 velas después
     if (i + DIAS_EXTRA >= velas.length) continue;
     pasanVelasDespues++;
 
-    // Condición 2: valor dentro del rango
     const v = smis[i];
     if (v === null || v === undefined) continue;
     if (Math.abs(v - smiActual) > RANGO_VALOR) continue;
     pasanRango++;
 
-    // Condición 3: misma pendiente
     const pend = calcularPendiente(smis, i);
     if (pend === null) continue;
 
@@ -56,7 +53,6 @@ function buscarPrecedente(velas, smis, smiActual, setDiag) {
     }
     pasanPendiente++;
 
-    // Si llega aquí, es un precedente válido
     const dias = [];
     for (let d = 1; d <= DIAS_EXTRA; d++) {
       dias.push({
@@ -90,6 +86,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const chartRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
   const [diagnostico, setDiagnostico] = useState('');
+  const [chartListo, setChartListo] = useState(false);
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
@@ -107,6 +104,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       } catch (e) {}
       chartRef.current = null;
     }
+
+    setChartListo(false);
 
     let chart;
     let cleanup = () => {};
@@ -230,7 +229,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         if (chart && contenedorRef.current) {
           chart.applyOptions({ width: contenedorRef.current.clientWidth });
         }
-        setTimeout(dibujarOverlay, 100);
       }
       window.addEventListener('resize', handleResize);
 
@@ -238,16 +236,42 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         window.removeEventListener('resize', handleResize);
         if (chart) chart.remove();
         chartRef.current = null;
+        setChartListo(false);
       };
 
-      setTimeout(dibujarOverlay, 300);
-      setTimeout(dibujarOverlay, 800);
+      // Marcar el chart como listo tras un pequeño retardo
+      setTimeout(() => setChartListo(true), 500);
     }
 
     init();
 
     return () => cleanup();
   }, [velas, smis]);
+
+  // Este efecto dibuja el overlay cuando:
+  // - el chart está listo
+  // - hay precedente
+  // - hay velas
+  useEffect(() => {
+    if (!chartListo) return;
+    if (!precedente) return;
+    if (!velas || velas.length < 2) return;
+    if (!contenedorRef.current || !overlayRef.current || !chartRef.current) return;
+
+    dibujarOverlay();
+
+    // Redibujar también cuando el usuario hace zoom o scroll
+    const chart = chartRef.current;
+    const timeScale = chart.timeScale();
+    const handler = () => dibujarOverlay();
+    timeScale.subscribeVisibleLogicalRangeChange(handler);
+
+    return () => {
+      try {
+        timeScale.unsubscribeVisibleLogicalRangeChange(handler);
+      } catch (e) {}
+    };
+  }, [chartListo, precedente, velas]);
 
   function dibujarOverlay() {
     const contenedor = contenedorRef.current;
@@ -300,6 +324,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
     if (puntosSuperior.length === 0) return;
 
+    // Banda sombreada
     ctx.beginPath();
     ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
     for (let i = 1; i < puntosSuperior.length; i++) {
@@ -312,6 +337,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
     ctx.fill();
 
+    // Línea superior
     ctx.beginPath();
     ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
     for (let i = 1; i < puntosSuperior.length; i++) {
@@ -321,6 +347,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
+    // Línea inferior
     ctx.beginPath();
     ctx.moveTo(puntosInferior[0].x, puntosInferior[0].y);
     for (let i = 1; i < puntosInferior.length; i++) {
@@ -329,14 +356,25 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-  }
 
-  useEffect(() => {
-    if (precedente) {
-      setTimeout(dibujarOverlay, 300);
-      setTimeout(dibujarOverlay, 800);
-    }
-  }, [precedente]);
+    // Línea vertical discontinua
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(156, 163, 175, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xUltima + anchoVela / 2, 0);
+    ctx.lineTo(xUltima + anchoVela / 2, height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Texto
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.9)';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    const xCentro =
+      (puntosSuperior[0].x + puntosSuperior[puntosSuperior.length - 1].x) / 2;
+    ctx.fillText('última vez que estuvo así', xCentro, 18);
+  }
 
   return (
     <section className="v3-seccion">
@@ -373,6 +411,10 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         }}
       >
         <strong>DIAGNÓSTICO:</strong> {diagnostico || 'vacío'}
+        <br />
+        <strong>CHART LISTO:</strong> {chartListo ? 'sí' : 'no'}
+        <br />
+        <strong>PRECEDENTE:</strong> {precedente ? precedente.fecha : 'NO'}
       </div>
     </section>
   );
