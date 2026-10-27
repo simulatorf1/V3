@@ -69,9 +69,18 @@ function buscarPrecedente(velas, smis, smiActual) {
   return mejorCandidato;
 }
 
-function sumarDias(fechaStr, dias) {
+// Suma días hábiles (lunes a viernes), saltando sábados y domingos
+function sumarDiasHabiles(fechaStr, dias) {
   const f = new Date(fechaStr + 'T00:00:00');
-  f.setDate(f.getDate() + dias);
+  let contados = 0;
+  while (contados < dias) {
+    f.setDate(f.getDate() + 1);
+    const diaSemana = f.getDay();
+    // 0 = domingo, 6 = sábado
+    if (diaSemana !== 0 && diaSemana !== 6) {
+      contados++;
+    }
+  }
   return f.toISOString().slice(0, 10);
 }
 
@@ -148,7 +157,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           }))
         );
 
-        // Línea media del histórico: más gruesa y visible
+        // Línea media del histórico
         const lineaMediaData = velas.map((v) => ({
           time: v.date,
           value: (v.high + v.low) / 2
@@ -171,12 +180,12 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
           for (let i = 0; i < precedente.dias.length; i++) {
             const d = precedente.dias[i];
-            const fechaFutura = sumarDias(ultimaVela.date, i + 1);
+            const fechaFutura = sumarDiasHabiles(ultimaVela.date, i + 1);
             medioAcum += d.deltaMedio;
             lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
           }
 
-          // Recuadro amarillo: área que cubre la zona de la proyección
+          // Área amarilla que cubre la zona de la proyección
           const areaRecuadro = chart.addAreaSeries({
             topColor: 'rgba(251, 191, 36, 0.15)',
             bottomColor: 'rgba(251, 191, 36, 0.15)',
@@ -201,6 +210,18 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             crosshairMarkerVisible: true
           });
           lineaFutura.setData(lineaFuturaData);
+
+          // Etiqueta visible en el gráfico: "réplica histórica"
+          // Se hace con createPriceLine sobre la línea futura, con el título
+          lineaFutura.createPriceLine({
+            price: lineaFuturaData[lineaFuturaData.length - 1].value,
+            color: 'rgba(251, 191, 36, 0.6)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            axisLabelVisible: true,
+            title: 'réplica histórica',
+            priceScaleId: 'right'
+          });
         }
 
         // Indicador Equaty
@@ -293,9 +314,10 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
         La línea azul fuerte sobre las velas es la media del precio de cada vela. La línea azul
-        discontinua a la derecha es la proyección a 10 días de esa media. La zona amarilla marca el
-        área que se está replicando (no es una predicción, es una copia de lo que pasó la última vez
-        que el indicador estuvo en una situación similar).
+        discontinua a la derecha es la proyección a 10 <strong>sesiones</strong> (días hábiles, sin
+        contar sábados ni domingos) de esa media. La etiqueta amarilla en el gráfico
+        <strong>"réplica histórica"</strong> indica que la zona derecha no es una predicción, sino
+        una copia de lo que pasó la última vez que el indicador estuvo en una situación similar.
         {precedente && (
           <span style={{ display: 'block', marginTop: '4px' }}>
             Precedente: {precedente.fecha} · Indicador: {precedente.smi.toFixed(0)} · Distancia al valor actual:{' '}
