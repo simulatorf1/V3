@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const DIAS_EXTRA = 5;
-const RANGO_VALOR = 5;
+const RANGO_VALOR = 30;
 const MAX_PRECEDENTES = 5;
 
 function calcularPendiente(smis, idx) {
@@ -25,7 +25,12 @@ function buscarPrecedentes(velas, smis, smiActual) {
 
   const candidatos = [];
 
-  for (let i = idxActual - 10; i >= 10; i--) {
+  // Recorremos TODO el histórico disponible hacia atrás.
+  // Necesitamos que haya al menos 5 velas después del candidato.
+  for (let i = idxActual - 1; i >= 0; i--) {
+    // Si no hay suficientes velas después, no sirve
+    if (i + DIAS_EXTRA >= velas.length) continue;
+
     const v = smis[i];
     if (v === null || v === undefined) continue;
     if (Math.abs(v - smiActual) > RANGO_VALOR) continue;
@@ -38,9 +43,6 @@ function buscarPrecedentes(velas, smis, smiActual) {
       if (pendienteActual >= 0 && pend < 0) continue;
       if (pendienteActual < 0 && pend >= 0) continue;
     }
-
-    // Necesitamos 5 velas siguientes
-    if (i + DIAS_EXTRA >= velas.length) continue;
 
     const dias = [];
     for (let d = 1; d <= DIAS_EXTRA; d++) {
@@ -67,7 +69,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
   const [precedentes, setPrecedentes] = useState([]);
-  const [hoverIdx, setHoverIdx] = useState(-1);
   const [tooltip, setTooltip] = useState(null);
 
   useEffect(() => {
@@ -200,6 +201,71 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         })
       });
 
+      // ===== PRECEDENTES (5 días extra a la derecha) =====
+      if (precedentes.length > 0) {
+        const ultimaFecha = new Date(velas[velas.length - 1].date);
+        const fechasExtra = [];
+        for (let d = 1; d <= DIAS_EXTRA; d++) {
+          const f = new Date(ultimaFecha);
+          f.setDate(f.getDate() + d);
+          fechasExtra.push(f.toISOString().slice(0, 10));
+        }
+
+        const seriesPrecedentes = [];
+
+        precedentes.forEach((p, idx) => {
+          const opacidad = 0.15 + (idx / MAX_PRECEDENTES) * 0.25;
+
+          const sup = chart.addLineSeries({
+            color: `rgba(37, 99, 235, ${opacidad + 0.3})`,
+            lineWidth: 2,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: true
+          });
+          const inf = chart.addLineSeries({
+            color: `rgba(37, 99, 235, ${opacidad})`,
+            lineWidth: 2,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: true
+          });
+
+          sup.setData(p.dias.map((d, i) => ({ time: fechasExtra[i], value: d.high })));
+          inf.setData(p.dias.map((d, i) => ({ time: fechasExtra[i], value: d.low })));
+
+          seriesPrecedentes.push({ idx, sup, inf, precedente: p });
+        });
+
+        chart.subscribeCrosshairMove((param) => {
+          if (!param.point) {
+            setTooltip(null);
+            return;
+          }
+          let encontrado = null;
+          for (const s of seriesPrecedentes) {
+            const valSup = param.seriesData.get(s.sup);
+            const valInf = param.seriesData.get(s.inf);
+            if (valSup || valInf) {
+              encontrado = s.precedente;
+              break;
+            }
+          }
+          if (encontrado) {
+            setTooltip({
+              fecha: encontrado.fecha,
+              smi: encontrado.smi,
+              x: param.point.x,
+              y: param.point.y
+            });
+          } else {
+            setTooltip(null);
+          }
+        });
+      }
+
       chart.timeScale().fitContent();
 
       function handleResize() {
@@ -219,108 +285,15 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     init();
 
     return () => cleanup();
-  }, [velas, smis]);
-
-  // ===== PRECEDENTES (días extra a la derecha) =====
-  useEffect(() => {
-    if (!chartRef.current || precedentes.length === 0 || !velas || velas.length === 0) return;
-
-    const chart = chartRef.current;
-    let seriesCreadas = [];
-
-    (async () => {
-      const { createChart, LineStyle } = await import('lightweight-charts');
-      // lightweight-charts no exporta LineStyle en import dinámico de forma fiable
-      // Usamos una serie de líneas con las fechas desplazadas
-      // Crear fechas futuras a partir de la última vela
-      const ultimaFecha = new Date(velas[velas.length - 1].date);
-      const fechasExtra = [];
-      for (let d = 1; d <= DIAS_EXTRA; d++) {
-        const f = new Date(ultimaFecha);
-        f.setDate(f.getDate() + d);
-        fechasExtra.push(f.toISOString().slice(0, 10));
-      }
-
-      precedentes.forEach((p, idx) => {
-        const opacidad = 0.15 + (idx / MAX_PRECEDENTES) * 0.25;
-
-        // Línea superior del precedente
-        const sup = chart.addLineSeries({
-          color: `rgba(37, 99, 235, ${opacidad + 0.2})`,
-          lineWidth: 1,
-          priceScaleId: 'right',
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: true
-        });
-
-        // Línea inferior del precedente
-        const inf = chart.addLineSeries({
-          color: `rgba(37, 99, 235, ${opacidad})`,
-          lineWidth: 1,
-          priceScaleId: 'right',
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: true
-        });
-
-        sup.setData(p.dias.map((d, i) => ({ time: fechasExtra[i], value: d.high })));
-        inf.setData(p.dias.map((d, i) => ({ time: fechasExtra[i], value: d.low })));
-
-        seriesCreadas.push({ idx, sup, inf, precedente: p });
-      });
-
-      // Manejar hover: iluminar el precedente
-      function handleCrosshair(param) {
-        if (!param.point) {
-          setHoverIdx(-1);
-          setTooltip(null);
-          return;
-        }
-        // Buscar qué precedente está bajo el ratón
-        let hoverEncontrado = -1;
-        for (const s of seriesCreadas) {
-          const valSup = param.seriesData.get(s.sup);
-          const valInf = param.seriesData.get(s.inf);
-          if (valSup && valInf) {
-            hoverEncontrado = s.idx;
-            const fecha = s.precedente.fecha;
-            const smi = s.precedente.smi;
-            setHoverIdx(s.idx);
-            setTooltip({
-              fecha,
-              smi,
-              x: param.point.x,
-              y: param.point.y
-            });
-            break;
-          }
-        }
-        if (hoverEncontrado === -1) {
-          setHoverIdx(-1);
-          setTooltip(null);
-        }
-      }
-
-      chart.subscribeCrosshairMove(handleCrosshair);
-    })();
-
-    return () => {
-      if (chartRef.current) {
-        try {
-          chartRef.current.unsubscribeCrosshairMove?.();
-        } catch (e) {}
-      }
-    };
-  }, [precedentes, velas]);
+  }, [velas, smis, precedentes]);
 
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico con precedentes (pruebas)</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Este gráfico muestra el precio de las últimas 60 sesiones con dos bandas envolventes
-        (máximos y mínimos unidos por líneas) y, a la derecha, las bandas que se dieron la última
-        vez que el indicador estuvo en un valor similar y con la misma pendiente.
+        Velas de las últimas 60 sesiones con dos bandas envolventes (máximos y mínimos unidos por
+        líneas) y, a la derecha, las bandas que se dieron la última vez que el indicador estuvo en
+        un valor similar (±30 puntos) y con la misma pendiente.
         {precedentes.length === 0 && (
           <span style={{ display: 'block', marginTop: '6px', color: '#b91c1c' }}>
             No se ha encontrado ningún precedente con estas características.
@@ -328,7 +301,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         )}
         {precedentes.length > 0 && (
           <span style={{ display: 'block', marginTop: '6px' }}>
-            Se han encontrado {precedentes.length} precedentes.
+            {precedentes.length} precedente{precedentes.length === 1 ? '' : 's'} encontrado
+            {precedentes.length === 1 ? '' : 's'}.
           </span>
         )}
       </p>
@@ -364,7 +338,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
         <strong>Leyenda:</strong> línea azul superior = máximos de cada vela. Línea gris inferior =
         mínimos de cada vela. Línea morada = indicador Equaty. Bandas azules a la derecha =
-        precedentes (5 días siguientes al último día en el que el indicador estuvo en ±5 puntos del
+        precedentes (5 días siguientes al último día en el que el indicador estuvo en ±30 puntos del
         valor actual y con la misma pendiente).
       </p>
     </section>
