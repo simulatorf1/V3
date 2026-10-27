@@ -62,14 +62,13 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const chartRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
   const [chartListo, setChartListo] = useState(false);
+  const [diag, setDiag] = useState('');
 
-  // Calcular precedente
   useEffect(() => {
     if (!velas || velas.length === 0) return;
     setPrecedente(buscarPrecedente(velas, smis, smiActual));
   }, [velas, smis, smiActual]);
 
-  // Crear chart
   useEffect(() => {
     if (!velas || velas.length === 0) return;
     if (!contenedorRef.current) return;
@@ -88,7 +87,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     async function init() {
       try {
         const { createChart, LineStyle } = await import('lightweight-charts');
-
         if (cancelado) return;
         if (!contenedorRef.current) return;
 
@@ -217,10 +215,9 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           chartRef.current = null;
         };
 
-        // Esperar un poco y marcar chart como listo
         setTimeout(() => {
           if (!cancelado) setChartListo(true);
-        }, 600);
+        }, 800);
       } catch (e) {
         console.error('Error inicializando chart:', e);
       }
@@ -234,7 +231,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     };
   }, [velas, smis]);
 
-  // Dibujar overlay cuando chart y precedente estén listos
   useEffect(() => {
     if (!chartListo) return;
     if (!precedente) return;
@@ -244,7 +240,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
     const timer = setTimeout(() => {
       dibujarOverlay();
-    }, 100);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [chartListo, precedente, velas]);
@@ -254,13 +250,25 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       const contenedor = contenedorRef.current;
       const overlay = overlayRef.current;
       const chart = chartRef.current;
-      if (!contenedor || !overlay || !chart) return;
-      if (!precedente || !precedente.dias || precedente.dias.length === 0) return;
-      if (!velas || velas.length < 2) return;
+      if (!contenedor || !overlay || !chart) {
+        setDiag('fallo: contenedor/overlay/chart null');
+        return;
+      }
+      if (!precedente) {
+        setDiag('fallo: precedente null');
+        return;
+      }
+      if (!velas || velas.length < 2) {
+        setDiag('fallo: velas < 2');
+        return;
+      }
 
       const width = contenedor.clientWidth;
       const height = contenedor.clientHeight;
-      if (width === 0 || height === 0) return;
+      if (width === 0 || height === 0) {
+        setDiag(`fallo: width=${width} height=${height}`);
+        return;
+      }
 
       const dpr = window.devicePixelRatio || 1;
       overlay.width = width * dpr;
@@ -269,7 +277,10 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       overlay.style.height = height + 'px';
 
       const ctx = overlay.getContext('2d');
-      if (!ctx) return;
+      if (!ctx) {
+        setDiag('fallo: ctx null');
+        return;
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
 
@@ -278,14 +289,31 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
       const ultimaVela = velas[velas.length - 1];
       const xUltima = timeScale.timeToCoordinate(ultimaVela.date);
-      if (xUltima === null || xUltima === undefined) return;
-
       const penultimaVela = velas[velas.length - 2];
       const xPenultima = timeScale.timeToCoordinate(penultimaVela.date);
-      if (xPenultima === null || xPenultima === undefined) return;
+
+      const info = [];
+      info.push(`width=${width}`);
+      info.push(`height=${height}`);
+      info.push(`xUltima=${xUltima !== null && xUltima !== undefined ? Math.round(xUltima) : 'NULL'}`);
+      info.push(`xPenultima=${xPenultima !== null && xPenultima !== undefined ? Math.round(xPenultima) : 'NULL'}`);
+
+      if (xUltima === null || xUltima === undefined) {
+        setDiag(info.join(' · '));
+        return;
+      }
+      if (xPenultima === null || xPenultima === undefined) {
+        setDiag(info.join(' · '));
+        return;
+      }
 
       const anchoVela = xUltima - xPenultima;
-      if (anchoVela <= 0) return;
+      info.push(`anchoVela=${Math.round(anchoVela)}`);
+
+      if (anchoVela <= 0) {
+        setDiag(info.join(' · '));
+        return;
+      }
 
       const puntosSuperior = [];
       const puntosInferior = [];
@@ -300,9 +328,12 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         }
       });
 
+      info.push(`puntosSup=${puntosSuperior.length}`);
+      info.push(`puntosInf=${puntosInferior.length}`);
+      setDiag(info.join(' · '));
+
       if (puntosSuperior.length === 0) return;
 
-      // Banda sombreada
       ctx.beginPath();
       ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
       for (let i = 1; i < puntosSuperior.length; i++) {
@@ -315,7 +346,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
       ctx.fill();
 
-      // Línea superior
       ctx.beginPath();
       ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
       for (let i = 1; i < puntosSuperior.length; i++) {
@@ -325,7 +355,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Línea inferior
       ctx.beginPath();
       ctx.moveTo(puntosInferior[0].x, puntosInferior[0].y);
       for (let i = 1; i < puntosInferior.length; i++) {
@@ -334,26 +363,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
-
-      // Línea vertical discontinua
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(156, 163, 175, 0.7)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(xUltima + anchoVela / 2, 0);
-      ctx.lineTo(xUltima + anchoVela / 2, height);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Texto
-      ctx.fillStyle = 'rgba(37, 99, 235, 0.9)';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'center';
-      const xCentro =
-        (puntosSuperior[0].x + puntosSuperior[puntosSuperior.length - 1].x) / 2;
-      ctx.fillText('última vez que estuvo así', xCentro, 18);
     } catch (e) {
-      console.error('Error dibujando overlay:', e);
+      setDiag('excepción: ' + e.message);
     }
   }
 
@@ -394,6 +405,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         <strong>CHART LISTO:</strong> {chartListo ? 'sí' : 'no'}
         <br />
         <strong>PRECEDENTE:</strong> {precedente ? precedente.fecha : 'NO'}
+        <br />
+        <strong>DIAGNÓSTICO:</strong> {diag || 'vacío'}
       </div>
     </section>
   );
