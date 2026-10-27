@@ -61,6 +61,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const overlayRef = useRef(null);
   const chartRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
+  const [diagnostico, setDiagnostico] = useState('');
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
@@ -200,7 +201,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         if (chart && contenedorRef.current) {
           chart.applyOptions({ width: contenedorRef.current.clientWidth });
         }
-        setTimeout(dibujarOverlay, 50);
+        setTimeout(dibujarOverlay, 100);
       }
       window.addEventListener('resize', handleResize);
 
@@ -210,11 +211,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         chartRef.current = null;
       };
 
-      // Dibujar el overlay cuando el chart ya está listo
-      setTimeout(dibujarOverlay, 200);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-        dibujarOverlay();
-      });
+      setTimeout(dibujarOverlay, 300);
+      setTimeout(dibujarOverlay, 800);
     }
 
     init();
@@ -226,13 +224,35 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     const contenedor = contenedorRef.current;
     const overlay = overlayRef.current;
     const chart = chartRef.current;
-    if (!contenedor || !overlay || !chart) return;
-    if (!precedente || !precedente.dias || precedente.dias.length === 0) return;
-    if (!velas || velas.length < 2) return;
+
+    const info = [];
+    info.push('contenedor: ' + (contenedor ? 'sí' : 'NO'));
+    info.push('overlay: ' + (overlay ? 'sí' : 'NO'));
+    info.push('chart: ' + (chart ? 'sí' : 'NO'));
+    info.push('precedente: ' + (precedente ? precedente.fecha : 'NO'));
+
+    if (!contenedor || !overlay || !chart) {
+      setDiagnostico(info.join(' · '));
+      return;
+    }
+    if (!precedente || !precedente.dias || precedente.dias.length === 0) {
+      setDiagnostico(info.join(' · '));
+      return;
+    }
+    if (!velas || velas.length < 2) {
+      setDiagnostico(info.join(' · ') + ' · velas < 2');
+      return;
+    }
 
     const width = contenedor.clientWidth;
     const height = contenedor.clientHeight;
-    if (width === 0 || height === 0) return;
+    info.push('width: ' + width);
+    info.push('height: ' + height);
+
+    if (width === 0 || height === 0) {
+      setDiagnostico(info.join(' · '));
+      return;
+    }
 
     const dpr = window.devicePixelRatio || 1;
     overlay.width = width * dpr;
@@ -247,20 +267,27 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     const timeScale = chart.timeScale();
     const priceScale = chart.priceScale('right');
 
-    // Coordenada X de la última vela real
     const ultimaVela = velas[velas.length - 1];
     const xUltima = timeScale.timeToCoordinate(ultimaVela.date);
-    if (xUltima === null) return;
+    info.push('xUltima: ' + (xUltima !== null ? Math.round(xUltima) : 'NULL'));
 
-    // Coordenada X de la penúltima vela, para calcular el ancho
     const penultimaVela = velas[velas.length - 2];
     const xPenultima = timeScale.timeToCoordinate(penultimaVela.date);
-    if (xPenultima === null) return;
+    info.push('xPenultima: ' + (xPenultima !== null ? Math.round(xPenultima) : 'NULL'));
+
+    if (xUltima === null || xPenultima === null) {
+      setDiagnostico(info.join(' · '));
+      return;
+    }
 
     const anchoVela = xUltima - xPenultima;
-    if (anchoVela <= 0) return;
+    info.push('anchoVela: ' + Math.round(anchoVela));
 
-    // Construir puntos
+    if (anchoVela <= 0) {
+      setDiagnostico(info.join(' · '));
+      return;
+    }
+
     const puntosSuperior = [];
     const puntosInferior = [];
 
@@ -274,9 +301,13 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       }
     });
 
+    info.push('puntosSup: ' + puntosSuperior.length);
+    info.push('puntosInf: ' + puntosInferior.length);
+
+    setDiagnostico(info.join(' · '));
+
     if (puntosSuperior.length === 0) return;
 
-    // Banda sombreada
     ctx.beginPath();
     ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
     for (let i = 1; i < puntosSuperior.length; i++) {
@@ -289,7 +320,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
     ctx.fill();
 
-    // Línea superior
     ctx.beginPath();
     ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
     for (let i = 1; i < puntosSuperior.length; i++) {
@@ -299,7 +329,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Línea inferior
     ctx.beginPath();
     ctx.moveTo(puntosInferior[0].x, puntosInferior[0].y);
     for (let i = 1; i < puntosInferior.length; i++) {
@@ -309,7 +338,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Línea vertical discontinua entre "hoy" y "última vez"
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = 'rgba(156, 163, 175, 0.7)';
     ctx.lineWidth = 1;
@@ -319,18 +347,17 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Texto
     ctx.fillStyle = 'rgba(37, 99, 235, 0.9)';
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
-    const xCentro =
-      (puntosSuperior[0].x + puntosSuperior[puntosSuperior.length - 1].x) / 2;
+    const xCentro = (puntosSuperior[0].x + puntosSuperior[puntosSuperior.length - 1].x) / 2;
     ctx.fillText('última vez que estuvo así', xCentro, 18);
   }
 
   useEffect(() => {
     if (precedente) {
-      setTimeout(dibujarOverlay, 200);
+      setTimeout(dibujarOverlay, 300);
+      setTimeout(dibujarOverlay, 800);
     }
   }, [precedente]);
 
@@ -338,19 +365,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico con precedentes (pruebas)</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Velas de las últimas 60 sesiones con dos bandas envolventes (máximos y mínimos unidos por
-        líneas) y, a la derecha, la banda sombreada que se dio la última vez que el indicador estuvo
-        en un valor similar (±30 puntos) y con la misma pendiente.
-        {precedente === null && (
-          <span style={{ display: 'block', marginTop: '6px', color: '#b91c1c' }}>
-            No se ha encontrado ningún precedente con estas características.
-          </span>
-        )}
-        {precedente !== null && (
-          <span style={{ display: 'block', marginTop: '6px' }}>
-            Precedente encontrado: {precedente.fecha} (indicador {precedente.smi.toFixed(0)}).
-          </span>
-        )}
+        Velas de las últimas 60 sesiones con dos bandas envolventes y, a la derecha, la banda
+        sombreada del precedente.
       </p>
 
       <div
@@ -370,11 +386,25 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         />
       </div>
 
+      <div
+        style={{
+          marginTop: '12px',
+          padding: '12px',
+          background: '#fef3c7',
+          border: '1px solid #fbbf24',
+          borderRadius: '6px',
+          fontSize: '12px',
+          lineHeight: 1.6,
+          fontFamily: 'monospace',
+          wordBreak: 'break-word'
+        }}
+      >
+        <strong>DIAGNÓSTICO:</strong> {diagnostico || 'vacío'}
+      </div>
+
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        <strong>Leyenda:</strong> línea azul superior = máximos de cada vela. Línea gris inferior =
-        mínimos de cada vela. Línea morada = indicador Equaty. Banda azul sombreada a la derecha =
-        precedente (5 días siguientes al último día en el que el indicador estuvo en ±30 puntos del
-        valor actual y con la misma pendiente).
+        <strong>Leyenda:</strong> línea azul superior = máximos. Línea gris inferior = mínimos.
+        Línea morada = indicador Equaty. Banda azul = precedente.
       </p>
     </section>
   );
