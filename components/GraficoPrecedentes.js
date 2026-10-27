@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const DIAS_EXTRA = 5;
+const DIAS_EXTRA = 10;
 const RANGO_VALOR = 30;
 
 function calcularPendiente(smis, idx) {
@@ -114,7 +114,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             vertLines: { color: '#f0f0f0' },
             horzLines: { color: '#f0f0f0' }
           },
-          timeScale: { borderColor: '#ddd', rightOffset: 15 },
+          timeScale: { borderColor: '#ddd', rightOffset: 20 },
           rightPriceScale: { borderColor: '#ddd', scaleMargins: { top: 0.1, bottom: 0.1 } },
           leftPriceScale: {
             borderColor: '#ddd',
@@ -148,26 +148,21 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           }))
         );
 
-        // Bandas reales (máximos y mínimos)
-        const bandaSuperior = chart.addLineSeries({
-          color: '#2563eb',
-          lineWidth: 1,
-          priceScaleId: 'right',
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: false
-        });
-        bandaSuperior.setData(velas.map((v) => ({ time: v.date, value: v.high })));
+        // Línea central del histórico: media de cada vela
+        const lineaMediaData = velas.map((v) => ({
+          time: v.date,
+          value: (v.high + v.low) / 2
+        }));
 
-        const bandaInferior = chart.addLineSeries({
-          color: '#9ca3af',
-          lineWidth: 1,
+        const lineaMedia = chart.addLineSeries({
+          color: 'rgba(37, 99, 235, 0.5)',
+          lineWidth: 1.5,
           priceScaleId: 'right',
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false
         });
-        bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
+        lineaMedia.setData(lineaMediaData);
 
         // Línea central futura: acumular deltas del precio medio del precedente
         if (precedente) {
@@ -282,9 +277,9 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        La línea azul discontinua a la derecha es la proyección del precio medio del precedente.
-        Empieza en el cierre actual y sigue la misma forma (diferencias entre días consecutivos)
-        que tuvo el precio medio del precedente.
+        La línea azul clara sobre las velas es la media del precio de cada vela. La línea azul
+        discontinua a la derecha es la proyección a 10 días de esa media, siguiendo la misma forma
+        (diferencias entre días consecutivos) que tuvo el precedente.
         {precedente && (
           <span style={{ display: 'block', marginTop: '4px' }}>
             Precedente: {precedente.fecha} · Indicador: {precedente.smi.toFixed(0)} · Distancia al valor actual:{' '}
