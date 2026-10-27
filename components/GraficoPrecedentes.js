@@ -122,6 +122,18 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         const highActual = ultimaVela.high;
         const lowActual = ultimaVela.low;
 
+        // Calcular el rango Y solo con los datos históricos
+        let minY = Infinity;
+        let maxY = -Infinity;
+        for (const v of velas) {
+          minY = Math.min(minY, v.low);
+          maxY = Math.max(maxY, v.high);
+        }
+        // Margen del 10%
+        const margen = (maxY - minY) * 0.1;
+        minY -= margen;
+        maxY += margen;
+
         // Velas reales
         const velasReales = velas.map((v) => ({
           time: v.date,
@@ -163,19 +175,14 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
 
-        // Bandas futuras (proyección) - punteadas
+        // Bandas futuras (proyección) - punteadas, con diferencia absoluta
         if (precedente) {
-          const bandaSupFuturaData = [
-            { time: ultimaVela.date, value: highActual }
-          ];
-          const bandaInfFuturaData = [
-            { time: ultimaVela.date, value: lowActual }
-          ];
+          const bandaSupFuturaData = [{ time: ultimaVela.date, value: highActual }];
+          const bandaInfFuturaData = [{ time: ultimaVela.date, value: lowActual }];
 
           for (let i = 0; i < precedente.dias.length; i++) {
             const d = precedente.dias[i];
             const fechaFutura = sumarDias(ultimaVela.date, i + 1);
-            // Variación absoluta: el día 0 es highActual, y cada día suma el delta del precedente
             bandaSupFuturaData.push({
               time: fechaFutura,
               value: highActual + d.deltaHigh
@@ -262,7 +269,24 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           })
         });
 
+        // Fijar el rango Y para que no se autoescale con las bandas futuras
+        chart.priceScale('right').applyOptions({
+          autoScale: false,
+          scaleMargins: { top: 0.1, bottom: 0.1 }
+        });
+
         chart.timeScale().fitContent();
+
+        // Una vez hecho fitContent, fijar el rango Y
+        setTimeout(() => {
+          if (chart) {
+            try {
+              // Calcular el rango lógico de fechas
+              const logicalRange = chart.timeScale().getVisibleLogicalRange();
+              chart.priceScale('right').setVisibleRange({ from: minY, to: maxY });
+            } catch (e) {}
+          }
+        }, 100);
 
         function handleResize() {
           if (chart && contenedorRef.current) {
@@ -298,10 +322,9 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        Las líneas discontinuas a la derecha son la proyección del precedente. La línea azul
-        discontinua conecta el máximo actual con los máximos proyectados, y la gris discontinua
-        conecta el mínimo actual con los mínimos proyectados. La forma es idéntica a la del
-        precedente, pero anclada al high y low actuales, sin escalado.
+        Las líneas discontinuas a la derecha son la proyección del precedente, con la misma
+        diferencia absoluta (en euros) entre máximos y mínimos que tuvo el precedente. El eje Y se
+        fija con los datos históricos, así que la escala no cambia al añadir la proyección.
       </p>
     </section>
   );
