@@ -38,17 +38,25 @@ function buscarPrecedente(velas, smis, smiActual) {
     }
 
     const dias = [];
+    // Día 0: el precio del día del precedente (para calcular variaciones)
+    const precioBase = velas[i].close;
+    dias.push({
+      variacionHigh: 0,
+      variacionLow: 0
+    });
+
     for (let d = 1; d <= DIAS_EXTRA; d++) {
+      const vela = velas[i + d];
       dias.push({
-        date: velas[i + d].date,
-        high: velas[i + d].high,
-        low: velas[i + d].low
+        variacionHigh: (vela.high - precioBase) / precioBase,
+        variacionLow: (vela.low - precioBase) / precioBase
       });
     }
 
     return {
       fecha: velas[i].date,
       smi: v,
+      precioBase,
       dias
     };
   }
@@ -234,7 +242,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     };
   }, [velas, smis]);
 
-  // Redibujar overlay cuando cambia el rango visible (mover/zoom)
   useEffect(() => {
     if (!chartListo) return;
     if (!precedente) return;
@@ -250,10 +257,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       dibujarOverlay();
     };
 
-    // Primera llamada con un pequeño retardo para asegurar que el chart está listo
     const timer = setTimeout(redibujar, 200);
-
-    // Suscribirse a cambios del rango visible
     timeScale.subscribeVisibleLogicalRangeChange(redibujar);
 
     return () => {
@@ -302,13 +306,19 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       const anchoVela = xUltima - xPenultima;
       if (anchoVela <= 0) return;
 
+      // Precio actual (última vela)
+      const precioActual = ultimaVela.close;
+
+      // Calcular puntos ajustados al precio actual
       const puntosSuperior = [];
       const puntosInferior = [];
 
       precedente.dias.forEach((d, i) => {
-        const x = xUltima + (i + 1) * anchoVela;
-        const ySup = serie.priceToCoordinate(d.high);
-        const yInf = serie.priceToCoordinate(d.low);
+        const x = xUltima + i * anchoVela;
+        const precioHighAjustado = precioActual * (1 + d.variacionHigh);
+        const precioLowAjustado = precioActual * (1 + d.variacionLow);
+        const ySup = serie.priceToCoordinate(precioHighAjustado);
+        const yInf = serie.priceToCoordinate(precioLowAjustado);
         if (ySup !== null && ySup !== undefined && yInf !== null && yInf !== undefined) {
           puntosSuperior.push({ x, y: ySup });
           puntosInferior.push({ x, y: yInf });
@@ -317,10 +327,10 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
       if (puntosSuperior.length === 0) return;
 
-      // Si los puntos están fuera del área visible, no dibujar
       const primerX = puntosSuperior[0].x;
       if (primerX > width || puntosSuperior[puntosSuperior.length - 1].x < 0) return;
 
+      // Banda sombreada
       ctx.beginPath();
       ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
       for (let i = 1; i < puntosSuperior.length; i++) {
@@ -333,6 +343,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
       ctx.fill();
 
+      // Línea superior
       ctx.beginPath();
       ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
       for (let i = 1; i < puntosSuperior.length; i++) {
@@ -342,6 +353,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
+      // Línea inferior
       ctx.beginPath();
       ctx.moveTo(puntosInferior[0].x, puntosInferior[0].y);
       for (let i = 1; i < puntosInferior.length; i++) {
