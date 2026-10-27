@@ -43,7 +43,6 @@ function buscarPrecedente(velas, smis, smiActual) {
       const velaAnterior = velas[i + d - 1];
       dias.push({
         date: vela.date,
-        // Diferencias absolutas entre días consecutivos
         deltaHigh: vela.high - velaAnterior.high,
         deltaLow: vela.low - velaAnterior.low
       });
@@ -69,10 +68,19 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
+  const [diag, setDiag] = useState('');
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
-    setPrecedente(buscarPrecedente(velas, smis, smiActual));
+    const p = buscarPrecedente(velas, smis, smiActual);
+    setPrecedente(p);
+    if (p) {
+      setDiag(
+        `precedente: ${p.fecha} · dias: ${p.dias.length} · primer deltaHigh: ${p.dias[0]?.deltaHigh.toFixed(4)} · primer deltaLow: ${p.dias[0]?.deltaLow.toFixed(4)}`
+      );
+    } else {
+      setDiag('sin precedente');
+    }
   }, [velas, smis, smiActual]);
 
   useEffect(() => {
@@ -119,26 +127,17 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         const highActual = ultimaVela.high;
         const lowActual = ultimaVela.low;
 
-        // Calcular el rango Y solo con los datos históricos
         let minY = Infinity;
         let maxY = -Infinity;
         for (const v of velas) {
           minY = Math.min(minY, v.low);
           maxY = Math.max(maxY, v.high);
         }
-        const margen = (maxY - minY) * 0.1;
+        const margen = (maxY - minY) * 0.15;
         minY -= margen;
         maxY += margen;
 
         // Velas reales
-        const velasReales = velas.map((v) => ({
-          time: v.date,
-          open: v.open,
-          high: v.high,
-          low: v.low,
-          close: v.close
-        }));
-
         const velasSeries = chart.addCandlestickSeries({
           upColor: '#2563eb',
           downColor: '#9ca3af',
@@ -148,7 +147,15 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           wickDownColor: '#9ca3af',
           priceScaleId: 'right'
         });
-        velasSeries.setData(velasReales);
+        velasSeries.setData(
+          velas.map((v) => ({
+            time: v.date,
+            open: v.open,
+            high: v.high,
+            low: v.low,
+            close: v.close
+          }))
+        );
 
         // Bandas reales
         const bandaSuperior = chart.addLineSeries({
@@ -171,7 +178,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
 
-        // Bandas futuras: acumular diferencias consecutivas
+        // Proyección: cada vela futura se construye a partir de la anterior
         if (precedente) {
           const bandaSupFuturaData = [{ time: ultimaVela.date, value: highActual }];
           const bandaInfFuturaData = [{ time: ultimaVela.date, value: lowActual }];
@@ -189,8 +196,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           }
 
           const bandaSupFutura = chart.addLineSeries({
-            color: 'rgba(37, 99, 235, 0.7)',
-            lineWidth: 1.5,
+            color: 'rgba(37, 99, 235, 0.8)',
+            lineWidth: 2,
             lineStyle: LineStyle.Dashed,
             priceScaleId: 'right',
             priceLineVisible: false,
@@ -200,8 +207,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           bandaSupFutura.setData(bandaSupFuturaData);
 
           const bandaInfFutura = chart.addLineSeries({
-            color: 'rgba(156, 163, 175, 0.7)',
-            lineWidth: 1.5,
+            color: 'rgba(156, 163, 175, 0.8)',
+            lineWidth: 2,
             lineStyle: LineStyle.Dashed,
             priceScaleId: 'right',
             priceLineVisible: false,
@@ -264,20 +271,30 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           })
         });
 
+        // Desactivar autoScale ANTES de fitContent
+        chart.priceScale('right').applyOptions({
+          autoScale: false,
+          scaleMargins: { top: 0.1, bottom: 0.1 }
+        });
+
         chart.timeScale().fitContent();
 
-        // Fijar el rango Y después de fitContent
-        setTimeout(() => {
-          if (chart) {
-            try {
-              chart.priceScale('right').setVisibleRange({ from: minY, to: maxY });
-            } catch (e) {}
-          }
-        }, 100);
+        // Aplicar rango Y de forma repetida para asegurar
+        const aplicarRango = () => {
+          if (!chart) return;
+          try {
+            chart.priceScale('right').setVisibleRange({ from: minY, to: maxY });
+          } catch (e) {}
+        };
+        setTimeout(aplicarRango, 100);
+        setTimeout(aplicarRango, 300);
+        setTimeout(aplicarRango, 600);
+        setTimeout(aplicarRango, 1000);
 
         function handleResize() {
           if (chart && contenedorRef.current) {
             chart.applyOptions({ width: contenedorRef.current.clientWidth });
+            setTimeout(aplicarRango, 100);
           }
         }
         window.addEventListener('resize', handleResize);
@@ -308,11 +325,20 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         <div ref={contenedorRef} style={{ width: '100%', height: '520px' }} />
       </div>
 
-      <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        Las líneas discontinuas a la derecha son la proyección del precedente. Se calculan
-        acumulando las diferencias entre días consecutivos del precedente (en euros) sobre el high y
-        low actuales. Así la forma es idéntica a la del precedente, sin escalado.
-      </p>
+      <div
+        style={{
+          marginTop: '12px',
+          padding: '12px',
+          background: '#fef3c7',
+          border: '1px solid #fbbf24',
+          borderRadius: '6px',
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          wordBreak: 'break-word'
+        }}
+      >
+        <strong>DIAGNÓSTICO:</strong> {diag || 'vacío'}
+      </div>
     </section>
   );
 }
