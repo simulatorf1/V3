@@ -60,6 +60,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
   const overlayRef = useRef(null);
   const chartRef = useRef(null);
+  const velasSeriesRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
   const [chartListo, setChartListo] = useState(false);
   const [diag, setDiag] = useState('');
@@ -79,6 +80,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       } catch (e) {}
       chartRef.current = null;
     }
+    velasSeriesRef.current = null;
 
     let chart;
     let cleanup = () => {};
@@ -127,6 +129,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             close: v.close
           }))
         );
+        velasSeriesRef.current = velasSeries;
 
         const bandaSuperior = chart.addLineSeries({
           color: '#2563eb',
@@ -213,6 +216,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           window.removeEventListener('resize', handleResize);
           if (chart) chart.remove();
           chartRef.current = null;
+          velasSeriesRef.current = null;
         };
 
         setTimeout(() => {
@@ -237,6 +241,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     if (!velas || velas.length < 2) return;
     if (!contenedorRef.current || !overlayRef.current) return;
     if (!chartRef.current) return;
+    if (!velasSeriesRef.current) return;
 
     const timer = setTimeout(() => {
       dibujarOverlay();
@@ -250,8 +255,9 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       const contenedor = contenedorRef.current;
       const overlay = overlayRef.current;
       const chart = chartRef.current;
-      if (!contenedor || !overlay || !chart) {
-        setDiag('fallo: contenedor/overlay/chart null');
+      const serie = velasSeriesRef.current;
+      if (!contenedor || !overlay || !chart || !serie) {
+        setDiag('fallo: contenedor/overlay/chart/serie null');
         return;
       }
       if (!precedente) {
@@ -285,7 +291,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.clearRect(0, 0, width, height);
 
       const timeScale = chart.timeScale();
-      const priceScale = chart.priceScale('right');
 
       const ultimaVela = velas[velas.length - 1];
       const xUltima = timeScale.timeToCoordinate(ultimaVela.date);
@@ -295,8 +300,14 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       const info = [];
       info.push(`width=${width}`);
       info.push(`height=${height}`);
-      info.push(`xUltima=${xUltima !== null && xUltima !== undefined ? Math.round(xUltima) : 'NULL'}`);
-      info.push(`xPenultima=${xPenultima !== null && xPenultima !== undefined ? Math.round(xPenultima) : 'NULL'}`);
+      info.push(
+        `xUltima=${xUltima !== null && xUltima !== undefined ? Math.round(xUltima) : 'NULL'}`
+      );
+      info.push(
+        `xPenultima=${
+          xPenultima !== null && xPenultima !== undefined ? Math.round(xPenultima) : 'NULL'
+        }`
+      );
 
       if (xUltima === null || xUltima === undefined) {
         setDiag(info.join(' · '));
@@ -320,8 +331,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
       precedente.dias.forEach((d, i) => {
         const x = xUltima + (i + 1) * anchoVela;
-        const ySup = priceScale.priceToCoordinate(d.high);
-        const yInf = priceScale.priceToCoordinate(d.low);
+        const ySup = serie.priceToCoordinate(d.high);
+        const yInf = serie.priceToCoordinate(d.low);
         if (ySup !== null && ySup !== undefined && yInf !== null && yInf !== undefined) {
           puntosSuperior.push({ x, y: ySup });
           puntosInferior.push({ x, y: yInf });
