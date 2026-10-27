@@ -37,24 +37,21 @@ function buscarPrecedente(velas, smis, smiActual) {
       if (pendienteActual < 0 && pend >= 0) continue;
     }
 
-    const highBase = velas[i].high;
-    const lowBase = velas[i].low;
-
     const dias = [];
     for (let d = 1; d <= DIAS_EXTRA; d++) {
       const vela = velas[i + d];
+      const velaAnterior = velas[i + d - 1];
       dias.push({
         date: vela.date,
-        deltaHigh: vela.high - highBase,
-        deltaLow: vela.low - lowBase
+        // Diferencias absolutas entre días consecutivos
+        deltaHigh: vela.high - velaAnterior.high,
+        deltaLow: vela.low - velaAnterior.low
       });
     }
 
     return {
       fecha: velas[i].date,
       smi: v,
-      highBase,
-      lowBase,
       dias
     };
   }
@@ -129,7 +126,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           minY = Math.min(minY, v.low);
           maxY = Math.max(maxY, v.high);
         }
-        // Margen del 10%
         const margen = (maxY - minY) * 0.1;
         minY -= margen;
         maxY += margen;
@@ -175,22 +171,21 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
 
-        // Bandas futuras (proyección) - punteadas, con diferencia absoluta
+        // Bandas futuras: acumular diferencias consecutivas
         if (precedente) {
           const bandaSupFuturaData = [{ time: ultimaVela.date, value: highActual }];
           const bandaInfFuturaData = [{ time: ultimaVela.date, value: lowActual }];
 
+          let highAcum = highActual;
+          let lowAcum = lowActual;
+
           for (let i = 0; i < precedente.dias.length; i++) {
             const d = precedente.dias[i];
             const fechaFutura = sumarDias(ultimaVela.date, i + 1);
-            bandaSupFuturaData.push({
-              time: fechaFutura,
-              value: highActual + d.deltaHigh
-            });
-            bandaInfFuturaData.push({
-              time: fechaFutura,
-              value: lowActual + d.deltaLow
-            });
+            highAcum += d.deltaHigh;
+            lowAcum += d.deltaLow;
+            bandaSupFuturaData.push({ time: fechaFutura, value: highAcum });
+            bandaInfFuturaData.push({ time: fechaFutura, value: lowAcum });
           }
 
           const bandaSupFutura = chart.addLineSeries({
@@ -269,20 +264,12 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           })
         });
 
-        // Fijar el rango Y para que no se autoescale con las bandas futuras
-        chart.priceScale('right').applyOptions({
-          autoScale: false,
-          scaleMargins: { top: 0.1, bottom: 0.1 }
-        });
-
         chart.timeScale().fitContent();
 
-        // Una vez hecho fitContent, fijar el rango Y
+        // Fijar el rango Y después de fitContent
         setTimeout(() => {
           if (chart) {
             try {
-              // Calcular el rango lógico de fechas
-              const logicalRange = chart.timeScale().getVisibleLogicalRange();
               chart.priceScale('right').setVisibleRange({ from: minY, to: maxY });
             } catch (e) {}
           }
@@ -322,9 +309,9 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        Las líneas discontinuas a la derecha son la proyección del precedente, con la misma
-        diferencia absoluta (en euros) entre máximos y mínimos que tuvo el precedente. El eje Y se
-        fija con los datos históricos, así que la escala no cambia al añadir la proyección.
+        Las líneas discontinuas a la derecha son la proyección del precedente. Se calculan
+        acumulando las diferencias entre días consecutivos del precedente (en euros) sobre el high y
+        low actuales. Así la forma es idéntica a la del precedente, sin escalado.
       </p>
     </section>
   );
