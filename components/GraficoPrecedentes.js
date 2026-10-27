@@ -138,7 +138,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         const ultimaVela = velas[velas.length - 1];
         const cierreActual = ultimaVela.close;
 
-        // Velas reales
         const velasSeries = chart.addCandlestickSeries({
           upColor: '#2563eb',
           downColor: '#9ca3af',
@@ -158,14 +157,14 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           }))
         );
 
-        // Línea media del histórico
         const lineaMediaData = velas.map((v) => ({
           time: v.date,
           value: (v.high + v.low) / 2
         }));
 
+        // Línea media en NARANJA
         const lineaMedia = chart.addLineSeries({
-          color: '#2563eb',
+          color: '#ea580c',
           lineWidth: 3,
           priceScaleId: 'right',
           priceLineVisible: false,
@@ -174,15 +173,11 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         lineaMedia.setData(lineaMediaData);
 
-        // Si hay precedente, colorear la zona histórica y dibujar la proyección
         if (precedente) {
-          // ========== ZONA HISTÓRICA COLOREADA ==========
-          // Extraer las fechas y high/low de los días del precedente
           const fechasHistoricas = [];
           const highsHistoricos = [];
           const lowsHistoricos = [];
 
-          // El precedente empieza en el día del precedente (indexFecha) y dura DIAS_EXTRA+1 días
           const idxInicio = precedente.indexFecha;
           const idxFin = Math.min(idxInicio + DIAS_EXTRA, velas.length - 1);
 
@@ -192,11 +187,9 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             lowsHistoricos.push(velas[j].low);
           }
 
-          // Calcular el máximo y mínimo de la zona histórica
           const maxHistorico = Math.max(...highsHistoricos);
           const minHistorico = Math.min(...lowsHistoricos);
 
-          // Serie de área para el relleno superior (desde el máximo hasta el suelo)
           const areaSupHistorica = chart.addAreaSeries({
             topColor: 'rgba(251, 191, 36, 0.18)',
             bottomColor: 'rgba(251, 191, 36, 0.05)',
@@ -211,10 +204,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             fechasHistoricas.map((f) => ({ time: f, value: maxHistorico }))
           );
 
-          // Serie de área invertida para el relleno inferior (desde el mínimo hasta el techo)
-          // lightweight-charts no permite rellenar hacia arriba, así que usamos una serie
-          // de área con el mínimo y bottomColor transparente, y topColor con el color del relleno
-          // No queda perfecto, pero simula la banda
           const areaInfHistorica = chart.addAreaSeries({
             topColor: 'rgba(251, 191, 36, 0)',
             bottomColor: 'rgba(251, 191, 36, 0.18)',
@@ -229,7 +218,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             fechasHistoricas.map((f) => ({ time: f, value: minHistorico }))
           );
 
-          // ========== PROYECCIÓN FUTURA ==========
           const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
           let medioAcum = cierreActual;
 
@@ -240,7 +228,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
           }
 
-          // Área amarilla de la proyección
           const areaRecuadro = chart.addAreaSeries({
             topColor: 'rgba(251, 191, 36, 0.15)',
             bottomColor: 'rgba(251, 191, 36, 0.15)',
@@ -256,7 +243,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           );
 
           const lineaFutura = chart.addLineSeries({
-            color: 'rgba(37, 99, 235, 0.9)',
+            color: 'rgba(234, 88, 12, 0.9)',
             lineWidth: 2,
             lineStyle: LineStyle.Dashed,
             priceScaleId: 'right',
@@ -277,7 +264,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           });
         }
 
-        // Indicador Equaty
         const smiData = [];
         for (let i = 0; i < smis.length; i++) {
           if (smis[i] === null || smis[i] === undefined) continue;
@@ -359,18 +345,18 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Gráfico con proyección (pruebas)</h2>
+      <h2 className="v3-seccion-titulo">Gráfico diario con proyección</h2>
 
       <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%', height: '520px' }} />
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        La línea azul fuerte sobre las velas es la media del precio de cada vela. La zona amarilla
-        del histórico marca los días que se están replicando. La línea azul discontinua a la
-        derecha es la proyección a 10 <strong>sesiones</strong> (días hábiles, sin contar sábados ni
-        domingos). La etiqueta <strong>"réplica histórica"</strong> indica que la zona derecha no es
-        una predicción, sino una copia de lo que pasó en la zona amarilla del histórico.
+        La línea naranja fuerte es la media del precio de cada vela. La zona amarilla del histórico
+        marca los días que se están replicando. La línea naranja discontinua a la derecha es la
+        proyección a 10 sesiones (días hábiles, sin contar sábados ni domingos). La etiqueta
+        "réplica histórica" indica que la zona derecha no es una predicción, sino una copia de lo
+        que pasó en la zona amarilla del histórico.
         {precedente && (
           <span style={{ display: 'block', marginTop: '4px' }}>
             Precedente: {precedente.fecha} · Indicador: {precedente.smi.toFixed(0)} · Distancia al valor actual:{' '}
