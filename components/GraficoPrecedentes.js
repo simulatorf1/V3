@@ -45,8 +45,8 @@ function buscarPrecedente(velas, smis, smiActual) {
       const vela = velas[i + d];
       dias.push({
         date: vela.date,
-        variacionHigh: highBase !== 0 ? (vela.high - highBase) / highBase : 0,
-        variacionLow: lowBase !== 0 ? (vela.low - lowBase) / lowBase : 0
+        deltaHigh: vela.high - highBase,
+        deltaLow: vela.low - lowBase
       });
     }
 
@@ -107,7 +107,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             vertLines: { color: '#f0f0f0' },
             horzLines: { color: '#f0f0f0' }
           },
-          timeScale: { borderColor: '#ddd', rightOffset: 10 },
+          timeScale: { borderColor: '#ddd', rightOffset: 15 },
           rightPriceScale: { borderColor: '#ddd', scaleMargins: { top: 0.1, bottom: 0.1 } },
           leftPriceScale: {
             borderColor: '#ddd',
@@ -118,12 +118,11 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
         chartRef.current = chart;
 
-        // Construir todos los datos: velas reales + velas futuras (proyección)
         const ultimaVela = velas[velas.length - 1];
         const highActual = ultimaVela.high;
         const lowActual = ultimaVela.low;
 
-        // Datos de las velas reales
+        // Velas reales
         const velasReales = velas.map((v) => ({
           time: v.date,
           open: v.open,
@@ -132,34 +131,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           close: v.close
         }));
 
-        // Datos de las velas futuras (proyección)
-        const velasFuturas = [];
-        if (precedente) {
-          // Día 0: coincide con la última vela actual
-          velasFuturas.push({
-            time: ultimaVela.date,
-            open: highActual,
-            high: highActual,
-            low: lowActual,
-            close: lowActual
-          });
-          // Días 1-5: aplicar variaciones
-          for (let i = 0; i < precedente.dias.length; i++) {
-            const d = precedente.dias[i];
-            const fechaFutura = sumarDias(ultimaVela.date, i + 1);
-            const high = highActual * (1 + d.variacionHigh);
-            const low = lowActual * (1 + d.variacionLow);
-            velasFuturas.push({
-              time: fechaFutura,
-              open: high,
-              high: high,
-              low: low,
-              close: low
-            });
-          }
-        }
-
-        // Serie de velas reales
         const velasSeries = chart.addCandlestickSeries({
           upColor: '#2563eb',
           downColor: '#9ca3af',
@@ -170,18 +141,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           priceScaleId: 'right'
         });
         velasSeries.setData(velasReales);
-
-        // Serie de velas futuras (proyección) - mismo estilo pero más claro
-        const velasFuturasSeries = chart.addCandlestickSeries({
-          upColor: 'rgba(37, 99, 235, 0.4)',
-          downColor: 'rgba(156, 163, 175, 0.4)',
-          borderUpColor: 'rgba(37, 99, 235, 0.6)',
-          borderDownColor: 'rgba(156, 163, 175, 0.6)',
-          wickUpColor: 'rgba(37, 99, 235, 0.5)',
-          wickDownColor: 'rgba(156, 163, 175, 0.5)',
-          priceScaleId: 'right'
-        });
-        velasFuturasSeries.setData(velasFuturas);
 
         // Bandas reales
         const bandaSuperior = chart.addLineSeries({
@@ -204,27 +163,50 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
 
-        // Bandas futuras (proyección) - continuidad con las reales
-        if (precedente && velasFuturas.length > 0) {
+        // Bandas futuras (proyección) - punteadas
+        if (precedente) {
+          const bandaSupFuturaData = [
+            { time: ultimaVela.date, value: highActual }
+          ];
+          const bandaInfFuturaData = [
+            { time: ultimaVela.date, value: lowActual }
+          ];
+
+          for (let i = 0; i < precedente.dias.length; i++) {
+            const d = precedente.dias[i];
+            const fechaFutura = sumarDias(ultimaVela.date, i + 1);
+            // Variación absoluta: el día 0 es highActual, y cada día suma el delta del precedente
+            bandaSupFuturaData.push({
+              time: fechaFutura,
+              value: highActual + d.deltaHigh
+            });
+            bandaInfFuturaData.push({
+              time: fechaFutura,
+              value: lowActual + d.deltaLow
+            });
+          }
+
           const bandaSupFutura = chart.addLineSeries({
             color: 'rgba(37, 99, 235, 0.7)',
             lineWidth: 1.5,
+            lineStyle: LineStyle.Dashed,
             priceScaleId: 'right',
             priceLineVisible: false,
             lastValueVisible: false,
             crosshairMarkerVisible: false
           });
-          bandaSupFutura.setData(velasFuturas.map((v) => ({ time: v.time, value: v.high })));
+          bandaSupFutura.setData(bandaSupFuturaData);
 
           const bandaInfFutura = chart.addLineSeries({
             color: 'rgba(156, 163, 175, 0.7)',
             lineWidth: 1.5,
+            lineStyle: LineStyle.Dashed,
             priceScaleId: 'right',
             priceLineVisible: false,
             lastValueVisible: false,
             crosshairMarkerVisible: false
           });
-          bandaInfFutura.setData(velasFuturas.map((v) => ({ time: v.time, value: v.low })));
+          bandaInfFutura.setData(bandaInfFuturaData);
         }
 
         // Indicador Equaty
@@ -316,9 +298,10 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       </div>
 
       <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        Las velas más claras a la derecha son la proyección del precedente. Las líneas azul y gris
-        superiores e inferiores conectan los máximos y mínimos actuales con los proyectados, sin
-        salto.
+        Las líneas discontinuas a la derecha son la proyección del precedente. La línea azul
+        discontinua conecta el máximo actual con los máximos proyectados, y la gris discontinua
+        conecta el mínimo actual con los mínimos proyectados. La forma es idéntica a la del
+        precedente, pero anclada al high y low actuales, sin escalado.
       </p>
     </section>
   );
