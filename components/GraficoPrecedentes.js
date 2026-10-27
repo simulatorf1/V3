@@ -15,20 +15,38 @@ function calcularPendiente(smis, idx) {
   return actual - hace5;
 }
 
-function buscarPrecedente(velas, smis, smiActual) {
-  if (!velas || !smis || velas.length < 10 || smis.length < 10) return null;
-  if (smiActual === null || smiActual === undefined) return null;
+function buscarPrecedente(velas, smis, smiActual, setDiag) {
+  if (!velas || !smis || velas.length < 10 || smis.length < 10) {
+    setDiag('velas o smis insuficientes');
+    return null;
+  }
+  if (smiActual === null || smiActual === undefined) {
+    setDiag('smiActual null');
+    return null;
+  }
 
   const idxActual = smis.length - 1;
   const pendienteActual = calcularPendiente(smis, idxActual);
 
-  for (let i = idxActual - 1; i >= 0; i--) {
-    if (i + DIAS_EXTRA >= velas.length) continue;
+  let totalRevisados = 0;
+  let pasanRango = 0;
+  let pasanPendiente = 0;
+  let pasanVelasDespues = 0;
 
+  for (let i = idxActual - 1; i >= 0; i--) {
+    totalRevisados++;
+
+    // Condición 1: hay 5 velas después
+    if (i + DIAS_EXTRA >= velas.length) continue;
+    pasanVelasDespues++;
+
+    // Condición 2: valor dentro del rango
     const v = smis[i];
     if (v === null || v === undefined) continue;
     if (Math.abs(v - smiActual) > RANGO_VALOR) continue;
+    pasanRango++;
 
+    // Condición 3: misma pendiente
     const pend = calcularPendiente(smis, i);
     if (pend === null) continue;
 
@@ -36,7 +54,9 @@ function buscarPrecedente(velas, smis, smiActual) {
       if (pendienteActual >= 0 && pend < 0) continue;
       if (pendienteActual < 0 && pend >= 0) continue;
     }
+    pasanPendiente++;
 
+    // Si llega aquí, es un precedente válido
     const dias = [];
     for (let d = 1; d <= DIAS_EXTRA; d++) {
       dias.push({
@@ -46,12 +66,20 @@ function buscarPrecedente(velas, smis, smiActual) {
       });
     }
 
+    setDiag(
+      `smiActual=${smiActual.toFixed(1)} pendActual=${pendienteActual !== null ? pendienteActual.toFixed(1) : 'null'} · revisados=${totalRevisados} · velasDespues=${pasanVelasDespues} · rango=${pasanRango} · pendiente=${pasanPendiente} · ENCONTRADO en ${velas[i].date}`
+    );
+
     return {
       fecha: velas[i].date,
       smi: v,
       dias
     };
   }
+
+  setDiag(
+    `smiActual=${smiActual.toFixed(1)} pendActual=${pendienteActual !== null ? pendienteActual.toFixed(1) : 'null'} · revisados=${totalRevisados} · velasDespues=${pasanVelasDespues} · rango=${pasanRango} · pendiente=${pasanPendiente} · NINGUNO`
+  );
 
   return null;
 }
@@ -65,7 +93,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
-    setPrecedente(buscarPrecedente(velas, smis, smiActual));
+    const p = buscarPrecedente(velas, smis, smiActual, setDiagnostico);
+    setPrecedente(p);
   }, [velas, smis, smiActual]);
 
   useEffect(() => {
@@ -224,35 +253,13 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     const contenedor = contenedorRef.current;
     const overlay = overlayRef.current;
     const chart = chartRef.current;
-
-    const info = [];
-    info.push('contenedor: ' + (contenedor ? 'sí' : 'NO'));
-    info.push('overlay: ' + (overlay ? 'sí' : 'NO'));
-    info.push('chart: ' + (chart ? 'sí' : 'NO'));
-    info.push('precedente: ' + (precedente ? precedente.fecha : 'NO'));
-
-    if (!contenedor || !overlay || !chart) {
-      setDiagnostico(info.join(' · '));
-      return;
-    }
-    if (!precedente || !precedente.dias || precedente.dias.length === 0) {
-      setDiagnostico(info.join(' · '));
-      return;
-    }
-    if (!velas || velas.length < 2) {
-      setDiagnostico(info.join(' · ') + ' · velas < 2');
-      return;
-    }
+    if (!contenedor || !overlay || !chart) return;
+    if (!precedente || !precedente.dias || precedente.dias.length === 0) return;
+    if (!velas || velas.length < 2) return;
 
     const width = contenedor.clientWidth;
     const height = contenedor.clientHeight;
-    info.push('width: ' + width);
-    info.push('height: ' + height);
-
-    if (width === 0 || height === 0) {
-      setDiagnostico(info.join(' · '));
-      return;
-    }
+    if (width === 0 || height === 0) return;
 
     const dpr = window.devicePixelRatio || 1;
     overlay.width = width * dpr;
@@ -269,24 +276,14 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
     const ultimaVela = velas[velas.length - 1];
     const xUltima = timeScale.timeToCoordinate(ultimaVela.date);
-    info.push('xUltima: ' + (xUltima !== null ? Math.round(xUltima) : 'NULL'));
+    if (xUltima === null) return;
 
     const penultimaVela = velas[velas.length - 2];
     const xPenultima = timeScale.timeToCoordinate(penultimaVela.date);
-    info.push('xPenultima: ' + (xPenultima !== null ? Math.round(xPenultima) : 'NULL'));
-
-    if (xUltima === null || xPenultima === null) {
-      setDiagnostico(info.join(' · '));
-      return;
-    }
+    if (xPenultima === null) return;
 
     const anchoVela = xUltima - xPenultima;
-    info.push('anchoVela: ' + Math.round(anchoVela));
-
-    if (anchoVela <= 0) {
-      setDiagnostico(info.join(' · '));
-      return;
-    }
+    if (anchoVela <= 0) return;
 
     const puntosSuperior = [];
     const puntosInferior = [];
@@ -300,11 +297,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         puntosInferior.push({ x, y: yInf });
       }
     });
-
-    info.push('puntosSup: ' + puntosSuperior.length);
-    info.push('puntosInf: ' + puntosInferior.length);
-
-    setDiagnostico(info.join(' · '));
 
     if (puntosSuperior.length === 0) return;
 
@@ -337,21 +329,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = 'rgba(156, 163, 175, 0.7)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(xUltima + anchoVela / 2, 0);
-    ctx.lineTo(xUltima + anchoVela / 2, height);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.9)';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    const xCentro = (puntosSuperior[0].x + puntosSuperior[puntosSuperior.length - 1].x) / 2;
-    ctx.fillText('última vez que estuvo así', xCentro, 18);
   }
 
   useEffect(() => {
@@ -364,10 +341,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico con precedentes (pruebas)</h2>
-      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Velas de las últimas 60 sesiones con dos bandas envolventes y, a la derecha, la banda
-        sombreada del precedente.
-      </p>
 
       <div
         className="v3-card"
@@ -401,11 +374,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       >
         <strong>DIAGNÓSTICO:</strong> {diagnostico || 'vacío'}
       </div>
-
-      <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-        <strong>Leyenda:</strong> línea azul superior = máximos. Línea gris inferior = mínimos.
-        Línea morada = indicador Equaty. Banda azul = precedente.
-      </p>
     </section>
   );
 }
