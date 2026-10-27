@@ -22,6 +22,9 @@ function buscarPrecedente(velas, smis, smiActual) {
   const idxActual = smis.length - 1;
   const pendienteActual = calcularPendiente(smis, idxActual);
 
+  let mejorCandidato = null;
+  let mejorDistancia = Infinity;
+
   for (let i = idxActual - 1; i >= 0; i--) {
     if (i + DIAS_EXTRA >= velas.length) continue;
 
@@ -37,26 +40,33 @@ function buscarPrecedente(velas, smis, smiActual) {
       if (pendienteActual < 0 && pend >= 0) continue;
     }
 
-    const dias = [];
-    for (let d = 1; d <= DIAS_EXTRA; d++) {
-      const vela = velas[i + d];
-      const velaAnterior = velas[i + d - 1];
-      const medio = (vela.high + vela.low) / 2;
-      const medioAnterior = (velaAnterior.high + velaAnterior.low) / 2;
-      dias.push({
-        date: vela.date,
-        deltaMedio: medio - medioAnterior
-      });
-    }
+    const distancia = Math.abs(v - smiActual);
 
-    return {
-      fecha: velas[i].date,
-      smi: v,
-      dias
-    };
+    if (distancia < mejorDistancia) {
+      mejorDistancia = distancia;
+
+      const dias = [];
+      for (let d = 1; d <= DIAS_EXTRA; d++) {
+        const vela = velas[i + d];
+        const velaAnterior = velas[i + d - 1];
+        const medio = (vela.high + vela.low) / 2;
+        const medioAnterior = (velaAnterior.high + velaAnterior.low) / 2;
+        dias.push({
+          date: vela.date,
+          deltaMedio: medio - medioAnterior
+        });
+      }
+
+      mejorCandidato = {
+        fecha: velas[i].date,
+        smi: v,
+        distancia,
+        dias
+      };
+    }
   }
 
-  return null;
+  return mejorCandidato;
 }
 
 function sumarDias(fechaStr, dias) {
@@ -277,7 +287,8 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         que tuvo el precio medio del precedente.
         {precedente && (
           <span style={{ display: 'block', marginTop: '4px' }}>
-            Precedente: {precedente.fecha} · Indicador: {precedente.smi.toFixed(0)}
+            Precedente: {precedente.fecha} · Indicador: {precedente.smi.toFixed(0)} · Distancia al valor actual:{' '}
+            {precedente.distancia.toFixed(1)} puntos
           </span>
         )}
       </p>
