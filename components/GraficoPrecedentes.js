@@ -41,10 +41,11 @@ function buscarPrecedente(velas, smis, smiActual) {
     for (let d = 1; d <= DIAS_EXTRA; d++) {
       const vela = velas[i + d];
       const velaAnterior = velas[i + d - 1];
+      const medio = (vela.high + vela.low) / 2;
+      const medioAnterior = (velaAnterior.high + velaAnterior.low) / 2;
       dias.push({
         date: vela.date,
-        deltaHigh: vela.high - velaAnterior.high,
-        deltaLow: vela.low - velaAnterior.low
+        deltaMedio: medio - medioAnterior
       });
     }
 
@@ -68,19 +69,10 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
-  const [diag, setDiag] = useState('');
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
-    const p = buscarPrecedente(velas, smis, smiActual);
-    setPrecedente(p);
-    if (p) {
-      setDiag(
-        `precedente: ${p.fecha} · dias: ${p.dias.length} · primer deltaHigh: ${p.dias[0]?.deltaHigh.toFixed(4)} · primer deltaLow: ${p.dias[0]?.deltaLow.toFixed(4)}`
-      );
-    } else {
-      setDiag('sin precedente');
-    }
+    setPrecedente(buscarPrecedente(velas, smis, smiActual));
   }, [velas, smis, smiActual]);
 
   useEffect(() => {
@@ -124,18 +116,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         chartRef.current = chart;
 
         const ultimaVela = velas[velas.length - 1];
-        const highActual = ultimaVela.high;
-        const lowActual = ultimaVela.low;
-
-        let minY = Infinity;
-        let maxY = -Infinity;
-        for (const v of velas) {
-          minY = Math.min(minY, v.low);
-          maxY = Math.max(maxY, v.high);
-        }
-        const margen = (maxY - minY) * 0.15;
-        minY -= margen;
-        maxY += margen;
+        const cierreActual = ultimaVela.close;
 
         // Velas reales
         const velasSeries = chart.addCandlestickSeries({
@@ -157,7 +138,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           }))
         );
 
-        // Bandas reales
+        // Bandas reales (máximos y mínimos)
         const bandaSuperior = chart.addLineSeries({
           color: '#2563eb',
           lineWidth: 1,
@@ -178,44 +159,28 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
 
-        // Proyección: cada vela futura se construye a partir de la anterior
+        // Línea central futura: acumular deltas del precio medio del precedente
         if (precedente) {
-          const bandaSupFuturaData = [{ time: ultimaVela.date, value: highActual }];
-          const bandaInfFuturaData = [{ time: ultimaVela.date, value: lowActual }];
-
-          let highAcum = highActual;
-          let lowAcum = lowActual;
+          const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
+          let medioAcum = cierreActual;
 
           for (let i = 0; i < precedente.dias.length; i++) {
             const d = precedente.dias[i];
             const fechaFutura = sumarDias(ultimaVela.date, i + 1);
-            highAcum += d.deltaHigh;
-            lowAcum += d.deltaLow;
-            bandaSupFuturaData.push({ time: fechaFutura, value: highAcum });
-            bandaInfFuturaData.push({ time: fechaFutura, value: lowAcum });
+            medioAcum += d.deltaMedio;
+            lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
           }
 
-          const bandaSupFutura = chart.addLineSeries({
-            color: 'rgba(37, 99, 235, 0.8)',
+          const lineaFutura = chart.addLineSeries({
+            color: 'rgba(37, 99, 235, 0.9)',
             lineWidth: 2,
             lineStyle: LineStyle.Dashed,
             priceScaleId: 'right',
             priceLineVisible: false,
             lastValueVisible: false,
-            crosshairMarkerVisible: false
+            crosshairMarkerVisible: true
           });
-          bandaSupFutura.setData(bandaSupFuturaData);
-
-          const bandaInfFutura = chart.addLineSeries({
-            color: 'rgba(156, 163, 175, 0.8)',
-            lineWidth: 2,
-            lineStyle: LineStyle.Dashed,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false
-          });
-          bandaInfFutura.setData(bandaInfFuturaData);
+          lineaFutura.setData(lineaFuturaData);
         }
 
         // Indicador Equaty
@@ -271,30 +236,11 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           })
         });
 
-        // Desactivar autoScale ANTES de fitContent
-        chart.priceScale('right').applyOptions({
-          autoScale: false,
-          scaleMargins: { top: 0.1, bottom: 0.1 }
-        });
-
         chart.timeScale().fitContent();
-
-        // Aplicar rango Y de forma repetida para asegurar
-        const aplicarRango = () => {
-          if (!chart) return;
-          try {
-            chart.priceScale('right').setVisibleRange({ from: minY, to: maxY });
-          } catch (e) {}
-        };
-        setTimeout(aplicarRango, 100);
-        setTimeout(aplicarRango, 300);
-        setTimeout(aplicarRango, 600);
-        setTimeout(aplicarRango, 1000);
 
         function handleResize() {
           if (chart && contenedorRef.current) {
             chart.applyOptions({ width: contenedorRef.current.clientWidth });
-            setTimeout(aplicarRango, 100);
           }
         }
         window.addEventListener('resize', handleResize);
@@ -319,26 +265,22 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Gráfico con precedentes (pruebas)</h2>
+      <h2 className="v3-seccion-titulo">Gráfico con proyección (pruebas)</h2>
 
       <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%', height: '520px' }} />
       </div>
 
-      <div
-        style={{
-          marginTop: '12px',
-          padding: '12px',
-          background: '#fef3c7',
-          border: '1px solid #fbbf24',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontFamily: 'monospace',
-          wordBreak: 'break-word'
-        }}
-      >
-        <strong>DIAGNÓSTICO:</strong> {diag || 'vacío'}
-      </div>
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
+        La línea azul discontinua a la derecha es la proyección del precio medio del precedente.
+        Empieza en el cierre actual y sigue la misma forma (diferencias entre días consecutivos)
+        que tuvo el precio medio del precedente.
+        {precedente && (
+          <span style={{ display: 'block', marginTop: '4px' }}>
+            Precedente: {precedente.fecha} · Indicador: {precedente.smi.toFixed(0)}
+          </span>
+        )}
+      </p>
     </section>
   );
 }
