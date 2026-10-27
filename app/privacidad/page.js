@@ -1,9 +1,50 @@
+import GraficoPrecedentes from '../../components/GraficoPrecedentes';
+import { supabase } from '../../lib/supabase';
+
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Política de Privacidad — Equaty',
   description: 'Política de privacidad de Equaty.'
 };
 
-export default function Privacidad() {
+function parseDatos(datos) {
+  if (!datos) return null;
+  if (typeof datos === 'string') {
+    try {
+      return JSON.parse(datos);
+    } catch (e) {
+      return null;
+    }
+  }
+  return datos;
+}
+
+async function cargarDatosPrueba(ticker) {
+  try {
+    const { data } = await supabase
+      .from('paginas')
+      .select('datos')
+      .eq('ticker', ticker)
+      .maybeSingle();
+
+    const datos = parseDatos(data?.datos);
+    if (!datos) return null;
+
+    return {
+      velas: datos.velasUltimas60 || [],
+      smis: datos.smisUltimos60 || [],
+      smiActual: datos.smiActual ?? null
+    };
+  } catch (e) {
+    console.error('[privacidad] Error cargando datos de prueba:', e.message);
+    return null;
+  }
+}
+
+export default async function Privacidad() {
+  const datosPrueba = await cargarDatosPrueba('SLR.MC');
+
   return (
     <main className="v3-container" style={{ maxWidth: '820px' }}>
       <h1>Política de Privacidad</h1>
@@ -54,6 +95,19 @@ export default function Privacidad() {
         cookies propias para personalizar los anuncios. El usuario puede gestionar sus preferencias
         en la configuración de anuncios de Google.
       </p>
+
+      {datosPrueba && datosPrueba.velas.length > 0 && (
+        <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '2px dashed #e5e7eb' }}>
+          <p style={{ color: '#9ca3af', fontSize: '12px', textAlign: 'center', marginBottom: '16px' }}>
+            — Zona de pruebas (temporal) —
+          </p>
+          <GraficoPrecedentes
+            velas={datosPrueba.velas}
+            smis={datosPrueba.smis}
+            smiActual={datosPrueba.smiActual}
+          />
+        </div>
+      )}
     </main>
   );
 }
