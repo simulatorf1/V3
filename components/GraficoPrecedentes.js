@@ -63,7 +63,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const velasSeriesRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
   const [chartListo, setChartListo] = useState(false);
-  const [diag, setDiag] = useState('');
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
@@ -235,6 +234,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     };
   }, [velas, smis]);
 
+  // Redibujar overlay cuando cambia el rango visible (mover/zoom)
   useEffect(() => {
     if (!chartListo) return;
     if (!precedente) return;
@@ -243,11 +243,25 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
     if (!chartRef.current) return;
     if (!velasSeriesRef.current) return;
 
-    const timer = setTimeout(() => {
-      dibujarOverlay();
-    }, 200);
+    const chart = chartRef.current;
+    const timeScale = chart.timeScale();
 
-    return () => clearTimeout(timer);
+    const redibujar = () => {
+      dibujarOverlay();
+    };
+
+    // Primera llamada con un pequeño retardo para asegurar que el chart está listo
+    const timer = setTimeout(redibujar, 200);
+
+    // Suscribirse a cambios del rango visible
+    timeScale.subscribeVisibleLogicalRangeChange(redibujar);
+
+    return () => {
+      clearTimeout(timer);
+      try {
+        timeScale.unsubscribeVisibleLogicalRangeChange(redibujar);
+      } catch (e) {}
+    };
   }, [chartListo, precedente, velas]);
 
   function dibujarOverlay() {
@@ -256,25 +270,13 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       const overlay = overlayRef.current;
       const chart = chartRef.current;
       const serie = velasSeriesRef.current;
-      if (!contenedor || !overlay || !chart || !serie) {
-        setDiag('fallo: contenedor/overlay/chart/serie null');
-        return;
-      }
-      if (!precedente) {
-        setDiag('fallo: precedente null');
-        return;
-      }
-      if (!velas || velas.length < 2) {
-        setDiag('fallo: velas < 2');
-        return;
-      }
+      if (!contenedor || !overlay || !chart || !serie) return;
+      if (!precedente) return;
+      if (!velas || velas.length < 2) return;
 
       const width = contenedor.clientWidth;
       const height = contenedor.clientHeight;
-      if (width === 0 || height === 0) {
-        setDiag(`fallo: width=${width} height=${height}`);
-        return;
-      }
+      if (width === 0 || height === 0) return;
 
       const dpr = window.devicePixelRatio || 1;
       overlay.width = width * dpr;
@@ -283,10 +285,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       overlay.style.height = height + 'px';
 
       const ctx = overlay.getContext('2d');
-      if (!ctx) {
-        setDiag('fallo: ctx null');
-        return;
-      }
+      if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
 
@@ -297,34 +296,11 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       const penultimaVela = velas[velas.length - 2];
       const xPenultima = timeScale.timeToCoordinate(penultimaVela.date);
 
-      const info = [];
-      info.push(`width=${width}`);
-      info.push(`height=${height}`);
-      info.push(
-        `xUltima=${xUltima !== null && xUltima !== undefined ? Math.round(xUltima) : 'NULL'}`
-      );
-      info.push(
-        `xPenultima=${
-          xPenultima !== null && xPenultima !== undefined ? Math.round(xPenultima) : 'NULL'
-        }`
-      );
-
-      if (xUltima === null || xUltima === undefined) {
-        setDiag(info.join(' · '));
-        return;
-      }
-      if (xPenultima === null || xPenultima === undefined) {
-        setDiag(info.join(' · '));
-        return;
-      }
+      if (xUltima === null || xUltima === undefined) return;
+      if (xPenultima === null || xPenultima === undefined) return;
 
       const anchoVela = xUltima - xPenultima;
-      info.push(`anchoVela=${Math.round(anchoVela)}`);
-
-      if (anchoVela <= 0) {
-        setDiag(info.join(' · '));
-        return;
-      }
+      if (anchoVela <= 0) return;
 
       const puntosSuperior = [];
       const puntosInferior = [];
@@ -339,11 +315,11 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         }
       });
 
-      info.push(`puntosSup=${puntosSuperior.length}`);
-      info.push(`puntosInf=${puntosInferior.length}`);
-      setDiag(info.join(' · '));
-
       if (puntosSuperior.length === 0) return;
+
+      // Si los puntos están fuera del área visible, no dibujar
+      const primerX = puntosSuperior[0].x;
+      if (primerX > width || puntosSuperior[puntosSuperior.length - 1].x < 0) return;
 
       ctx.beginPath();
       ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
@@ -375,7 +351,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       ctx.lineWidth = 1.5;
       ctx.stroke();
     } catch (e) {
-      setDiag('excepción: ' + e.message);
+      console.error('Error dibujando overlay:', e);
     }
   }
 
@@ -398,26 +374,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
             zIndex: 5
           }}
         />
-      </div>
-
-      <div
-        style={{
-          marginTop: '12px',
-          padding: '12px',
-          background: '#fef3c7',
-          border: '1px solid #fbbf24',
-          borderRadius: '6px',
-          fontSize: '12px',
-          lineHeight: 1.6,
-          fontFamily: 'monospace',
-          wordBreak: 'break-word'
-        }}
-      >
-        <strong>CHART LISTO:</strong> {chartListo ? 'sí' : 'no'}
-        <br />
-        <strong>PRECEDENTE:</strong> {precedente ? precedente.fecha : 'NO'}
-        <br />
-        <strong>DIAGNÓSTICO:</strong> {diag || 'vacío'}
       </div>
     </section>
   );
