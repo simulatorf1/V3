@@ -37,10 +37,15 @@ function buscarPrecedente(velas, smis, smiActual) {
       if (pendienteActual < 0 && pend >= 0) continue;
     }
 
+    // Guardamos el high y low del día 0 del precedente, para calcular variaciones relativas
+    const highBase = velas[i].high;
+    const lowBase = velas[i].low;
+
     const dias = [];
-    // Día 0: el precio del día del precedente (para calcular variaciones)
-    const precioBase = velas[i].close;
+    // Día 0: el high y low del día del precedente
     dias.push({
+      high: highBase,
+      low: lowBase,
       variacionHigh: 0,
       variacionLow: 0
     });
@@ -48,15 +53,18 @@ function buscarPrecedente(velas, smis, smiActual) {
     for (let d = 1; d <= DIAS_EXTRA; d++) {
       const vela = velas[i + d];
       dias.push({
-        variacionHigh: (vela.high - precioBase) / precioBase,
-        variacionLow: (vela.low - precioBase) / precioBase
+        high: vela.high,
+        low: vela.low,
+        variacionHigh: highBase !== 0 ? (vela.high - highBase) / highBase : 0,
+        variacionLow: lowBase !== 0 ? (vela.low - lowBase) / lowBase : 0
       });
     }
 
     return {
       fecha: velas[i].date,
       smi: v,
-      precioBase,
+      highBase,
+      lowBase,
       dias
     };
   }
@@ -295,30 +303,35 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
       const timeScale = chart.timeScale();
 
+      // Última vela real
       const ultimaVela = velas[velas.length - 1];
-      const xUltima = timeScale.timeToCoordinate(ultimaVela.date);
-      const penultimaVela = velas[velas.length - 2];
-      const xPenultima = timeScale.timeToCoordinate(penultimaVela.date);
+      const highActual = ultimaVela.high;
+      const lowActual = ultimaVela.low;
 
+      // Coordenada lógica de la última vela (índice en el eje lógico del gráfico)
+      const ultimoIndiceLogico = velas.length - 1;
+
+      // Coordenada X de la última vela real
+      const xUltima = timeScale.logicalToCoordinate(ultimoIndiceLogico);
       if (xUltima === null || xUltima === undefined) return;
-      if (xPenultima === null || xPenultima === undefined) return;
 
-      const anchoVela = xUltima - xPenultima;
-      if (anchoVela <= 0) return;
+      // Coordenada X del índice lógico anterior, para calcular el ancho por unidad lógica
+      const xAnterior = timeScale.logicalToCoordinate(ultimoIndiceLogico - 1);
+      if (xAnterior === null || xAnterior === undefined) return;
 
-      // Precio actual (última vela)
-      const precioActual = ultimaVela.close;
+      const anchoUnidadLogica = xUltima - xAnterior;
+      if (anchoUnidadLogica <= 0) return;
 
-      // Calcular puntos ajustados al precio actual
+      // Calcular puntos: para cada día del precedente, X = xUltima + i * anchoUnidadLogica
       const puntosSuperior = [];
       const puntosInferior = [];
 
       precedente.dias.forEach((d, i) => {
-        const x = xUltima + i * anchoVela;
-        const precioHighAjustado = precioActual * (1 + d.variacionHigh);
-        const precioLowAjustado = precioActual * (1 + d.variacionLow);
-        const ySup = serie.priceToCoordinate(precioHighAjustado);
-        const yInf = serie.priceToCoordinate(precioLowAjustado);
+        const x = xUltima + i * anchoUnidadLogica;
+        const precioHighFuturo = highActual * (1 + d.variacionHigh);
+        const precioLowFuturo = lowActual * (1 + d.variacionLow);
+        const ySup = serie.priceToCoordinate(precioHighFuturo);
+        const yInf = serie.priceToCoordinate(precioLowFuturo);
         if (ySup !== null && ySup !== undefined && yInf !== null && yInf !== undefined) {
           puntosSuperior.push({ x, y: ySup });
           puntosInferior.push({ x, y: yInf });
