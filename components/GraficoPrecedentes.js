@@ -37,24 +37,14 @@ function buscarPrecedente(velas, smis, smiActual) {
       if (pendienteActual < 0 && pend >= 0) continue;
     }
 
-    // Guardamos el high y low del día 0 del precedente, para calcular variaciones relativas
     const highBase = velas[i].high;
     const lowBase = velas[i].low;
 
     const dias = [];
-    // Día 0: el high y low del día del precedente
-    dias.push({
-      high: highBase,
-      low: lowBase,
-      variacionHigh: 0,
-      variacionLow: 0
-    });
-
     for (let d = 1; d <= DIAS_EXTRA; d++) {
       const vela = velas[i + d];
       dias.push({
-        high: vela.high,
-        low: vela.low,
+        date: vela.date,
         variacionHigh: highBase !== 0 ? (vela.high - highBase) / highBase : 0,
         variacionLow: lowBase !== 0 ? (vela.low - lowBase) / lowBase : 0
       });
@@ -72,13 +62,16 @@ function buscarPrecedente(velas, smis, smiActual) {
   return null;
 }
 
+function sumarDias(fechaStr, dias) {
+  const f = new Date(fechaStr + 'T00:00:00');
+  f.setDate(f.getDate() + dias);
+  return f.toISOString().slice(0, 10);
+}
+
 export default function GraficoPrecedentes({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
-  const overlayRef = useRef(null);
   const chartRef = useRef(null);
-  const velasSeriesRef = useRef(null);
   const [precedente, setPrecedente] = useState(null);
-  const [chartListo, setChartListo] = useState(false);
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
@@ -95,7 +88,6 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       } catch (e) {}
       chartRef.current = null;
     }
-    velasSeriesRef.current = null;
 
     let chart;
     let cleanup = () => {};
@@ -126,6 +118,48 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
 
         chartRef.current = chart;
 
+        // Construir todos los datos: velas reales + velas futuras (proyección)
+        const ultimaVela = velas[velas.length - 1];
+        const highActual = ultimaVela.high;
+        const lowActual = ultimaVela.low;
+
+        // Datos de las velas reales
+        const velasReales = velas.map((v) => ({
+          time: v.date,
+          open: v.open,
+          high: v.high,
+          low: v.low,
+          close: v.close
+        }));
+
+        // Datos de las velas futuras (proyección)
+        const velasFuturas = [];
+        if (precedente) {
+          // Día 0: coincide con la última vela actual
+          velasFuturas.push({
+            time: ultimaVela.date,
+            open: highActual,
+            high: highActual,
+            low: lowActual,
+            close: lowActual
+          });
+          // Días 1-5: aplicar variaciones
+          for (let i = 0; i < precedente.dias.length; i++) {
+            const d = precedente.dias[i];
+            const fechaFutura = sumarDias(ultimaVela.date, i + 1);
+            const high = highActual * (1 + d.variacionHigh);
+            const low = lowActual * (1 + d.variacionLow);
+            velasFuturas.push({
+              time: fechaFutura,
+              open: high,
+              high: high,
+              low: low,
+              close: low
+            });
+          }
+        }
+
+        // Serie de velas reales
         const velasSeries = chart.addCandlestickSeries({
           upColor: '#2563eb',
           downColor: '#9ca3af',
@@ -135,17 +169,21 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           wickDownColor: '#9ca3af',
           priceScaleId: 'right'
         });
-        velasSeries.setData(
-          velas.map((v) => ({
-            time: v.date,
-            open: v.open,
-            high: v.high,
-            low: v.low,
-            close: v.close
-          }))
-        );
-        velasSeriesRef.current = velasSeries;
+        velasSeries.setData(velasReales);
 
+        // Serie de velas futuras (proyección) - mismo estilo pero más claro
+        const velasFuturasSeries = chart.addCandlestickSeries({
+          upColor: 'rgba(37, 99, 235, 0.4)',
+          downColor: 'rgba(156, 163, 175, 0.4)',
+          borderUpColor: 'rgba(37, 99, 235, 0.6)',
+          borderDownColor: 'rgba(156, 163, 175, 0.6)',
+          wickUpColor: 'rgba(37, 99, 235, 0.5)',
+          wickDownColor: 'rgba(156, 163, 175, 0.5)',
+          priceScaleId: 'right'
+        });
+        velasFuturasSeries.setData(velasFuturas);
+
+        // Bandas reales
         const bandaSuperior = chart.addLineSeries({
           color: '#2563eb',
           lineWidth: 1,
@@ -166,6 +204,30 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
         });
         bandaInferior.setData(velas.map((v) => ({ time: v.date, value: v.low })));
 
+        // Bandas futuras (proyección) - continuidad con las reales
+        if (precedente && velasFuturas.length > 0) {
+          const bandaSupFutura = chart.addLineSeries({
+            color: 'rgba(37, 99, 235, 0.7)',
+            lineWidth: 1.5,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          bandaSupFutura.setData(velasFuturas.map((v) => ({ time: v.time, value: v.high })));
+
+          const bandaInfFutura = chart.addLineSeries({
+            color: 'rgba(156, 163, 175, 0.7)',
+            lineWidth: 1.5,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          bandaInfFutura.setData(velasFuturas.map((v) => ({ time: v.time, value: v.low })));
+        }
+
+        // Indicador Equaty
         const smiData = [];
         for (let i = 0; i < smis.length; i++) {
           if (smis[i] === null || smis[i] === undefined) continue;
@@ -231,12 +293,7 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
           window.removeEventListener('resize', handleResize);
           if (chart) chart.remove();
           chartRef.current = null;
-          velasSeriesRef.current = null;
         };
-
-        setTimeout(() => {
-          if (!cancelado) setChartListo(true);
-        }, 800);
       } catch (e) {
         console.error('Error inicializando chart:', e);
       }
@@ -248,158 +305,21 @@ export default function GraficoPrecedentes({ velas, smis, smiActual }) {
       cancelado = true;
       cleanup();
     };
-  }, [velas, smis]);
-
-  useEffect(() => {
-    if (!chartListo) return;
-    if (!precedente) return;
-    if (!velas || velas.length < 2) return;
-    if (!contenedorRef.current || !overlayRef.current) return;
-    if (!chartRef.current) return;
-    if (!velasSeriesRef.current) return;
-
-    const chart = chartRef.current;
-    const timeScale = chart.timeScale();
-
-    const redibujar = () => {
-      dibujarOverlay();
-    };
-
-    const timer = setTimeout(redibujar, 200);
-    timeScale.subscribeVisibleLogicalRangeChange(redibujar);
-
-    return () => {
-      clearTimeout(timer);
-      try {
-        timeScale.unsubscribeVisibleLogicalRangeChange(redibujar);
-      } catch (e) {}
-    };
-  }, [chartListo, precedente, velas]);
-
-  function dibujarOverlay() {
-    try {
-      const contenedor = contenedorRef.current;
-      const overlay = overlayRef.current;
-      const chart = chartRef.current;
-      const serie = velasSeriesRef.current;
-      if (!contenedor || !overlay || !chart || !serie) return;
-      if (!precedente) return;
-      if (!velas || velas.length < 2) return;
-
-      const width = contenedor.clientWidth;
-      const height = contenedor.clientHeight;
-      if (width === 0 || height === 0) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      overlay.width = width * dpr;
-      overlay.height = height * dpr;
-      overlay.style.width = width + 'px';
-      overlay.style.height = height + 'px';
-
-      const ctx = overlay.getContext('2d');
-      if (!ctx) return;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, width, height);
-
-      const timeScale = chart.timeScale();
-
-      // Última vela real
-      const ultimaVela = velas[velas.length - 1];
-      const highActual = ultimaVela.high;
-      const lowActual = ultimaVela.low;
-
-      // Coordenada lógica de la última vela (índice en el eje lógico del gráfico)
-      const ultimoIndiceLogico = velas.length - 1;
-
-      // Coordenada X de la última vela real
-      const xUltima = timeScale.logicalToCoordinate(ultimoIndiceLogico);
-      if (xUltima === null || xUltima === undefined) return;
-
-      // Coordenada X del índice lógico anterior, para calcular el ancho por unidad lógica
-      const xAnterior = timeScale.logicalToCoordinate(ultimoIndiceLogico - 1);
-      if (xAnterior === null || xAnterior === undefined) return;
-
-      const anchoUnidadLogica = xUltima - xAnterior;
-      if (anchoUnidadLogica <= 0) return;
-
-      // Calcular puntos: para cada día del precedente, X = xUltima + i * anchoUnidadLogica
-      const puntosSuperior = [];
-      const puntosInferior = [];
-
-      precedente.dias.forEach((d, i) => {
-        const x = xUltima + i * anchoUnidadLogica;
-        const precioHighFuturo = highActual * (1 + d.variacionHigh);
-        const precioLowFuturo = lowActual * (1 + d.variacionLow);
-        const ySup = serie.priceToCoordinate(precioHighFuturo);
-        const yInf = serie.priceToCoordinate(precioLowFuturo);
-        if (ySup !== null && ySup !== undefined && yInf !== null && yInf !== undefined) {
-          puntosSuperior.push({ x, y: ySup });
-          puntosInferior.push({ x, y: yInf });
-        }
-      });
-
-      if (puntosSuperior.length === 0) return;
-
-      const primerX = puntosSuperior[0].x;
-      if (primerX > width || puntosSuperior[puntosSuperior.length - 1].x < 0) return;
-
-      // Banda sombreada
-      ctx.beginPath();
-      ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
-      for (let i = 1; i < puntosSuperior.length; i++) {
-        ctx.lineTo(puntosSuperior[i].x, puntosSuperior[i].y);
-      }
-      for (let i = puntosInferior.length - 1; i >= 0; i--) {
-        ctx.lineTo(puntosInferior[i].x, puntosInferior[i].y);
-      }
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
-      ctx.fill();
-
-      // Línea superior
-      ctx.beginPath();
-      ctx.moveTo(puntosSuperior[0].x, puntosSuperior[0].y);
-      for (let i = 1; i < puntosSuperior.length; i++) {
-        ctx.lineTo(puntosSuperior[i].x, puntosSuperior[i].y);
-      }
-      ctx.strokeStyle = 'rgba(37, 99, 235, 0.85)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Línea inferior
-      ctx.beginPath();
-      ctx.moveTo(puntosInferior[0].x, puntosInferior[0].y);
-      for (let i = 1; i < puntosInferior.length; i++) {
-        ctx.lineTo(puntosInferior[i].x, puntosInferior[i].y);
-      }
-      ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    } catch (e) {
-      console.error('Error dibujando overlay:', e);
-    }
-  }
+  }, [velas, smis, precedente]);
 
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico con precedentes (pruebas)</h2>
 
-      <div
-        className="v3-card"
-        style={{ padding: '12px', background: '#fff', position: 'relative' }}
-      >
+      <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%', height: '520px' }} />
-        <canvas
-          ref={overlayRef}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            pointerEvents: 'none',
-            zIndex: 5
-          }}
-        />
       </div>
+
+      <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
+        Las velas más claras a la derecha son la proyección del precedente. Las líneas azul y gris
+        superiores e inferiores conectan los máximos y mínimos actuales con los proyectados, sin
+        salto.
+      </p>
     </section>
   );
 }
