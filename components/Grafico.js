@@ -6,6 +6,7 @@ const VELAS_ATRAS = 30;
 const DIAS_EXTRA = 10;
 const RANGO_VALOR = 30;
 const MAX_REPLICAS = 5;
+const SEPARACION_MINIMA = 10;
 
 function calcularPendiente(smis, idx) {
   if (idx < 1) return null;
@@ -65,9 +66,20 @@ function buscarReplicas(velas, smis, smiActual) {
     });
   }
 
-  return candidatos
-    .sort((a, b) => a.distancia - b.distancia)
-    .slice(0, MAX_REPLICAS);
+  // Ordenar por distancia (más cercano en valor primero)
+  const ordenados = candidatos.sort((a, b) => a.distancia - b.distancia);
+
+  // Filtrar para que haya al menos SEPARACION_MINIMA sesiones entre réplicas
+  const seleccionadas = [];
+  for (const c of ordenados) {
+    if (seleccionadas.length >= MAX_REPLICAS) break;
+    const demasiadoCerca = seleccionadas.some(
+      (s) => Math.abs(s.indexFecha - c.indexFecha) < SEPARACION_MINIMA
+    );
+    if (!demasiadoCerca) seleccionadas.push(c);
+  }
+
+  return seleccionadas;
 }
 
 function sumarDiasHabiles(fechaStr, dias) {
