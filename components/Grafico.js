@@ -7,7 +7,6 @@ const DIAS_EXTRA = 10;
 const RANGO_VALOR = 30;
 const MAX_REPLICAS = 5;
 
-// Pendiente inmediata: diferencia con el día anterior
 function calcularPendiente(smis, idx) {
   if (idx < 1) return null;
   const actual = smis[idx];
@@ -96,11 +95,11 @@ function formatearFecha(fechaStr) {
 }
 
 const COLORES_REPLICAS = [
-  { fondo: 'rgba(251, 191, 36, 0.18)', borde: 'rgba(251, 191, 36, 0.6)', linea: 'rgba(234, 88, 12, 0.9)' },
-  { fondo: 'rgba(59, 130, 246, 0.18)', borde: 'rgba(59, 130, 246, 0.6)', linea: 'rgba(37, 99, 235, 0.9)' },
-  { fondo: 'rgba(16, 185, 129, 0.18)', borde: 'rgba(16, 185, 129, 0.6)', linea: 'rgba(5, 150, 105, 0.9)' },
-  { fondo: 'rgba(168, 85, 247, 0.18)', borde: 'rgba(168, 85, 247, 0.6)', linea: 'rgba(147, 51, 234, 0.9)' },
-  { fondo: 'rgba(239, 68, 68, 0.18)', borde: 'rgba(239, 68, 68, 0.6)', linea: 'rgba(220, 38, 38, 0.9)' }
+  { fondo: 'rgba(251, 191, 36, 0.20)', borde: 'rgba(251, 191, 36, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(59, 130, 246, 0.20)', borde: 'rgba(59, 130, 246, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(16, 185, 129, 0.20)', borde: 'rgba(16, 185, 129, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(168, 85, 247, 0.20)', borde: 'rgba(168, 85, 247, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(239, 68, 68, 0.20)', borde: 'rgba(239, 68, 68, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' }
 ];
 
 export default function Grafico({ velas, smis, smiActual }) {
@@ -108,6 +107,7 @@ export default function Grafico({ velas, smis, smiActual }) {
   const chartRef = useRef(null);
   const [replicas, setReplicas] = useState([]);
   const [indiceReplica, setIndiceReplica] = useState(0);
+  const [conProyeccion, setConProyeccion] = useState(false);
 
   const smiFinal =
     smiActual !== null && smiActual !== undefined
@@ -220,7 +220,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           lineaFutura: null
         };
 
-        chart._dibujarReplica = (replica, color) => {
+        chart._dibujarReplica = (replica, color, mostrarProyeccion) => {
           if (chart._replicaSeries.areaSup) {
             try { chart.removeSeries(chart._replicaSeries.areaSup); } catch (e) {}
           }
@@ -276,48 +276,53 @@ export default function Grafico({ velas, smis, smiActual }) {
           });
           areaInf.setData(fechasHistoricas.map((f) => ({ time: f, value: minHistorico })));
 
-          const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
-          let medioAcum = cierreActual;
+          let areaFutura = null;
+          let lineaFutura = null;
 
-          for (let i = 0; i < replica.dias.length; i++) {
-            const d = replica.dias[i];
-            const fechaFutura = sumarDiasHabiles(ultimaVela.date, i + 1);
-            medioAcum += d.deltaMedio;
-            lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
+          if (mostrarProyeccion) {
+            const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
+            let medioAcum = cierreActual;
+
+            for (let i = 0; i < replica.dias.length; i++) {
+              const d = replica.dias[i];
+              const fechaFutura = sumarDiasHabiles(ultimaVela.date, i + 1);
+              medioAcum += d.deltaMedio;
+              lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
+            }
+
+            areaFutura = chart.addAreaSeries({
+              topColor: color.fondo,
+              bottomColor: color.fondo,
+              lineColor: 'rgba(0,0,0,0)',
+              lineWidth: 1,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false
+            });
+            areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
+
+            lineaFutura = chart.addLineSeries({
+              color: color.linea,
+              lineWidth: 2,
+              lineStyle: LineStyle.Dashed,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: true
+            });
+            lineaFutura.setData(lineaFuturaData);
+
+            lineaFutura.createPriceLine({
+              price: lineaFuturaData[lineaFuturaData.length - 1].value,
+              color: color.borde,
+              lineWidth: 1,
+              lineStyle: LineStyle.Dotted,
+              axisLabelVisible: true,
+              title: `copia ${formatearFecha(replica.fecha)} → ${formatearFecha(replica.fechaFin)}`,
+              priceScaleId: 'right'
+            });
           }
-
-          const areaFutura = chart.addAreaSeries({
-            topColor: color.fondo,
-            bottomColor: color.fondo,
-            lineColor: 'rgba(0,0,0,0)',
-            lineWidth: 1,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false
-          });
-          areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
-
-          const lineaFutura = chart.addLineSeries({
-            color: color.linea,
-            lineWidth: 2,
-            lineStyle: LineStyle.Dashed,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: true
-          });
-          lineaFutura.setData(lineaFuturaData);
-
-          lineaFutura.createPriceLine({
-            price: lineaFuturaData[lineaFuturaData.length - 1].value,
-            color: color.borde,
-            lineWidth: 1,
-            lineStyle: LineStyle.Dotted,
-            axisLabelVisible: true,
-            title: `réplica ${formatearFecha(replica.fecha)} → ${formatearFecha(replica.fechaFin)}`,
-            priceScaleId: 'right'
-          });
 
           chart._replicaSeries = {
             areaSup,
@@ -325,10 +330,18 @@ export default function Grafico({ velas, smis, smiActual }) {
             areaFutura,
             lineaFutura
           };
+
+          // Ajustar zoom
+          const totalVelas = velas.length;
+          const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
+          const hasta = mostrarProyeccion ? totalVelas + DIAS_EXTRA : totalVelas;
+          try {
+            chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
+          } catch (e) {}
         };
 
         if (replicas.length > 0) {
-          chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0]);
+          chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0], conProyeccion);
         }
 
         const smiData = [];
@@ -383,15 +396,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        const totalVelas = velas.length;
-        const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
-        const hasta = totalVelas + DIAS_EXTRA;
-        try {
-          chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
-        } catch (e) {
-          chart.timeScale().fitContent();
-        }
-
         function handleResize() {
           if (chart && contenedorRef.current) {
             chart.applyOptions({ width: contenedorRef.current.clientWidth });
@@ -415,16 +419,32 @@ export default function Grafico({ velas, smis, smiActual }) {
       cancelado = true;
       cleanup();
     };
-  }, [velas, smis, replicas]);
+  }, [velas, smis, replicas, conProyeccion]);
 
   const cambiarReplica = useCallback(
     (idx) => {
       if (!chartRef.current || !replicas[idx]) return;
       setIndiceReplica(idx);
-      chartRef.current._dibujarReplica(replicas[idx], COLORES_REPLICAS[idx % COLORES_REPLICAS.length]);
+      chartRef.current._dibujarReplica(
+        replicas[idx],
+        COLORES_REPLICAS[idx % COLORES_REPLICAS.length],
+        conProyeccion
+      );
     },
-    [replicas]
+    [replicas, conProyeccion]
   );
+
+  const toggleProyeccion = useCallback(() => {
+    const nuevo = !conProyeccion;
+    setConProyeccion(nuevo);
+    if (chartRef.current && replicas[indiceReplica]) {
+      chartRef.current._dibujarReplica(
+        replicas[indiceReplica],
+        COLORES_REPLICAS[indiceReplica % COLORES_REPLICAS.length],
+        nuevo
+      );
+    }
+  }, [conProyeccion, replicas, indiceReplica]);
 
   return (
     <section className="v3-seccion">
@@ -446,17 +466,60 @@ export default function Grafico({ velas, smis, smiActual }) {
             cerró por debajo. La línea naranja es la media del precio de cada vela.
           </p>
           <p style={{ margin: '0 0 6px 0' }}>
-            La zona coloreada del histórico marca los días que se están replicando. La línea
-            discontinua a la derecha es la proyección a 10 sesiones.
+            La zona coloreada del histórico marca los días en los que el indicador estuvo en una
+            situación similar a la actual. Puedes cambiar entre varias situaciones con los botones.
           </p>
           <p style={{ margin: 0 }}>
-            La etiqueta indica las fechas del precedente que se está replicando. Puedes cambiar
-            entre varias réplicas con los botones de arriba. Esto no es una predicción: es una
-            copia de lo que pasó en situaciones similares. No constituye recomendación de
+            <strong>Importante:</strong> si activas "ver con proyección", la zona de la derecha no
+            es una predicción. Es una copia de lo que ocurrió en los días siguientes a esa
+            situación similar del pasado. No indica lo que va a pasar. No es una recomendación de
             inversión.
           </p>
         </div>
       </details>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          marginBottom: '8px',
+          marginTop: '8px',
+          alignItems: 'center'
+        }}
+      >
+        <button
+          onClick={toggleProyeccion}
+          style={{
+            padding: '8px 14px',
+            fontSize: '12px',
+            fontWeight: 700,
+            borderRadius: 'var(--v3-radius-sm)',
+            border: '1px solid #2563eb',
+            background: conProyeccion ? '#2563eb' : '#fff',
+            color: conProyeccion ? '#fff' : '#2563eb',
+            cursor: 'pointer'
+          }}
+        >
+          {conProyeccion ? 'Ver solo histórico' : 'Ver con proyección'}
+        </button>
+
+        {conProyeccion && (
+          <span
+            style={{
+              fontSize: '11px',
+              color: '#78350f',
+              background: '#fef3c7',
+              border: '1px solid #fbbf24',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              lineHeight: 1.4
+            }}
+          >
+            La proyección es una copia del pasado, no una predicción.
+          </span>
+        )}
+      </div>
 
       {replicas.length > 1 && (
         <div
@@ -478,7 +541,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 borderRadius: '999px',
                 border:
                   idx === indiceReplica
-                    ? '2px solid ' + COLORES_REPLICAS[idx % COLORES_REPLICAS.length].linea
+                    ? '2px solid ' + COLORES_REPLICAS[idx % COLORES_REPLICAS.length].borde
                     : '1px solid var(--v3-border)',
                 background:
                   idx === indiceReplica
@@ -488,7 +551,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 cursor: 'pointer'
               }}
             >
-              Réplica {idx + 1} · {formatearFecha(r.fecha)}
+              Situación similar {idx + 1} · {formatearFecha(r.fecha)}
             </button>
           ))}
         </div>
@@ -497,6 +560,16 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
+
+      {replicas[indiceReplica] && (
+        <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
+          <strong>Situación seleccionada:</strong> del {formatearFecha(replicas[indiceReplica].fecha)} al{' '}
+          {formatearFecha(replicas[indiceReplica].fechaFin)}. Valor del indicador:{' '}
+          {replicas[indiceReplica].smi.toFixed(0)}. Distancia al valor actual:{' '}
+          {replicas[indiceReplica].distancia.toFixed(1)} puntos. Esto muestra lo que ocurrió en el
+          pasado en una situación similar. No es una predicción ni una recomendación de inversión.
+        </p>
+      )}
     </section>
   );
 }
