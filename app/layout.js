@@ -9,7 +9,7 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap'
 });
-
+ 
 const BASE_URL = 'https://equaty.es';
 
 export const metadata = {
