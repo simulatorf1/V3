@@ -7,14 +7,15 @@ const DIAS_EXTRA = 10;
 const RANGO_VALOR = 30;
 const MAX_REPLICAS = 5;
 
+// Pendiente inmediata: diferencia con el día anterior
 function calcularPendiente(smis, idx) {
-  if (idx < 5) return null;
+  if (idx < 1) return null;
   const actual = smis[idx];
-  const hace5 = smis[idx - 5];
-  if (actual === null || actual === undefined || hace5 === null || hace5 === undefined) {
+  const anterior = smis[idx - 1];
+  if (actual === null || actual === undefined || anterior === null || anterior === undefined) {
     return null;
   }
-  return actual - hace5;
+  return actual - anterior;
 }
 
 function buscarReplicas(velas, smis, smiActual) {
@@ -202,7 +203,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           value: (v.high + v.low) / 2
         }));
 
-        // Línea media naranja más fina
         const lineaMedia = chart.addLineSeries({
           color: '#ea580c',
           lineWidth: 1.5,
@@ -213,7 +213,6 @@ export default function Grafico({ velas, smis, smiActual }) {
         });
         lineaMedia.setData(lineaMediaData);
 
-        // Guardar referencias de las series de la réplica para poder cambiarlas
         chart._replicaSeries = {
           areaSup: null,
           areaInf: null,
@@ -221,9 +220,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           lineaFutura: null
         };
 
-        // Función para dibujar la réplica seleccionada
         chart._dibujarReplica = (replica, color) => {
-          // Limpiar series anteriores
           if (chart._replicaSeries.areaSup) {
             try { chart.removeSeries(chart._replicaSeries.areaSup); } catch (e) {}
           }
@@ -330,12 +327,10 @@ export default function Grafico({ velas, smis, smiActual }) {
           };
         };
 
-        // Dibujar la primera réplica si existe
         if (replicas.length > 0) {
           chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0]);
         }
 
-        // Indicador Equaty
         const smiData = [];
         for (let i = 0; i < smis.length; i++) {
           if (smis[i] === null || smis[i] === undefined) continue;
@@ -388,14 +383,9 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        // Ajustar el zoom: 30 velas atrás + 10 futuras
-        // Las fechas futuras ocupan "espacio" en el eje lógico, pero como no son velas reales,
-        // el rango lógico se calcula en base a las velas reales. Para que las 10 futuras
-        // queden visibles, hay que extender el rango lógico hasta el final de la proyección.
         const totalVelas = velas.length;
-        // Rango: desde la vela (totalVelas - 1 - VELAS_ATRAS) hasta la última vela + espacio futuro
         const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
-        const hasta = totalVelas + DIAS_EXTRA; // espacio para los 10 días futuros
+        const hasta = totalVelas + DIAS_EXTRA;
         try {
           chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
         } catch (e) {
@@ -427,7 +417,6 @@ export default function Grafico({ velas, smis, smiActual }) {
     };
   }, [velas, smis, replicas]);
 
-  // Cambiar de réplica cuando el usuario pulsa un botón
   const cambiarReplica = useCallback(
     (idx) => {
       if (!chartRef.current || !replicas[idx]) return;
@@ -487,12 +476,14 @@ export default function Grafico({ velas, smis, smiActual }) {
                 fontSize: '11px',
                 fontWeight: 600,
                 borderRadius: '999px',
-                border: idx === indiceReplica
-                  ? '2px solid ' + COLORES_REPLICAS[idx % COLORES_REPLICAS.length].linea
-                  : '1px solid var(--v3-border)',
-                background: idx === indiceReplica
-                  ? COLORES_REPLICAS[idx % COLORES_REPLICAS.length].fondo
-                  : '#fff',
+                border:
+                  idx === indiceReplica
+                    ? '2px solid ' + COLORES_REPLICAS[idx % COLORES_REPLICAS.length].linea
+                    : '1px solid var(--v3-border)',
+                background:
+                  idx === indiceReplica
+                    ? COLORES_REPLICAS[idx % COLORES_REPLICAS.length].fondo
+                    : '#fff',
                 color: 'var(--v3-text)',
                 cursor: 'pointer'
               }}
