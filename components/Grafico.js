@@ -95,11 +95,11 @@ function formatearFecha(fechaStr) {
 }
 
 const COLORES_REPLICAS = [
-  { fondo: 'rgba(251, 191, 36, 0.20)', borde: 'rgba(251, 191, 36, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(59, 130, 246, 0.20)', borde: 'rgba(59, 130, 246, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(16, 185, 129, 0.20)', borde: 'rgba(16, 185, 129, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(168, 85, 247, 0.20)', borde: 'rgba(168, 85, 247, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(239, 68, 68, 0.20)', borde: 'rgba(239, 68, 68, 0.8)', linea: 'rgba(156, 163, 175, 0.6)' }
+  { fondo: 'rgba(251, 191, 36, 0.18)', borde: 'rgba(251, 191, 36, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(59, 130, 246, 0.18)', borde: 'rgba(59, 130, 246, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(16, 185, 129, 0.18)', borde: 'rgba(16, 185, 129, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(168, 85, 247, 0.18)', borde: 'rgba(168, 85, 247, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
+  { fondo: 'rgba(239, 68, 68, 0.18)', borde: 'rgba(239, 68, 68, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' }
 ];
 
 export default function Grafico({ velas, smis, smiActual }) {
@@ -107,7 +107,6 @@ export default function Grafico({ velas, smis, smiActual }) {
   const chartRef = useRef(null);
   const [replicas, setReplicas] = useState([]);
   const [indiceReplica, setIndiceReplica] = useState(0);
-  const [conProyeccion, setConProyeccion] = useState(false);
 
   const smiFinal =
     smiActual !== null && smiActual !== undefined
@@ -220,7 +219,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           lineaFutura: null
         };
 
-        chart._dibujarReplica = (replica, color, mostrarProyeccion) => {
+        chart._dibujarReplica = (replica, color) => {
           if (chart._replicaSeries.areaSup) {
             try { chart.removeSeries(chart._replicaSeries.areaSup); } catch (e) {}
           }
@@ -276,53 +275,48 @@ export default function Grafico({ velas, smis, smiActual }) {
           });
           areaInf.setData(fechasHistoricas.map((f) => ({ time: f, value: minHistorico })));
 
-          let areaFutura = null;
-          let lineaFutura = null;
+          const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
+          let medioAcum = cierreActual;
 
-          if (mostrarProyeccion) {
-            const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
-            let medioAcum = cierreActual;
-
-            for (let i = 0; i < replica.dias.length; i++) {
-              const d = replica.dias[i];
-              const fechaFutura = sumarDiasHabiles(ultimaVela.date, i + 1);
-              medioAcum += d.deltaMedio;
-              lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
-            }
-
-            areaFutura = chart.addAreaSeries({
-              topColor: color.fondo,
-              bottomColor: color.fondo,
-              lineColor: 'rgba(0,0,0,0)',
-              lineWidth: 1,
-              priceScaleId: 'right',
-              priceLineVisible: false,
-              lastValueVisible: false,
-              crosshairMarkerVisible: false
-            });
-            areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
-
-            lineaFutura = chart.addLineSeries({
-              color: color.linea,
-              lineWidth: 2,
-              lineStyle: LineStyle.Dashed,
-              priceScaleId: 'right',
-              priceLineVisible: false,
-              lastValueVisible: false,
-              crosshairMarkerVisible: true
-            });
-            lineaFutura.setData(lineaFuturaData);
-
-            lineaFutura.createPriceLine({
-              price: lineaFuturaData[lineaFuturaData.length - 1].value,
-              color: color.borde,
-              lineWidth: 1,
-              lineStyle: LineStyle.Dotted,
-              axisLabelVisible: true,
-              title: `copia ${formatearFecha(replica.fecha)} → ${formatearFecha(replica.fechaFin)}`,
-              priceScaleId: 'right'
-            });
+          for (let i = 0; i < replica.dias.length; i++) {
+            const d = replica.dias[i];
+            const fechaFutura = sumarDiasHabiles(ultimaVela.date, i + 1);
+            medioAcum += d.deltaMedio;
+            lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
           }
+
+          const areaFutura = chart.addAreaSeries({
+            topColor: color.fondo,
+            bottomColor: color.fondo,
+            lineColor: 'rgba(0,0,0,0)',
+            lineWidth: 1,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
+
+          const lineaFutura = chart.addLineSeries({
+            color: color.linea,
+            lineWidth: 2,
+            lineStyle: LineStyle.Dashed,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: true
+          });
+          lineaFutura.setData(lineaFuturaData);
+
+          lineaFutura.createPriceLine({
+            price: lineaFuturaData[lineaFuturaData.length - 1].value,
+            color: color.borde,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            axisLabelVisible: true,
+            title: `copia ${formatearFecha(replica.fecha)} → ${formatearFecha(replica.fechaFin)}`,
+            priceScaleId: 'right'
+          });
 
           chart._replicaSeries = {
             areaSup,
@@ -331,17 +325,16 @@ export default function Grafico({ velas, smis, smiActual }) {
             lineaFutura
           };
 
-          // Ajustar zoom
           const totalVelas = velas.length;
           const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
-          const hasta = mostrarProyeccion ? totalVelas + DIAS_EXTRA : totalVelas;
+          const hasta = totalVelas + DIAS_EXTRA;
           try {
             chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
           } catch (e) {}
         };
 
         if (replicas.length > 0) {
-          chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0], conProyeccion);
+          chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0]);
         }
 
         const smiData = [];
@@ -419,7 +412,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       cancelado = true;
       cleanup();
     };
-  }, [velas, smis, replicas, conProyeccion]);
+  }, [velas, smis, replicas]);
 
   const cambiarReplica = useCallback(
     (idx) => {
@@ -427,24 +420,11 @@ export default function Grafico({ velas, smis, smiActual }) {
       setIndiceReplica(idx);
       chartRef.current._dibujarReplica(
         replicas[idx],
-        COLORES_REPLICAS[idx % COLORES_REPLICAS.length],
-        conProyeccion
+        COLORES_REPLICAS[idx % COLORES_REPLICAS.length]
       );
     },
-    [replicas, conProyeccion]
+    [replicas]
   );
-
-  const toggleProyeccion = useCallback(() => {
-    const nuevo = !conProyeccion;
-    setConProyeccion(nuevo);
-    if (chartRef.current && replicas[indiceReplica]) {
-      chartRef.current._dibujarReplica(
-        replicas[indiceReplica],
-        COLORES_REPLICAS[indiceReplica % COLORES_REPLICAS.length],
-        nuevo
-      );
-    }
-  }, [conProyeccion, replicas, indiceReplica]);
 
   return (
     <section className="v3-seccion">
@@ -470,55 +450,28 @@ export default function Grafico({ velas, smis, smiActual }) {
             situación similar a la actual. Puedes cambiar entre varias situaciones con los botones.
           </p>
           <p style={{ margin: 0 }}>
-            <strong>Importante:</strong> si activas "ver con proyección", la zona de la derecha no
-            es una predicción. Es una copia de lo que ocurrió en los días siguientes a esa
-            situación similar del pasado. No indica lo que va a pasar. No es una recomendación de
-            inversión.
+            <strong>Importante:</strong> la zona de la derecha no es una predicción. Es una copia
+            de lo que ocurrió en los días siguientes a esa situación similar del pasado. No indica
+            lo que va a pasar. No es una recomendación de inversión.
           </p>
         </div>
       </details>
 
       <div
         style={{
-          display: 'flex',
-          gap: '8px',
-          flexWrap: 'wrap',
           marginBottom: '8px',
-          marginTop: '8px',
-          alignItems: 'center'
+          padding: '8px 12px',
+          background: '#fef3c7',
+          border: '1px solid #fbbf24',
+          borderRadius: '6px',
+          fontSize: '12px',
+          color: '#78350f',
+          lineHeight: 1.5
         }}
       >
-        <button
-          onClick={toggleProyeccion}
-          style={{
-            padding: '8px 14px',
-            fontSize: '12px',
-            fontWeight: 700,
-            borderRadius: 'var(--v3-radius-sm)',
-            border: '1px solid #2563eb',
-            background: conProyeccion ? '#2563eb' : '#fff',
-            color: conProyeccion ? '#fff' : '#2563eb',
-            cursor: 'pointer'
-          }}
-        >
-          {conProyeccion ? 'Ver solo histórico' : 'Ver con proyección'}
-        </button>
-
-        {conProyeccion && (
-          <span
-            style={{
-              fontSize: '11px',
-              color: '#78350f',
-              background: '#fef3c7',
-              border: '1px solid #fbbf24',
-              borderRadius: '6px',
-              padding: '6px 10px',
-              lineHeight: 1.4
-            }}
-          >
-            La proyección es una copia del pasado, no una predicción.
-          </span>
-        )}
+        <strong>Aviso:</strong> la zona de la derecha no es una predicción. Es una copia de lo
+        que ocurrió en el pasado en una situación similar. No indica lo que va a pasar. No es una
+        recomendación de inversión.
       </div>
 
       {replicas.length > 1 && (
