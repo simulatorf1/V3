@@ -1,6 +1,5 @@
 import '../app/globals.css';
 import { Inter } from 'next/font/google';
-import Script from 'next/script';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
@@ -59,6 +58,17 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es" className={inter.className}>
+      <head>
+        {/* 
+          SCRIPT DE PASSIRO - PRIMER SCRIPT DEL HEAD
+          Se usa una etiqueta <script> plana (no next/script) para garantizar
+          que se inyecte literalmente en el HTML y Passiro lo detecte.
+        */}
+        <script
+          src="https://cdn.passiro.com/passiro.js"
+          data-site-id="ac3c0f6d4c8620f8df718345d967d98b"
+        ></script>
+      </head>
       <body
         style={{
           margin: 0,
@@ -67,18 +77,6 @@ export default function RootLayout({ children }) {
           background: '#fff'
         }}
       >
-        {/* 
-          SCRIPT DE PASSIRO
-          Se carga con estrategia "beforeInteractive" para que se ejecute
-          antes que cualquier otro script (AdSense, Analytics, etc.).
-          Passiro se encargará de bloquear el resto hasta que el usuario acepte.
-        */}
-        <Script
-          src="https://cdn.passiro.com/passiro.js"
-          data-site-id="ac3c0f6d4c8620f8df718345d967d98b"
-          strategy="beforeInteractive"
-        />
-
         <RegistrarVisitaGlobal />
         <Cabecera />
         <div style={{ minHeight: '60vh' }}>{children}</div>
