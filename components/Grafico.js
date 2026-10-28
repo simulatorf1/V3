@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const VELAS_ATRAS = 30;
-const DIAS_EXTRA = 10;
+const VENTANA = 10;
 const RANGO_VALOR = 30;
-const MAX_REPLICAS = 5;
 const SEPARACION_MINIMA = 10;
 
 function calcularPendiente(smis, idx) {
@@ -18,17 +17,17 @@ function calcularPendiente(smis, idx) {
   return actual - anterior;
 }
 
-function buscarReplicas(velas, smis, smiActual) {
+function buscarCoincidencias(velas, smis, smiActual) {
   if (!velas || !smis || velas.length < 10 || smis.length < 10) return [];
   if (smiActual === null || smiActual === undefined) return [];
 
   const idxActual = smis.length - 1;
   const pendienteActual = calcularPendiente(smis, idxActual);
 
-  const candidatos = [];
+  const coincidencias = [];
 
   for (let i = idxActual - 1; i >= 0; i--) {
-    if (i + DIAS_EXTRA >= velas.length) continue;
+    if (i + VENTANA >= velas.length) continue;
 
     const v = smis[i];
     if (v === null || v === undefined) continue;
@@ -42,42 +41,15 @@ function buscarReplicas(velas, smis, smiActual) {
       if (pendienteActual < 0 && pend >= 0) continue;
     }
 
-    const dias = [];
-    for (let d = 1; d <= DIAS_EXTRA; d++) {
-      const vela = velas[i + d];
-      const velaAnterior = velas[i + d - 1];
-      const medio = (vela.high + vela.low) / 2;
-      const medioAnterior = (velaAnterior.high + velaAnterior.low) / 2;
-      dias.push({
-        date: vela.date,
-        deltaMedio: medio - medioAnterior,
-        high: vela.high,
-        low: vela.low
-      });
-    }
-
-    candidatos.push({
-      fecha: velas[i].date,
-      fechaFin: velas[Math.min(i + DIAS_EXTRA, velas.length - 1)].date,
+    coincidencias.push({
       indexFecha: i,
+      fecha: velas[i].date,
       smi: v,
-      distancia: Math.abs(v - smiActual),
-      dias
+      distancia: Math.abs(v - smiActual)
     });
   }
 
-  const ordenados = candidatos.sort((a, b) => a.distancia - b.distancia);
-
-  const seleccionadas = [];
-  for (const c of ordenados) {
-    if (seleccionadas.length >= MAX_REPLICAS) break;
-    const demasiadoCerca = seleccionadas.some(
-      (s) => Math.abs(s.indexFecha - c.indexFecha) < SEPARACION_MINIMA
-    );
-    if (!demasiadoCerca) seleccionadas.push(c);
-  }
-
-  return seleccionadas;
+  return coincidencias.sort((a, b) => a.distancia - b.distancia);
 }
 
 function sumarDiasHabiles(fechaStr, dias) {
@@ -104,19 +76,12 @@ function formatearFecha(fechaStr) {
   }
 }
 
-const COLORES_REPLICAS = [
-  { fondo: 'rgba(251, 191, 36, 0.18)', borde: 'rgba(251, 191, 36, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(59, 130, 246, 0.18)', borde: 'rgba(59, 130, 246, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(16, 185, 129, 0.18)', borde: 'rgba(16, 185, 129, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(168, 85, 247, 0.18)', borde: 'rgba(168, 85, 247, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' },
-  { fondo: 'rgba(239, 68, 68, 0.18)', borde: 'rgba(239, 68, 68, 0.6)', linea: 'rgba(156, 163, 175, 0.6)' }
-];
-
 export default function Grafico({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
-  const [replicas, setReplicas] = useState([]);
-  const [indiceReplica, setIndiceReplica] = useState(0);
+  const [coincidencias, setCoincidencias] = useState([]);
+  const [posicion, setPosicion] = useState(-1);
+  const [infoSeleccion, setInfoSeleccion] = useState(null);
 
   const smiFinal =
     smiActual !== null && smiActual !== undefined
@@ -127,9 +92,9 @@ export default function Grafico({ velas, smis, smiActual }) {
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
-    const encontradas = buscarReplicas(velas, smis, smiFinal);
-    setReplicas(encontradas);
-    setIndiceReplica(0);
+    const encontradas = buscarCoincidencias(velas, smis, smiFinal);
+    setCoincidencias(encontradas);
+    setPosicion(-1);
   }, [velas, smis, smiFinal]);
 
   useEffect(() => {
@@ -222,7 +187,7 @@ export default function Grafico({ velas, smis, smiActual }) {
         });
         lineaMedia.setData(lineaMediaData);
 
-        // ========== SOMBREADO DEL INDICADOR EN ZONAS EXTREMAS ==========
+        // Sombreado del indicador en zonas extremas
         const smiData = [];
         for (let i = 0; i < smis.length; i++) {
           if (smis[i] === null || smis[i] === undefined) continue;
@@ -230,7 +195,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           smiData.push({ time: velas[i].date, value: smis[i] });
         }
 
-        // Zona superior (+40): sombreado azul semitransparente
         const zonaSuperior = chart.addBaselineSeries({
           baseValue: { type: 'price', price: 40 },
           topFillColor1: 'rgba(37, 99, 235, 0.35)',
@@ -247,7 +211,6 @@ export default function Grafico({ velas, smis, smiActual }) {
         });
         zonaSuperior.setData(smiData);
 
-        // Zona inferior (-40): sombreado gris semitransparente
         const zonaInferior = chart.addBaselineSeries({
           baseValue: { type: 'price', price: -40 },
           topFillColor1: 'rgba(156, 163, 175, 0)',
@@ -263,132 +226,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           crosshairMarkerVisible: false
         });
         zonaInferior.setData(smiData);
-        // ========== FIN SOMBREADO ==========
-
-        chart._replicaSeries = {
-          areaSup: null,
-          areaInf: null,
-          areaFutura: null,
-          lineaFutura: null
-        };
-
-        chart._dibujarReplica = (replica, color) => {
-          if (chart._replicaSeries.areaSup) {
-            try { chart.removeSeries(chart._replicaSeries.areaSup); } catch (e) {}
-          }
-          if (chart._replicaSeries.areaInf) {
-            try { chart.removeSeries(chart._replicaSeries.areaInf); } catch (e) {}
-          }
-          if (chart._replicaSeries.areaFutura) {
-            try { chart.removeSeries(chart._replicaSeries.areaFutura); } catch (e) {}
-          }
-          if (chart._replicaSeries.lineaFutura) {
-            try { chart.removeSeries(chart._replicaSeries.lineaFutura); } catch (e) {}
-          }
-
-          if (!replica) return;
-
-          const fechasHistoricas = [];
-          const highsHistoricos = [];
-          const lowsHistoricos = [];
-
-          const idxInicio = replica.indexFecha;
-          const idxFin = Math.min(idxInicio + DIAS_EXTRA, velas.length - 1);
-
-          for (let j = idxInicio; j <= idxFin; j++) {
-            fechasHistoricas.push(velas[j].date);
-            highsHistoricos.push(velas[j].high);
-            lowsHistoricos.push(velas[j].low);
-          }
-
-          const maxHistorico = Math.max(...highsHistoricos);
-          const minHistorico = Math.min(...lowsHistoricos);
-
-          const areaSup = chart.addAreaSeries({
-            topColor: color.fondo,
-            bottomColor: 'rgba(0,0,0,0)',
-            lineColor: 'rgba(0,0,0,0)',
-            lineWidth: 1,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false
-          });
-          areaSup.setData(fechasHistoricas.map((f) => ({ time: f, value: maxHistorico })));
-
-          const areaInf = chart.addAreaSeries({
-            topColor: 'rgba(0,0,0,0)',
-            bottomColor: color.fondo,
-            lineColor: 'rgba(0,0,0,0)',
-            lineWidth: 1,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false
-          });
-          areaInf.setData(fechasHistoricas.map((f) => ({ time: f, value: minHistorico })));
-
-          const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
-          let medioAcum = cierreActual;
-
-          for (let i = 0; i < replica.dias.length; i++) {
-            const d = replica.dias[i];
-            const fechaFutura = sumarDiasHabiles(ultimaVela.date, i + 1);
-            medioAcum += d.deltaMedio;
-            lineaFuturaData.push({ time: fechaFutura, value: medioAcum });
-          }
-
-          const areaFutura = chart.addAreaSeries({
-            topColor: color.fondo,
-            bottomColor: color.fondo,
-            lineColor: 'rgba(0,0,0,0)',
-            lineWidth: 1,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false
-          });
-          areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
-
-          const lineaFutura = chart.addLineSeries({
-            color: color.linea,
-            lineWidth: 2,
-            lineStyle: LineStyle.Dashed,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: true
-          });
-          lineaFutura.setData(lineaFuturaData);
-
-          lineaFutura.createPriceLine({
-            price: lineaFuturaData[lineaFuturaData.length - 1].value,
-            color: color.borde,
-            lineWidth: 1,
-            lineStyle: LineStyle.Dotted,
-            axisLabelVisible: true,
-            title: `copia ${formatearFecha(replica.fecha)} → ${formatearFecha(replica.fechaFin)}`,
-            priceScaleId: 'right'
-          });
-
-          chart._replicaSeries = {
-            areaSup,
-            areaInf,
-            areaFutura,
-            lineaFutura
-          };
-
-          const totalVelas = velas.length;
-          const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
-          const hasta = totalVelas + DIAS_EXTRA;
-          try {
-            chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
-          } catch (e) {}
-        };
-
-        if (replicas.length > 0) {
-          chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0]);
-        }
 
         const smiLine = chart.addLineSeries({
           color: '#7b1fa2',
@@ -435,6 +272,125 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
+        // Series de la zona seleccionada (se crean y destruyen al mover el slider)
+        chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+
+        chart._limpiarZona = () => {
+          if (chart._zonaSeries.areaSup) {
+            try { chart.removeSeries(chart._zonaSeries.areaSup); } catch (e) {}
+          }
+          if (chart._zonaSeries.areaInf) {
+            try { chart.removeSeries(chart._zonaSeries.areaInf); } catch (e) {}
+          }
+          if (chart._zonaSeries.areaFutura) {
+            try { chart.removeSeries(chart._zonaSeries.areaFutura); } catch (e) {}
+          }
+          if (chart._zonaSeries.lineaFutura) {
+            try { chart.removeSeries(chart._zonaSeries.lineaFutura); } catch (e) {}
+          }
+          chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+        };
+
+        chart._mostrarZona = (idx, conFuturo) => {
+          chart._limpiarZona();
+
+          if (idx < 0 || idx >= velas.length) return;
+
+          const idxInicio = idx;
+          const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
+
+          const fechas = [];
+          const highs = [];
+          const lows = [];
+
+          for (let j = idxInicio; j <= idxFin; j++) {
+            fechas.push(velas[j].date);
+            highs.push(velas[j].high);
+            lows.push(velas[j].low);
+          }
+
+          const maxH = Math.max(...highs);
+          const minH = Math.min(...lows);
+
+          const areaSup = chart.addAreaSeries({
+            topColor: 'rgba(251, 191, 36, 0.25)',
+            bottomColor: 'rgba(0,0,0,0)',
+            lineColor: 'rgba(0,0,0,0)',
+            lineWidth: 1,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          areaSup.setData(fechas.map((f) => ({ time: f, value: maxH })));
+
+          const areaInf = chart.addAreaSeries({
+            topColor: 'rgba(0,0,0,0)',
+            bottomColor: 'rgba(251, 191, 36, 0.25)',
+            lineColor: 'rgba(0,0,0,0)',
+            lineWidth: 1,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          areaInf.setData(fechas.map((f) => ({ time: f, value: minH })));
+
+          chart._zonaSeries = { areaSup, areaInf, areaFutura: null, lineaFutura: null };
+
+          if (conFuturo) {
+            const datosFuturos = [];
+            for (let d = 1; d <= VENTANA; d++) {
+              const idxVela = idxInicio + d;
+              if (idxVela >= velas.length) break;
+              const fechaFutura = sumarDiasHabiles(ultimaVela.date, d);
+              const velaPasada = velas[idxVela];
+              const velaAnterior = velas[idxVela - 1];
+              const medio = (velaPasada.high + velaPasada.low) / 2;
+              const medioAnterior = (velaAnterior.high + velaAnterior.low) / 2;
+              const delta = medio - medioAnterior;
+              datosFuturos.push({ fechaFutura, delta });
+            }
+
+            const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
+            let medioAcum = cierreActual;
+            for (const df of datosFuturos) {
+              medioAcum += df.delta;
+              lineaFuturaData.push({ time: df.fechaFutura, value: medioAcum });
+            }
+
+            const areaFutura = chart.addAreaSeries({
+              topColor: 'rgba(156, 163, 175, 0.10)',
+              bottomColor: 'rgba(156, 163, 175, 0.10)',
+              lineColor: 'rgba(0,0,0,0)',
+              lineWidth: 1,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false
+            });
+            areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
+
+            const lineaFutura = chart.addLineSeries({
+              color: 'rgba(156, 163, 175, 0.7)',
+              lineWidth: 1.5,
+              lineStyle: LineStyle.Dashed,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: true
+            });
+            lineaFutura.setData(lineaFuturaData);
+
+            chart._zonaSeries = {
+              areaSup,
+              areaInf,
+              areaFutura,
+              lineaFutura
+            };
+          }
+        };
+
         function handleResize() {
           if (chart && contenedorRef.current) {
             chart.applyOptions({ width: contenedorRef.current.clientWidth });
@@ -458,19 +414,63 @@ export default function Grafico({ velas, smis, smiActual }) {
       cancelado = true;
       cleanup();
     };
-  }, [velas, smis, replicas]);
+  }, [velas, smis]);
 
-  const cambiarReplica = useCallback(
-    (idx) => {
-      if (!chartRef.current || !replicas[idx]) return;
-      setIndiceReplica(idx);
-      chartRef.current._dibujarReplica(
-        replicas[idx],
-        COLORES_REPLICAS[idx % COLORES_REPLICAS.length]
-      );
-    },
-    [replicas]
-  );
+  // Efecto que se dispara cuando cambia la posición del slider
+  useEffect(() => {
+    if (!chartRef.current) return;
+    if (!velas || velas.length === 0) return;
+
+    const idx = posicion < 0 ? -1 : posicion;
+
+    if (idx < 0) {
+      // Sin selección: limpiar zona y volver al zoom por defecto
+      chartRef.current._limpiarZona();
+      setInfoSeleccion(null);
+      const totalVelas = velas.length;
+      const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
+      const hasta = totalVelas;
+      try {
+        chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
+      } catch (e) {}
+      return;
+    }
+
+    // Mostrar zona seleccionada + proyección
+    chartRef.current._mostrarZona(idx, true);
+
+    // Calcular info de la selección
+    const idxInicio = idx;
+    const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
+    const precios = [];
+    for (let j = idxInicio; j <= idxFin; j++) {
+      precios.push(velas[j].low);
+      precios.push(velas[j].high);
+    }
+    const precioMin = Math.min(...precios);
+    const precioMax = Math.max(...precios);
+    setInfoSeleccion({
+      fecha: velas[idxInicio].date,
+      fechaFin: velas[idxFin].date,
+      precioMin,
+      precioMax
+    });
+
+    // Zoom que incluye la zona seleccionada + el futuro
+    const totalVelas = velas.length;
+    const desde = Math.max(0, Math.min(idxInicio, totalVelas - 1 - VELAS_ATRAS));
+    const hasta = totalVelas + VENTANA;
+    try {
+      chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
+    } catch (e) {}
+  }, [posicion, velas]);
+
+  function handleSlider(e) {
+    setPosicion(parseInt(e.target.value, 10));
+  }
+
+  const totalVelas = velas ? velas.length : 0;
+  const maxSlider = totalVelas > 0 ? totalVelas - VENTANA - 1 : 0;
 
   return (
     <section className="v3-seccion">
@@ -489,17 +489,17 @@ export default function Grafico({ velas, smis, smiActual }) {
         <div style={{ paddingTop: '8px', lineHeight: 1.6 }}>
           <p style={{ margin: '0 0 6px 0' }}>
             Cada vela representa una sesión: azul si cerró por encima de su apertura, gris si
-            cerró por debajo. La línea naranja es la media del precio de cada vela.
+            cerró por debajo. La línea naranja es la media del precio de cada vela. El indicador
+            morado se sombrea en azul cuando supera +40 y en gris cuando baja de -40.
           </p>
           <p style={{ margin: '0 0 6px 0' }}>
-            El indicador morado se sombrea en azul cuando supera +40 (parte alta) y en gris cuando
-            baja de -40 (parte baja). La zona coloreada del histórico marca los días en los que el
-            indicador estuvo en una situación similar a la actual.
+            Mueve el control de abajo para explorar qué pasó en otras fechas. Al moverlo, se
+            ilumina una zona del histórico y aparece una proyección gris muy tenue.
           </p>
           <p style={{ margin: 0 }}>
-            <strong>Importante:</strong> la zona de la derecha no es una predicción. Es una copia
-            de lo que ocurrió en los días siguientes a esa situación similar del pasado. No indica
-            lo que va a pasar. No es una recomendación de inversión.
+            <strong>Importante:</strong> la proyección no es una predicción. Es una copia de lo
+            que ocurrió en el pasado en una situación similar. No indica lo que va a pasar. No es
+            una recomendación de inversión.
           </p>
         </div>
       </details>
@@ -508,68 +508,145 @@ export default function Grafico({ velas, smis, smiActual }) {
         style={{
           marginBottom: '8px',
           padding: '8px 12px',
-          background: '#fef3c7',
-          border: '1px solid #fbbf24',
+          background: '#eff6ff',
+          border: '1px solid #93c5fd',
           borderRadius: '6px',
           fontSize: '12px',
-          color: '#78350f',
+          color: '#1e3a8a',
           lineHeight: 1.5
         }}
       >
-        <strong>Aviso:</strong> la zona de la derecha no es una predicción. Es una copia de lo
-        que ocurrió en el pasado en una situación similar. No indica lo que va a pasar. No es una
-        recomendación de inversión.
+        <strong>Herramienta de exploración histórica.</strong> Esta proyección la activas tú
+        moviendo el control. No es una predicción ni una recomendación de inversión. Es una copia
+        de lo que ocurrió en el pasado en una situación similar.
       </div>
-
-      {replicas.length > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            gap: '6px',
-            flexWrap: 'wrap',
-            marginBottom: '8px'
-          }}
-        >
-          {replicas.map((r, idx) => (
-            <button
-              key={r.fecha}
-              onClick={() => cambiarReplica(idx)}
-              style={{
-                padding: '6px 12px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: '999px',
-                border:
-                  idx === indiceReplica
-                    ? '2px solid ' + COLORES_REPLICAS[idx % COLORES_REPLICAS.length].borde
-                    : '1px solid var(--v3-border)',
-                background:
-                  idx === indiceReplica
-                    ? COLORES_REPLICAS[idx % COLORES_REPLICAS.length].fondo
-                    : '#fff',
-                color: 'var(--v3-text)',
-                cursor: 'pointer'
-              }}
-            >
-              Situación similar {idx + 1} · {formatearFecha(r.fecha)}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="v3-card" style={{ padding: '4px', background: '#fff' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
 
-      {replicas[indiceReplica] && (
-        <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '8px' }}>
-          <strong>Situación seleccionada:</strong> del {formatearFecha(replicas[indiceReplica].fecha)} al{' '}
-          {formatearFecha(replicas[indiceReplica].fechaFin)}. Valor del indicador:{' '}
-          {replicas[indiceReplica].smi.toFixed(0)}. Distancia al valor actual:{' '}
-          {replicas[indiceReplica].distancia.toFixed(1)} puntos. Esto muestra lo que ocurrió en el
-          pasado en una situación similar. No es una predicción ni una recomendación de inversión.
-        </p>
-      )}
+      {/* Panel de control del slider */}
+      <div
+        style={{
+          marginTop: '12px',
+          padding: '12px 16px',
+          background: '#f9fafb',
+          border: '1px solid var(--v3-border)',
+          borderRadius: '6px'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '8px',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}
+        >
+          <label
+            htmlFor="slider-explorar"
+            style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: 'var(--v3-text)'
+            }}
+          >
+            Explorar el pasado
+          </label>
+          <button
+            onClick={() => setPosicion(-1)}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 600,
+              borderRadius: '999px',
+              border: '1px solid var(--v3-border)',
+              background: '#fff',
+              color: 'var(--v3-text)',
+              cursor: 'pointer'
+            }}
+          >
+            Volver a la vista actual
+          </button>
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <input
+            id="slider-explorar"
+            type="range"
+            min={0}
+            max={maxSlider > 0 ? maxSlider : 0}
+            value={posicion < 0 ? Math.floor(maxSlider / 2) : posicion}
+            onChange={handleSlider}
+            style={{
+              width: '100%',
+              height: '24px',
+              cursor: 'pointer',
+              accentColor: '#2563eb'
+            }}
+          />
+          {/* Marcadores de coincidencias */}
+          {coincidencias.length > 0 && maxSlider > 0 && (
+            <div
+              style={{
+                position: 'relative',
+                height: '8px',
+                marginTop: '-6px',
+                pointerEvents: 'none'
+              }}
+            >
+              {coincidencias.map((c, i) => {
+                const pct = (c.indexFecha / maxSlider) * 100;
+                if (pct < 0 || pct > 100) return null;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      left: `${pct}%`,
+                      top: 0,
+                      width: '4px',
+                      height: '8px',
+                      background: '#f59e0b',
+                      borderRadius: '2px',
+                      transform: 'translateX(-50%)'
+                    }}
+                    title={`Coincidencia: ${formatearFecha(c.fecha)}`}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            marginTop: '8px',
+            fontSize: '12px',
+            color: 'var(--v3-text-soft)',
+            lineHeight: 1.5
+          }}
+        >
+          {posicion < 0 ? (
+            <>
+              Mueve el control para explorar qué pasó en otras fechas. Las <strong>marcas naranjas</strong>{' '}
+              indican fechas donde el indicador estuvo en una situación similar a la actual.
+            </>
+          ) : infoSeleccion ? (
+            <>
+              <strong>Explorando: {formatearFecha(infoSeleccion.fecha)} al{' '}
+              {formatearFecha(infoSeleccion.fechaFin)}.</strong> En esas {VENTANA} sesiones, el
+              precio se movió entre <strong>{infoSeleccion.precioMin.toFixed(2)} €</strong> y{' '}
+              <strong>{infoSeleccion.precioMax.toFixed(2)} €</strong>. Esto no es una predicción,
+              es una copia del pasado.
+            </>
+          ) : (
+            'Selecciona una fecha para ver qué pasó.'
+          )}
+        </div>
+      </div>
     </section>
   );
 }
