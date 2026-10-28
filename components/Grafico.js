@@ -66,10 +66,8 @@ function buscarReplicas(velas, smis, smiActual) {
     });
   }
 
-  // Ordenar por distancia (más cercano en valor primero)
   const ordenados = candidatos.sort((a, b) => a.distancia - b.distancia);
 
-  // Filtrar para que haya al menos SEPARACION_MINIMA sesiones entre réplicas
   const seleccionadas = [];
   for (const c of ordenados) {
     if (seleccionadas.length >= MAX_REPLICAS) break;
@@ -224,6 +222,49 @@ export default function Grafico({ velas, smis, smiActual }) {
         });
         lineaMedia.setData(lineaMediaData);
 
+        // ========== SOMBREADO DEL INDICADOR EN ZONAS EXTREMAS ==========
+        const smiData = [];
+        for (let i = 0; i < smis.length; i++) {
+          if (smis[i] === null || smis[i] === undefined) continue;
+          if (!velas[i]) continue;
+          smiData.push({ time: velas[i].date, value: smis[i] });
+        }
+
+        // Zona superior (+40): sombreado azul semitransparente
+        const zonaSuperior = chart.addBaselineSeries({
+          baseValue: { type: 'price', price: 40 },
+          topFillColor1: 'rgba(37, 99, 235, 0.35)',
+          topFillColor2: 'rgba(37, 99, 235, 0.08)',
+          bottomFillColor1: 'rgba(37, 99, 235, 0)',
+          bottomFillColor2: 'rgba(37, 99, 235, 0)',
+          topLineColor: 'rgba(37, 99, 235, 0.3)',
+          bottomLineColor: 'rgba(37, 99, 235, 0)',
+          lineWidth: 1,
+          priceScaleId: 'left',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
+        zonaSuperior.setData(smiData);
+
+        // Zona inferior (-40): sombreado gris semitransparente
+        const zonaInferior = chart.addBaselineSeries({
+          baseValue: { type: 'price', price: -40 },
+          topFillColor1: 'rgba(156, 163, 175, 0)',
+          topFillColor2: 'rgba(156, 163, 175, 0)',
+          bottomFillColor1: 'rgba(156, 163, 175, 0.35)',
+          bottomFillColor2: 'rgba(156, 163, 175, 0.08)',
+          topLineColor: 'rgba(156, 163, 175, 0)',
+          bottomLineColor: 'rgba(156, 163, 175, 0.3)',
+          lineWidth: 1,
+          priceScaleId: 'left',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
+        zonaInferior.setData(smiData);
+        // ========== FIN SOMBREADO ==========
+
         chart._replicaSeries = {
           areaSup: null,
           areaInf: null,
@@ -349,13 +390,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           chart._dibujarReplica(replicas[0], COLORES_REPLICAS[0]);
         }
 
-        const smiData = [];
-        for (let i = 0; i < smis.length; i++) {
-          if (smis[i] === null || smis[i] === undefined) continue;
-          if (!velas[i]) continue;
-          smiData.push({ time: velas[i].date, value: smis[i] });
-        }
-
         const smiLine = chart.addLineSeries({
           color: '#7b1fa2',
           lineWidth: 2,
@@ -458,8 +492,9 @@ export default function Grafico({ velas, smis, smiActual }) {
             cerró por debajo. La línea naranja es la media del precio de cada vela.
           </p>
           <p style={{ margin: '0 0 6px 0' }}>
-            La zona coloreada del histórico marca los días en los que el indicador estuvo en una
-            situación similar a la actual. Puedes cambiar entre varias situaciones con los botones.
+            El indicador morado se sombrea en azul cuando supera +40 (parte alta) y en gris cuando
+            baja de -40 (parte baja). La zona coloreada del histórico marca los días en los que el
+            indicador estuvo en una situación similar a la actual.
           </p>
           <p style={{ margin: 0 }}>
             <strong>Importante:</strong> la zona de la derecha no es una predicción. Es una copia
