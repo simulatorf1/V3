@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -67,6 +68,7 @@ export default function RootLayout({ children }) {
         <Cabecera />
         <div style={{ minHeight: '60vh' }}>{children}</div>
         <Pie />
+        <GoogleAnalytics gaId="G-LVV061GCPF" />
       </body>
     </html>
   );
