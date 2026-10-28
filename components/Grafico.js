@@ -44,15 +44,14 @@ function buscarCoincidencias(velas, smis, smiActual) {
     coincidencias.push({
       indexFecha: i,
       fecha: velas[i].date,
+      fechaFin: velas[Math.min(i + VENTANA, velas.length - 1)].date,
       smi: v,
       distancia: Math.abs(v - smiActual)
     });
   }
 
-  // Ordenar por distancia al valor actual (más cercano primero)
   const ordenadas = coincidencias.sort((a, b) => a.distancia - b.distancia);
 
-  // Filtrar para que haya al menos SEPARACION_MINIMA sesiones entre marcadores
   const seleccionadas = [];
   for (const c of ordenadas) {
     const demasiadoCerca = seleccionadas.some(
@@ -61,7 +60,6 @@ function buscarCoincidencias(velas, smis, smiActual) {
     if (!demasiadoCerca) seleccionadas.push(c);
   }
 
-  // Devolver ordenadas por fecha para que el slider las muestre en orden
   return seleccionadas.sort((a, b) => a.indexFecha - b.indexFecha);
 }
 
@@ -393,16 +391,10 @@ export default function Grafico({ velas, smis, smiActual }) {
             });
             lineaFutura.setData(lineaFuturaData);
 
-            chart._zonaSeries = {
-              areaSup,
-              areaInf,
-              areaFutura,
-              lineaFutura
-            };
+            chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
           }
         };
 
-        // Zoom inicial ajustado: 30 velas atrás + 10 futuras
         const totalVelas = velas.length;
         const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
         const hasta = totalVelas + VENTANA;
@@ -467,7 +459,6 @@ export default function Grafico({ velas, smis, smiActual }) {
       precioMax
     });
 
-    // Al mover el slider, ajustar el zoom para incluir la zona y el futuro
     const totalVelas = velas.length;
     const desde = Math.max(0, Math.min(idxInicio - 5, totalVelas - 1 - VELAS_ATRAS));
     const hasta = totalVelas + VENTANA;
@@ -478,6 +469,10 @@ export default function Grafico({ velas, smis, smiActual }) {
 
   function handleSlider(e) {
     setPosicion(parseInt(e.target.value, 10));
+  }
+
+  function irACoincidencia(c) {
+    setPosicion(c.indexFecha);
   }
 
   const totalVelas = velas ? velas.length : 0;
@@ -503,14 +498,10 @@ export default function Grafico({ velas, smis, smiActual }) {
             cerró por debajo. La línea naranja es la media del precio de cada vela. El indicador
             morado se sombrea en azul cuando supera +40 y en gris cuando baja de -40.
           </p>
-          <p style={{ margin: '0 0 6px 0' }}>
-            Mueve el control de abajo para explorar qué pasó en otras fechas. Al moverlo, se
-            ilumina una zona del histórico y aparece una proyección gris muy tenue.
-          </p>
           <p style={{ margin: 0 }}>
-            <strong>Importante:</strong> la proyección no es una predicción. Es una copia de lo
-            que ocurrió en el pasado en una situación similar. No indica lo que va a pasar. No es
-            una recomendación de inversión.
+            <strong>Importante:</strong> la proyección que activas tú moviendo la barra no es una
+            predicción. Es una copia de lo que ocurrió en el pasado en una situación similar. No
+            indica lo que va a pasar. No es una recomendación de inversión.
           </p>
         </div>
       </details>
@@ -536,10 +527,11 @@ export default function Grafico({ velas, smis, smiActual }) {
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
 
+      {/* Panel de exploración */}
       <div
         style={{
           marginTop: '12px',
-          padding: '12px 16px',
+          padding: '14px 16px',
           background: '#f9fafb',
           border: '1px solid var(--v3-border)',
           borderRadius: '6px'
@@ -550,32 +542,46 @@ export default function Grafico({ velas, smis, smiActual }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '8px',
+            marginBottom: '10px',
             flexWrap: 'wrap',
             gap: '8px'
           }}
         >
-          <label
-            htmlFor="slider-explorar"
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              color: 'var(--v3-text)'
-            }}
-          >
-            Explorar el pasado
-          </label>
+          <div>
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: 'var(--v3-text)',
+                marginBottom: '2px'
+              }}
+            >
+              Explora la evolución del indicador Equaty
+            </div>
+            <div
+              style={{
+                fontSize: '12px',
+                color: 'var(--v3-text-soft)',
+                lineHeight: 1.5
+              }}
+            >
+              Desplaza la barra para recorrer el histórico. Las marcas naranjas indican otras
+              veces en las que el indicador estuvo en una situación similar a la actual. Al
+              colocarte en una de ellas, verás qué sucedió después en el precio.
+            </div>
+          </div>
           <button
             onClick={() => setPosicion(-1)}
             style={{
-              padding: '4px 10px',
-              fontSize: '11px',
+              padding: '6px 12px',
+              fontSize: '12px',
               fontWeight: 600,
               borderRadius: '999px',
               border: '1px solid var(--v3-border)',
               background: '#fff',
               color: 'var(--v3-text)',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             Volver a la vista actual
@@ -630,18 +636,80 @@ export default function Grafico({ velas, smis, smiActual }) {
           )}
         </div>
 
+        {/* Lista de coincidencias encontradas */}
+        {coincidencias.length > 0 && (
+          <div style={{ marginTop: '14px' }}>
+            <div
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: 'var(--v3-text)',
+                marginBottom: '6px'
+              }}
+            >
+              {coincidencias.length === 1
+                ? 'Se ha encontrado 1 coincidencia:'
+                : `Se han encontrado ${coincidencias.length} coincidencias:`}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '6px',
+                flexWrap: 'wrap'
+              }}
+            >
+              {coincidencias.map((c, i) => (
+                <button
+                  key={i}
+                  onClick={() => irACoincidencia(c)}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '999px',
+                    border:
+                      posicion === c.indexFecha
+                        ? '2px solid #f59e0b'
+                        : '1px solid #fcd34d',
+                    background:
+                      posicion === c.indexFecha ? '#fef3c7' : '#fffbeb',
+                    color: '#78350f',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {formatearFecha(c.fecha)} → {formatearFecha(c.fechaFin)}
+                </button>
+              ))}
+            </div>
+            <div
+              style={{
+                marginTop: '6px',
+                fontSize: '11px',
+                color: 'var(--v3-text-mute)',
+                lineHeight: 1.5
+              }}
+            >
+              Pulsa una fecha para colocarte en esa coincidencia y ver qué pasó después. También
+              puedes desplazar la barra manualmente para explorar cualquier otra fecha.
+            </div>
+          </div>
+        )}
+
+        {/* Información de la selección actual */}
         <div
           style={{
-            marginTop: '8px',
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid var(--v3-border)',
             fontSize: '12px',
             color: 'var(--v3-text-soft)',
-            lineHeight: 1.5
+            lineHeight: 1.6
           }}
         >
           {posicion < 0 ? (
             <>
-              Mueve el control para explorar qué pasó en otras fechas. Las <strong>marcas naranjas</strong>{' '}
-              indican fechas donde el indicador estuvo en una situación similar a la actual.
+              La barra está en la vista actual. Para explorar, desplázala a la izquierda o pulsa
+              una de las fechas de coincidencia de arriba.
             </>
           ) : infoSeleccion ? (
             <>
