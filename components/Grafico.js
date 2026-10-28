@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 const VELAS_ATRAS = 30;
 const VENTANA = 10;
 const RANGO_VALOR = 30;
-const SEPARACION_MINIMA = 10;
+const SEPARACION_MINIMA = 5;
 
 function calcularPendiente(smis, idx) {
   if (idx < 1) return null;
@@ -49,7 +49,20 @@ function buscarCoincidencias(velas, smis, smiActual) {
     });
   }
 
-  return coincidencias.sort((a, b) => a.distancia - b.distancia);
+  // Ordenar por distancia al valor actual (más cercano primero)
+  const ordenadas = coincidencias.sort((a, b) => a.distancia - b.distancia);
+
+  // Filtrar para que haya al menos SEPARACION_MINIMA sesiones entre marcadores
+  const seleccionadas = [];
+  for (const c of ordenadas) {
+    const demasiadoCerca = seleccionadas.some(
+      (s) => Math.abs(s.indexFecha - c.indexFecha) < SEPARACION_MINIMA
+    );
+    if (!demasiadoCerca) seleccionadas.push(c);
+  }
+
+  // Devolver ordenadas por fecha para que el slider las muestre en orden
+  return seleccionadas.sort((a, b) => a.indexFecha - b.indexFecha);
 }
 
 function sumarDiasHabiles(fechaStr, dias) {
@@ -187,7 +200,6 @@ export default function Grafico({ velas, smis, smiActual }) {
         });
         lineaMedia.setData(lineaMediaData);
 
-        // Sombreado del indicador en zonas extremas
         const smiData = [];
         for (let i = 0; i < smis.length; i++) {
           if (smis[i] === null || smis[i] === undefined) continue;
@@ -272,7 +284,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        // Series de la zona seleccionada (se crean y destruyen al mover el slider)
         chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
 
         chart._limpiarZona = () => {
@@ -391,6 +402,16 @@ export default function Grafico({ velas, smis, smiActual }) {
           }
         };
 
+        // Zoom inicial ajustado: 30 velas atrás + 10 futuras
+        const totalVelas = velas.length;
+        const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
+        const hasta = totalVelas + VENTANA;
+        try {
+          chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
+        } catch (e) {
+          chart.timeScale().fitContent();
+        }
+
         function handleResize() {
           if (chart && contenedorRef.current) {
             chart.applyOptions({ width: contenedorRef.current.clientWidth });
@@ -416,7 +437,6 @@ export default function Grafico({ velas, smis, smiActual }) {
     };
   }, [velas, smis]);
 
-  // Efecto que se dispara cuando cambia la posición del slider
   useEffect(() => {
     if (!chartRef.current) return;
     if (!velas || velas.length === 0) return;
@@ -424,22 +444,13 @@ export default function Grafico({ velas, smis, smiActual }) {
     const idx = posicion < 0 ? -1 : posicion;
 
     if (idx < 0) {
-      // Sin selección: limpiar zona y volver al zoom por defecto
       chartRef.current._limpiarZona();
       setInfoSeleccion(null);
-      const totalVelas = velas.length;
-      const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
-      const hasta = totalVelas;
-      try {
-        chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
-      } catch (e) {}
       return;
     }
 
-    // Mostrar zona seleccionada + proyección
     chartRef.current._mostrarZona(idx, true);
 
-    // Calcular info de la selección
     const idxInicio = idx;
     const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
     const precios = [];
@@ -456,9 +467,9 @@ export default function Grafico({ velas, smis, smiActual }) {
       precioMax
     });
 
-    // Zoom que incluye la zona seleccionada + el futuro
+    // Al mover el slider, ajustar el zoom para incluir la zona y el futuro
     const totalVelas = velas.length;
-    const desde = Math.max(0, Math.min(idxInicio, totalVelas - 1 - VELAS_ATRAS));
+    const desde = Math.max(0, Math.min(idxInicio - 5, totalVelas - 1 - VELAS_ATRAS));
     const hasta = totalVelas + VENTANA;
     try {
       chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
@@ -525,7 +536,6 @@ export default function Grafico({ velas, smis, smiActual }) {
         <div ref={contenedorRef} style={{ width: '100%' }} />
       </div>
 
-      {/* Panel de control del slider */}
       <div
         style={{
           marginTop: '12px',
@@ -587,7 +597,6 @@ export default function Grafico({ velas, smis, smiActual }) {
               accentColor: '#2563eb'
             }}
           />
-          {/* Marcadores de coincidencias */}
           {coincidencias.length > 0 && maxSlider > 0 && (
             <div
               style={{
