@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
+import CargarAnalytics from '../components/CargarAnalytics';
+import CargarAdsense from '../components/CargarAdsense';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -59,27 +61,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es" className={inter.className}>
       <head>
-        {/* Passiro PRIMERO */}
+        {/* Passiro PRIMERO - único script en el head */}
         <script
           src="https://cdn.passiro.com/passiro.js"
           data-site-id="ac3c0f6d4c8620f8df718345d967d98b"
         ></script>
-
-        {/* Google Analytics como script plano, para que Passiro lo detecte */}
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-LVV061GCPF"
-        ></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-LVV061GCPF');
-            `
-          }}
-        />
       </head>
       <body
         style={{
@@ -93,6 +79,8 @@ export default function RootLayout({ children }) {
         <Cabecera />
         <div style={{ minHeight: '60vh' }}>{children}</div>
         <Pie />
+        <CargarAnalytics />
+        <CargarAdsense />
       </body>
     </html>
   );
