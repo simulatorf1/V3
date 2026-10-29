@@ -1,10 +1,10 @@
 import '../app/globals.css';
 import { Inter } from 'next/font/google';
+import Script from 'next/script';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
-import CargarAnalytics from '../components/CargarAnalytics';
-import CargarAdsense from '../components/CargarAdsense';
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -61,7 +61,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es" className={inter.className}>
       <head>
-        {/* Passiro PRIMERO - único script en el head */}
+        {/* Passiro PRIMERO - él bloqueará Analytics y AdSense hasta el consentimiento */}
         <script
           src="https://cdn.passiro.com/passiro.js"
           data-site-id="ac3c0f6d4c8620f8df718345d967d98b"
@@ -79,8 +79,18 @@ export default function RootLayout({ children }) {
         <Cabecera />
         <div style={{ minHeight: '60vh' }}>{children}</div>
         <Pie />
-        <CargarAnalytics />
-        <CargarAdsense />
+
+        {/* Analytics con @next/third-parties. Passiro lo detecta y lo bloquea hasta el consentimiento. */}
+        <GoogleAnalytics gaId="G-LVV061GCPF" />
+
+        {/* AdSense con next/script. Passiro lo detecta y lo bloquea hasta el consentimiento. */}
+        <Script
+          id="adsbygoogle-init"
+          async
+          strategy="afterInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4266340077922462"
+          crossOrigin="anonymous"
+        />
       </body>
     </html>
   );
