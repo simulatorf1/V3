@@ -537,8 +537,13 @@ export default async function PaginaEmpresa({ params }) {
             <FormularioAlerta empresa={empresa} />
           </section>
 
-          {/* ── COMENTARIOS (subido, justo debajo de avisos) ── */}
+          {/* ── COMENTARIOS ── */}
           <Comentarios ticker={empresa.ticker} nombreEmpresa={empresa.nombre} />
+
+          {/* ── NOTICIAS (debajo de comentarios, en la izquierda) ── */}
+          {analisis.noticias && analisis.noticias.length > 0 && (
+            <ContextoReciente noticias={analisis.noticias} />
+          )}
 
           <details style={estiloAcordeon}>
             <summary style={estiloSummary}>Divulgación regulatoria y metodología</summary>
