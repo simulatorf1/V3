@@ -131,40 +131,41 @@ export default function Grafico({ velas, smis, smiActual }) {
       setDivisorX(null);
       return;
     }
-
-    let x = null;
-
-    // 1) Punto exacto donde empieza la proyección (primera vela futura)
+  
+    // Ancho actual de vela en píxeles
+    let barSpacing = 4;
     try {
-      x = chart.timeScale().logicalToCoordinate(velas.length);
+      barSpacing = chart.timeScale().options().barSpacing || 4;
+    } catch (e) {}
+  
+    let x = null;
+  
+    // 1) Punto exacto donde empieza la proyección + 1.5 velas a la derecha
+    try {
+      const xBase = chart.timeScale().logicalToCoordinate(velas.length);
+      if (xBase !== null && isFinite(xBase)) {
+        x = xBase + barSpacing * 1.5;
+      }
     } catch (e) {
       x = null;
     }
-
-    // 2) Fallback: X de la última vela + 1 barSpacing
+  
+    // 2) Fallback: X de la última vela + 2.5 barSpacing
     if (x === null || !isFinite(x)) {
       try {
         const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
-        let barSpacing = 4;
-        try {
-          barSpacing = chart.timeScale().options().barSpacing || 4;
-        } catch (e) {}
         if (xUltima !== null && isFinite(xUltima)) {
-          x = xUltima + barSpacing;
+          x = xUltima + barSpacing * 2.5;
         }
       } catch (e) {}
     }
-
+  
     // 3) Fallback final: borde derecho del contenedor
     if (x === null || !isFinite(x)) {
       const ancho = cont.clientWidth;
-      let barSpacing = 4;
-      try {
-        barSpacing = chart.timeScale().options().barSpacing || 4;
-      } catch (e) {}
       x = ancho - barSpacing / 2;
     }
-
+  
     setDivisorX(x);
   }
 
