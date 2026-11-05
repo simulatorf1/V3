@@ -93,7 +93,8 @@ export default function Grafico({ velas, smis, smiActual }) {
   const [coincidencias, setCoincidencias] = useState([]);
   const [posicion, setPosicion] = useState(-1);
   const [infoSeleccion, setInfoSeleccion] = useState(null);
-  // NUEVO: X en píxeles de la línea vertical PAST/FUTURE
+
+  // NUEVO: X en píxeles de la línea vertical (SIEMPRE en la última vela)
   const [divisorX, setDivisorX] = useState(null);
 
   const smiFinal =
@@ -110,15 +111,16 @@ export default function Grafico({ velas, smis, smiActual }) {
     setPosicion(-1);
   }, [velas, smis, smiFinal]);
 
-  // NUEVO: recalcula la X del divisor a partir de la vela seleccionada
+  // NUEVO: recalcula la X del divisor SIEMPRE en la última vela disponible
   function actualizarDivisor() {
     const chart = chartRef.current;
-    if (!chart || posicion < 0) {
+    if (!chart || !velas || velas.length === 0) {
       setDivisorX(null);
       return;
     }
+    const idxUltima = velas.length - 1;
     try {
-      const x = chart.timeScale().logicalToCoordinate(posicion);
+      const x = chart.timeScale().logicalToCoordinate(idxUltima);
       setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
     } catch (e) {
       setDivisorX(null);
@@ -412,16 +414,8 @@ export default function Grafico({ velas, smis, smiActual }) {
           }
         };
 
-        // NUEVO: suscribirse al cambio de rango visible para recalcular la X del divisor
+        // NUEVO: recalcular el divisor (última vela) al hacer zoom/scroll/resize
         const onRangoVisible = () => {
-          const chartActual = chartRef.current;
-          if (!chartActual) return;
-          // Usamos el estado actual via ref no disponible; recalculamos en el useEffect de posicion.
-          // Para el caso de zoom/scroll, forzamos un re-render leyendo la posicion del closure.
-          // Como posicion no está en el closure, usamos un pequeño hack: leemos del state via
-          // el propio componente no es posible, así que delegamos en el useEffect de posicion.
-          // Pero necesitamos que al hacer zoom la línea siga a la vela: lo hacemos con
-          // logicalToCoordinate dentro del propio callback, leyendo una variable de módulo.
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
           }
@@ -438,6 +432,13 @@ export default function Grafico({ velas, smis, smiActual }) {
         } catch (e) {
           chart.timeScale().fitContent();
         }
+
+        // Primer cálculo del divisor
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
+          }
+        }, 0);
 
         function handleResize() {
           if (chart && contenedorRef.current) {
@@ -479,7 +480,6 @@ export default function Grafico({ velas, smis, smiActual }) {
     if (idx < 0) {
       chartRef.current._limpiarZona();
       setInfoSeleccion(null);
-      setDivisorX(null);
       return;
     }
 
@@ -508,32 +508,34 @@ export default function Grafico({ velas, smis, smiActual }) {
       chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
     } catch (e) {}
 
-    // NUEVO: calcular X del divisor
-    try {
-      const x = chartRef.current.timeScale().logicalToCoordinate(idx);
-      setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
-    } catch (e) {
-      setDivisorX(null);
-    }
+    // NUEVO: el divisor va SIEMPRE en la última vela, no en la seleccionada
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
+      }
+    }, 0);
   }, [posicion, velas]);
 
-  // NUEVO: escuchar el evento de zoom/scroll/resize para recalcular el divisor
+  // NUEVO: recalcular divisor (última vela) en zoom/scroll/resize y cuando cambia posicion
   useEffect(() => {
     function onRangoVisible() {
+      const chart = chartRef.current;
+      if (!chart || !velas || velas.length === 0) return;
       if (posicion < 0) {
         setDivisorX(null);
         return;
       }
-      const chart = chartRef.current;
-      if (!chart) return;
+      const idxUltima = velas.length - 1;
       try {
-        const x = chart.timeScale().logicalToCoordinate(posicion);
+        const x = chart.timeScale().logicalToCoordinate(idxUltima);
         setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
       } catch (e) {}
     }
     window.addEventListener('equaty:rango-visible', onRangoVisible);
+    // recalcular al montar y cuando cambia posicion
+    onRangoVisible();
     return () => window.removeEventListener('equaty:rango-visible', onRangoVisible);
-  }, [posicion]);
+  }, [posicion, velas]);
 
   function handleSlider(e) {
     setPosicion(parseInt(e.target.value, 10));
@@ -591,62 +593,94 @@ export default function Grafico({ velas, smis, smiActual }) {
         de lo que ocurrió en el pasado en una situación similar.
       </div>
 
-      <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative' }}>
+      <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-        {/* NUEVO: línea vertical gruesa + etiquetas PAST / FUTURE (solo cuando hay selección) */}
+        {/* NUEVO: fondo partido + línea vertical SIEMPRE en la última vela + etiquetas grandes */}
         {divisorX !== null && posicion >= 0 && (
           <>
+            {/* Tinte azul suave a la IZQUIERDA de la línea (histórico) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${divisorX}px`,
+                background: 'rgba(37, 99, 235, 0.06)',
+                pointerEvents: 'none',
+                zIndex: 3
+              }}
+            />
+            {/* Tinte ámbar suave a la DERECHA de la línea (futuro) */}
             <div
               style={{
                 position: 'absolute',
                 left: `${divisorX}px`,
                 top: 0,
                 bottom: 0,
-                width: '3px',
-                background: '#111827',
+                right: 0,
+                background: 'rgba(245, 158, 11, 0.10)',
                 pointerEvents: 'none',
-                zIndex: 5
+                zIndex: 3
               }}
             />
+            {/* Línea vertical gruesa en la última vela */}
             <div
               style={{
                 position: 'absolute',
-                left: `${divisorX - 10}px`,
-                top: '10px',
-                transform: 'translateX(-100%)',
+                left: `${divisorX}px`,
+                top: 0,
+                bottom: 0,
+                width: '4px',
                 background: '#111827',
+                pointerEvents: 'none',
+                zIndex: 5,
+                transform: 'translateX(-2px)'
+              }}
+            />
+            {/* Etiqueta PAST (izquierda, grande) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: `${divisorX - 14}px`,
+                top: '12px',
+                transform: 'translateX(-100%)',
+                background: '#1e3a8a',
                 color: '#ffffff',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.5px',
-                padding: '3px 8px',
-                borderRadius: '4px',
+                fontSize: '16px',
+                fontWeight: 900,
+                letterSpacing: '1px',
+                padding: '6px 14px',
+                borderRadius: '6px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',
-                zIndex: 6
+                zIndex: 6,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
               }}
             >
-              PAST ←
+              ← PAST
             </div>
+            {/* Etiqueta FUTURE (derecha, grande) */}
             <div
               style={{
                 position: 'absolute',
-                left: `${divisorX + 10}px`,
-                top: '10px',
+                left: `${divisorX + 14}px`,
+                top: '12px',
                 background: '#f59e0b',
                 color: '#111827',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.5px',
-                padding: '3px 8px',
-                borderRadius: '4px',
+                fontSize: '16px',
+                fontWeight: 900,
+                letterSpacing: '1px',
+                padding: '6px 14px',
+                borderRadius: '6px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',
-                zIndex: 6
+                zIndex: 6,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
               }}
             >
-              → FUTURE
+              FUTURE →
             </div>
           </>
         )}
