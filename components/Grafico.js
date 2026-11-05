@@ -335,15 +335,24 @@ export default function Grafico({ velas, smis, smiActual }) {
         });
 
         // ── LÍNEA VERTICAL ANCLADA A LA ÚLTIMA VELA REAL ──
-        // Es una serie más del chart: se mueve con zoom/scroll igual que las velas.
+        // Serie en su PROPIO price scale para no afectar al autoscale del precio.
         const lineaDivisoria = chart.addLineSeries({
           color: '#111827',
           lineWidth: 4,
           lineStyle: LineStyle.Solid,
-          priceScaleId: 'right',
+          priceScaleId: 'divisoria',
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false
+        });
+
+        chart.priceScale('divisoria').applyOptions({
+          visible: false,
+          scaleMargins: { top: 0, bottom: 0 }
+        });
+
+        lineaDivisoria.applyOptions({
+          autoscaleInfoProvider: () => null
         });
 
         chart._lineaDivisoria = lineaDivisoria;
@@ -357,8 +366,8 @@ export default function Grafico({ velas, smis, smiActual }) {
           const ultima = velas[velas.length - 1];
           const t = Math.floor(new Date(ultima.date + 'T00:00:00Z').getTime() / 1000);
           chart._lineaDivisoria.setData([
-            { time: t, value: -999999 },
-            { time: t + 1, value: 999999 }
+            { time: t, value: 0 },
+            { time: t + 1, value: 1 }
           ]);
         };
 
@@ -647,7 +656,6 @@ export default function Grafico({ velas, smis, smiActual }) {
 
         {divisorX !== null && posicion >= 0 && (
           <>
-            {/* Tinte azul suave a la IZQUIERDA (histórico) — por encima, alpha bajo */}
             <div
               style={{
                 position: 'absolute',
@@ -660,7 +668,6 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 4
               }}
             />
-            {/* Tinte ámbar suave a la DERECHA (proyección) — por encima, alpha bajo */}
             <div
               style={{
                 position: 'absolute',
@@ -673,7 +680,6 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 4
               }}
             />
-            {/* Etiqueta PAST — por detrás del canvas, fondo transparente */}
             <div
               style={{
                 position: 'absolute',
@@ -695,7 +701,6 @@ export default function Grafico({ velas, smis, smiActual }) {
             >
               ← PAST
             </div>
-            {/* Etiqueta FUTURE — por detrás del canvas, fondo transparente */}
             <div
               style={{
                 position: 'absolute',
