@@ -547,14 +547,12 @@ export default function Grafico({ velas, smis, smiActual }) {
 
     if (idx < 0) {
       chartRef.current._limpiarZona();
-      if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(false);
       setInfoSeleccion(null);
       setDivisorX(null);
       return;
     }
 
     chartRef.current._mostrarZona(idx, true);
-    if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(true);
 
     const idxInicio = idx;
     const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
