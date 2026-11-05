@@ -185,7 +185,7 @@ export async function GET(request) {
       .from('paginas')
       .select('ticker, slug, actualizado_at')
       .order('actualizado_at', { ascending: false })
-      .limit(200);
+      .limit(1000);
 
     const { data: comentarios } = await supabaseAdmin
       .from('comentarios')
