@@ -94,8 +94,6 @@ export default function Grafico({ velas, smis, smiActual }) {
   const [coincidencias, setCoincidencias] = useState([]);
   const [posicion, setPosicion] = useState(-1);
   const [infoSeleccion, setInfoSeleccion] = useState(null);
-
-  // X en píxeles de la línea vertical (corte PAST/FUTURE)
   const [divisorX, setDivisorX] = useState(null);
 
   const smiFinal =
@@ -112,14 +110,11 @@ export default function Grafico({ velas, smis, smiActual }) {
     setPosicion(-1);
   }, [velas, smis, smiFinal]);
 
-  // Mantener posicionRef sincronizado
   useEffect(() => {
     posicionRef.current = posicion;
   }, [posicion]);
 
-  // Función central: calcula la X del CORTE entre histórico y proyección.
-  // El corte está en la PRIMERA posición después de la última vela real:
-  // logicalToCoordinate(velas.length) -> justo donde arranca la proyección.
+  // Solo para posicionar tintes y etiquetas HTML (la línea la pinta el chart)
   function calcularDivisorX() {
     const chart = chartRef.current;
     const cont = contenedorRef.current;
@@ -131,41 +126,37 @@ export default function Grafico({ velas, smis, smiActual }) {
       setDivisorX(null);
       return;
     }
-  
-    // Ancho actual de vela en píxeles
+
     let barSpacing = 4;
     try {
       barSpacing = chart.timeScale().options().barSpacing || 4;
     } catch (e) {}
-  
+
     let x = null;
-  
-    // 1) Punto exacto donde empieza la proyección + 1.5 velas a la derecha
+
     try {
       const xBase = chart.timeScale().logicalToCoordinate(velas.length);
       if (xBase !== null && isFinite(xBase)) {
-        x = xBase + barSpacing * 4.5;
+        x = xBase + barSpacing * 5.5;
       }
     } catch (e) {
       x = null;
     }
-  
-    // 2) Fallback: X de la última vela + 2.5 barSpacing
+
     if (x === null || !isFinite(x)) {
       try {
         const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
         if (xUltima !== null && isFinite(xUltima)) {
-          x = xUltima + barSpacing * 2.5;
+          x = xUltima + barSpacing * 6.5;
         }
       } catch (e) {}
     }
-  
-    // 3) Fallback final: borde derecho del contenedor
+
     if (x === null || !isFinite(x)) {
       const ancho = cont.clientWidth;
       x = ancho - barSpacing / 2;
     }
-  
+
     setDivisorX(x);
   }
 
@@ -343,6 +334,34 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
+        // ── LÍNEA VERTICAL ANCLADA A LA ÚLTIMA VELA REAL ──
+        // Es una serie más del chart: se mueve con zoom/scroll igual que las velas.
+        const lineaDivisoria = chart.addLineSeries({
+          color: '#111827',
+          lineWidth: 4,
+          lineStyle: LineStyle.Solid,
+          priceScaleId: 'right',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
+
+        chart._lineaDivisoria = lineaDivisoria;
+
+        chart._pintarDivisoria = (visible) => {
+          if (!chart._lineaDivisoria) return;
+          if (!visible) {
+            chart._lineaDivisoria.setData([]);
+            return;
+          }
+          const ultima = velas[velas.length - 1];
+          const t = Math.floor(new Date(ultima.date + 'T00:00:00Z').getTime() / 1000);
+          chart._lineaDivisoria.setData([
+            { time: t, value: -999999 },
+            { time: t + 1, value: 999999 }
+          ]);
+        };
+
         chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
 
         chart._limpiarZona = () => {
@@ -456,7 +475,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           }
         };
 
-        // Recalcular divisor al hacer zoom/scroll
         const onRangoVisible = () => {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
@@ -475,7 +493,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           chart.timeScale().fitContent();
         }
 
-        // Primer cálculo tras el render inicial
         setTimeout(() => {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
@@ -521,12 +538,14 @@ export default function Grafico({ velas, smis, smiActual }) {
 
     if (idx < 0) {
       chartRef.current._limpiarZona();
+      if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(false);
       setInfoSeleccion(null);
       setDivisorX(null);
       return;
     }
 
     chartRef.current._mostrarZona(idx, true);
+    if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(true);
 
     const idxInicio = idx;
     const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
@@ -551,7 +570,6 @@ export default function Grafico({ velas, smis, smiActual }) {
       chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
     } catch (e) {}
 
-    // Recalcular divisor tras mover el rango visible
     setTimeout(() => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
@@ -559,7 +577,6 @@ export default function Grafico({ velas, smis, smiActual }) {
     }, 50);
   }, [posicion, velas]);
 
-  // Listener global para recalcular el divisor
   useEffect(() => {
     function onRangoVisible() {
       calcularDivisorX();
@@ -628,7 +645,6 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-        {/* Fondo partido + línea vertical en el CORTE PAST/FUTURE + etiquetas grandes */}
         {divisorX !== null && posicion >= 0 && (
           <>
             {/* Tinte azul suave a la IZQUIERDA (histórico) — por encima, alpha bajo */}
@@ -657,21 +673,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 4
               }}
             />
-            {/* Línea vertical gruesa — visible pero sin tapar velas */}
-            <div
-              style={{
-                position: 'absolute',
-                left: `${divisorX}px`,
-                top: 0,
-                bottom: 0,
-                width: '3px',
-                background: 'rgba(17, 24, 39, 0.65)',
-                pointerEvents: 'none',
-                zIndex: 5,
-                transform: 'translateX(-1.5px)'
-              }}
-            />
-            {/* Etiqueta PAST — por detrás del canvas (zIndex 2), fondo transparente */}
+            {/* Etiqueta PAST — por detrás del canvas, fondo transparente */}
             <div
               style={{
                 position: 'absolute',
@@ -693,7 +695,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             >
               ← PAST
             </div>
-            {/* Etiqueta FUTURE — por detrás del canvas (zIndex 2), fondo transparente */}
+            {/* Etiqueta FUTURE — por detrás del canvas, fondo transparente */}
             <div
               style={{
                 position: 'absolute',
@@ -718,7 +720,6 @@ export default function Grafico({ velas, smis, smiActual }) {
         )}
       </div>
 
-      {/* Panel de exploración */}
       <div
         style={{
           marginTop: '12px',
@@ -827,7 +828,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           )}
         </div>
 
-        {/* Lista de coincidencias encontradas */}
         {coincidencias.length > 0 && (
           <div style={{ marginTop: '14px' }}>
             <div
@@ -886,7 +886,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           </div>
         )}
 
-        {/* Información de la selección actual */}
         <div
           style={{
             marginTop: '12px',
