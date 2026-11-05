@@ -631,7 +631,7 @@ export default function Grafico({ velas, smis, smiActual }) {
         {/* Fondo partido + línea vertical en el CORTE PAST/FUTURE + etiquetas grandes */}
         {divisorX !== null && posicion >= 0 && (
           <>
-            {/* Tinte azul suave a la IZQUIERDA de la línea (histórico) */}
+            {/* Tinte azul suave a la IZQUIERDA (histórico) — por detrás */}
             <div
               style={{
                 position: 'absolute',
@@ -639,12 +639,12 @@ export default function Grafico({ velas, smis, smiActual }) {
                 top: 0,
                 bottom: 0,
                 width: `${divisorX}px`,
-                background: 'rgba(37, 99, 235, 0.06)',
+                background: 'rgba(37, 99, 235, 0.05)',
                 pointerEvents: 'none',
-                zIndex: 3
+                zIndex: 0
               }}
             />
-            {/* Tinte ámbar suave a la DERECHA de la línea (proyección) */}
+            {/* Tinte ámbar suave a la DERECHA (proyección) — por detrás */}
             <div
               style={{
                 position: 'absolute',
@@ -652,33 +652,33 @@ export default function Grafico({ velas, smis, smiActual }) {
                 top: 0,
                 bottom: 0,
                 right: 0,
-                background: 'rgba(245, 158, 11, 0.10)',
+                background: 'rgba(245, 158, 11, 0.07)',
                 pointerEvents: 'none',
-                zIndex: 3
+                zIndex: 0
               }}
             />
-            {/* Línea vertical gruesa en el corte */}
+            {/* Línea vertical gruesa — por detrás de las velas, pero visible */}
             <div
               style={{
                 position: 'absolute',
                 left: `${divisorX}px`,
                 top: 0,
                 bottom: 0,
-                width: '4px',
-                background: '#111827',
+                width: '3px',
+                background: 'rgba(17, 24, 39, 0.55)',
                 pointerEvents: 'none',
-                zIndex: 5,
-                transform: 'translateX(-2px)'
+                zIndex: 1,
+                transform: 'translateX(-1.5px)'
               }}
             />
-            {/* Etiqueta PAST (izquierda, grande) */}
+            {/* Etiqueta PAST — por detrás, fondo claro y transparente */}
             <div
               style={{
                 position: 'absolute',
                 left: `${divisorX - 14}px`,
                 top: '12px',
                 transform: 'translateX(-100%)',
-                background: '#1e3a8a',
+                background: 'rgba(30, 58, 138, 0.55)',
                 color: '#ffffff',
                 fontSize: '16px',
                 fontWeight: 900,
@@ -687,19 +687,19 @@ export default function Grafico({ velas, smis, smiActual }) {
                 borderRadius: '6px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',
-                zIndex: 6,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                zIndex: 1,
+                backdropFilter: 'blur(1px)'
               }}
             >
               ← PAST
             </div>
-            {/* Etiqueta FUTURE (derecha, grande) */}
+            {/* Etiqueta FUTURE — por detrás, fondo claro y transparente */}
             <div
               style={{
                 position: 'absolute',
                 left: `${divisorX + 14}px`,
                 top: '12px',
-                background: '#f59e0b',
+                background: 'rgba(245, 158, 11, 0.55)',
                 color: '#111827',
                 fontSize: '16px',
                 fontWeight: 900,
@@ -708,8 +708,8 @@ export default function Grafico({ velas, smis, smiActual }) {
                 borderRadius: '6px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',
-                zIndex: 6,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                zIndex: 1,
+                backdropFilter: 'blur(1px)'
               }}
             >
               FUTURE →
