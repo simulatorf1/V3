@@ -631,7 +631,7 @@ export default function Grafico({ velas, smis, smiActual }) {
         {/* Fondo partido + línea vertical en el CORTE PAST/FUTURE + etiquetas grandes */}
         {divisorX !== null && posicion >= 0 && (
           <>
-            {/* Tinte azul suave a la IZQUIERDA (histórico) — por detrás */}
+            {/* Tinte azul suave a la IZQUIERDA (histórico) — por encima, alpha bajo */}
             <div
               style={{
                 position: 'absolute',
@@ -639,12 +639,12 @@ export default function Grafico({ velas, smis, smiActual }) {
                 top: 0,
                 bottom: 0,
                 width: `${divisorX}px`,
-                background: 'rgba(37, 99, 235, 0.05)',
+                background: 'rgba(37, 99, 235, 0.08)',
                 pointerEvents: 'none',
-                zIndex: 0
+                zIndex: 4
               }}
             />
-            {/* Tinte ámbar suave a la DERECHA (proyección) — por detrás */}
+            {/* Tinte ámbar suave a la DERECHA (proyección) — por encima, alpha bajo */}
             <div
               style={{
                 position: 'absolute',
@@ -652,12 +652,12 @@ export default function Grafico({ velas, smis, smiActual }) {
                 top: 0,
                 bottom: 0,
                 right: 0,
-                background: 'rgba(245, 158, 11, 0.07)',
+                background: 'rgba(245, 158, 11, 0.12)',
                 pointerEvents: 'none',
-                zIndex: 0
+                zIndex: 4
               }}
             />
-            {/* Línea vertical gruesa — por detrás de las velas, pero visible */}
+            {/* Línea vertical gruesa — visible pero sin tapar velas */}
             <div
               style={{
                 position: 'absolute',
@@ -665,21 +665,21 @@ export default function Grafico({ velas, smis, smiActual }) {
                 top: 0,
                 bottom: 0,
                 width: '3px',
-                background: 'rgba(17, 24, 39, 0.55)',
+                background: 'rgba(17, 24, 39, 0.65)',
                 pointerEvents: 'none',
-                zIndex: 1,
+                zIndex: 5,
                 transform: 'translateX(-1.5px)'
               }}
             />
-            {/* Etiqueta PAST — por detrás, fondo claro y transparente */}
+            {/* Etiqueta PAST — por detrás del canvas (zIndex 2), fondo transparente */}
             <div
               style={{
                 position: 'absolute',
                 left: `${divisorX - 14}px`,
                 top: '12px',
                 transform: 'translateX(-100%)',
-                background: 'rgba(30, 58, 138, 0.55)',
-                color: '#ffffff',
+                background: 'rgba(30, 58, 138, 0.45)',
+                color: 'rgba(255,255,255,0.95)',
                 fontSize: '16px',
                 fontWeight: 900,
                 letterSpacing: '1px',
@@ -687,20 +687,20 @@ export default function Grafico({ velas, smis, smiActual }) {
                 borderRadius: '6px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',
-                zIndex: 1,
-                backdropFilter: 'blur(1px)'
+                zIndex: 2,
+                backdropFilter: 'blur(2px)'
               }}
             >
               ← PAST
             </div>
-            {/* Etiqueta FUTURE — por detrás, fondo claro y transparente */}
+            {/* Etiqueta FUTURE — por detrás del canvas (zIndex 2), fondo transparente */}
             <div
               style={{
                 position: 'absolute',
                 left: `${divisorX + 14}px`,
                 top: '12px',
-                background: 'rgba(245, 158, 11, 0.55)',
-                color: '#111827',
+                background: 'rgba(245, 158, 11, 0.45)',
+                color: 'rgba(17,24,39,0.95)',
                 fontSize: '16px',
                 fontWeight: 900,
                 letterSpacing: '1px',
@@ -708,8 +708,8 @@ export default function Grafico({ velas, smis, smiActual }) {
                 borderRadius: '6px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',
-                zIndex: 1,
-                backdropFilter: 'blur(1px)'
+                zIndex: 2,
+                backdropFilter: 'blur(2px)'
               }}
             >
               FUTURE →
