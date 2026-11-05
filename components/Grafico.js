@@ -90,11 +90,12 @@ function formatearFecha(fechaStr) {
 export default function Grafico({ velas, smis, smiActual }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
+  const posicionRef = useRef(-1);
   const [coincidencias, setCoincidencias] = useState([]);
   const [posicion, setPosicion] = useState(-1);
   const [infoSeleccion, setInfoSeleccion] = useState(null);
 
-  // NUEVO: X en píxeles de la línea vertical (SIEMPRE en la última vela)
+  // X en píxeles de la línea vertical (última vela real)
   const [divisorX, setDivisorX] = useState(null);
 
   const smiFinal =
@@ -111,20 +112,54 @@ export default function Grafico({ velas, smis, smiActual }) {
     setPosicion(-1);
   }, [velas, smis, smiFinal]);
 
-  // NUEVO: recalcula la X del divisor SIEMPRE en la última vela disponible
-  function actualizarDivisor() {
+  // Mantener posicionRef sincronizado
+  useEffect(() => {
+    posicionRef.current = posicion;
+  }, [posicion]);
+
+  // Función central: calcula la X de la ÚLTIMA VELA REAL
+  function calcularDivisorX() {
     const chart = chartRef.current;
-    if (!chart || !velas || velas.length === 0) {
+    const cont = contenedorRef.current;
+    if (!chart || !cont || !velas || velas.length === 0) {
       setDivisorX(null);
       return;
     }
-    const idxUltima = velas.length - 1;
-    try {
-      const x = chart.timeScale().logicalToCoordinate(idxUltima);
-      setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
-    } catch (e) {
+    if (posicionRef.current < 0) {
       setDivisorX(null);
+      return;
     }
+
+    const fechaUltima = velas[velas.length - 1].date;
+
+    // 1) Intento principal: timeToCoordinate de la última vela real
+    let x = null;
+    try {
+      x = chart.timeScale().timeToCoordinate(fechaUltima);
+    } catch (e) {
+      x = null;
+    }
+
+    // 2) Fallback: logicalToCoordinate de la última vela real
+    if (x === null || !isFinite(x)) {
+      try {
+        x = chart.timeScale().logicalToCoordinate(velas.length - 1);
+      } catch (e) {
+        x = null;
+      }
+    }
+
+    // 3) Fallback final: borde derecho del contenedor menos media vela
+    if (x === null || !isFinite(x)) {
+      const ancho = cont.clientWidth;
+      let barSpacing = 4;
+      try {
+        barSpacing = chart.timeScale().options().barSpacing || 4;
+      } catch (e) {}
+      x = ancho - barSpacing / 2;
+    }
+
+    setDivisorX(x);
   }
 
   useEffect(() => {
@@ -414,7 +449,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           }
         };
 
-        // NUEVO: recalcular el divisor (última vela) al hacer zoom/scroll/resize
+        // Recalcular divisor al hacer zoom/scroll
         const onRangoVisible = () => {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
@@ -433,12 +468,12 @@ export default function Grafico({ velas, smis, smiActual }) {
           chart.timeScale().fitContent();
         }
 
-        // Primer cálculo del divisor
+        // Primer cálculo tras el render inicial
         setTimeout(() => {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
           }
-        }, 0);
+        }, 100);
 
         function handleResize() {
           if (chart && contenedorRef.current) {
@@ -480,6 +515,7 @@ export default function Grafico({ velas, smis, smiActual }) {
     if (idx < 0) {
       chartRef.current._limpiarZona();
       setInfoSeleccion(null);
+      setDivisorX(null);
       return;
     }
 
@@ -508,32 +544,22 @@ export default function Grafico({ velas, smis, smiActual }) {
       chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
     } catch (e) {}
 
-    // NUEVO: el divisor va SIEMPRE en la última vela, no en la seleccionada
+    // Recalcular divisor tras mover el rango visible
     setTimeout(() => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
       }
-    }, 0);
+    }, 50);
   }, [posicion, velas]);
 
-  // NUEVO: recalcular divisor (última vela) en zoom/scroll/resize y cuando cambia posicion
+  // Listener global para recalcular el divisor
   useEffect(() => {
     function onRangoVisible() {
-      const chart = chartRef.current;
-      if (!chart || !velas || velas.length === 0) return;
-      if (posicion < 0) {
-        setDivisorX(null);
-        return;
-      }
-      const idxUltima = velas.length - 1;
-      try {
-        const x = chart.timeScale().logicalToCoordinate(idxUltima);
-        setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
-      } catch (e) {}
+      calcularDivisorX();
     }
     window.addEventListener('equaty:rango-visible', onRangoVisible);
-    // recalcular al montar y cuando cambia posicion
-    onRangoVisible();
+    // Cálculo inicial por si ya hay posicion >= 0 al montar
+    calcularDivisorX();
     return () => window.removeEventListener('equaty:rango-visible', onRangoVisible);
   }, [posicion, velas]);
 
@@ -596,7 +622,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-        {/* NUEVO: fondo partido + línea vertical SIEMPRE en la última vela + etiquetas grandes */}
+        {/* Fondo partido + línea vertical SIEMPRE en la última vela real + etiquetas grandes */}
         {divisorX !== null && posicion >= 0 && (
           <>
             {/* Tinte azul suave a la IZQUIERDA de la línea (histórico) */}
@@ -612,7 +638,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 3
               }}
             />
-            {/* Tinte ámbar suave a la DERECHA de la línea (futuro) */}
+            {/* Tinte ámbar suave a la DERECHA de la línea (futuro/proyección) */}
             <div
               style={{
                 position: 'absolute',
@@ -625,7 +651,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 3
               }}
             />
-            {/* Línea vertical gruesa en la última vela */}
+            {/* Línea vertical gruesa en la última vela real */}
             <div
               style={{
                 position: 'absolute',
