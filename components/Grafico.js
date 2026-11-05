@@ -653,20 +653,10 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
+
         {divisorX !== null && posicion >= 0 && (
           <>
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: `${divisorX}px`,
-                background: 'rgba(37, 99, 235, 0.08)',
-                pointerEvents: 'none',
-                zIndex: 4
-              }}
-            />
+            {/* Tinte ámbar suave solo a la DERECHA (proyección/futuro) */}
             <div
               style={{
                 position: 'absolute',
@@ -679,6 +669,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 4
               }}
             />
+            {/* Etiqueta PAST — sin fondo de zona, solo la etiqueta */}
             <div
               style={{
                 position: 'absolute',
@@ -700,6 +691,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             >
               ← PAST
             </div>
+            {/* Etiqueta FUTURE */}
             <div
               style={{
                 position: 'absolute',
@@ -722,6 +714,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             </div>
           </>
         )}
+
       </div>
 
       <div
