@@ -447,6 +447,7 @@ export default async function PaginaEmpresa({ params }) {
       )}
 
       <div className="v3-ficha-grid">
+        {/* ───────── COLUMNA IZQUIERDA ───────── */}
         <div>
           <section className="v3-seccion" style={{ marginTop: '20px' }}>
             <div className="v3-card" style={{ padding: '20px' }}>
@@ -519,24 +520,26 @@ export default async function PaginaEmpresa({ params }) {
 
           <section className="v3-seccion">
             <h2 className="v3-seccion-titulo">Evolución del precio y del indicador Equaty</h2>
-            <Grafico velas={analisis.velasUltimas60} smis={analisis.smisUltimos60} />
+            <Grafico
+              velas={analisis.velasUltimas60}
+              smis={analisis.smisUltimos60}
+              smiActual={analisis.smiActual}
+            />
           </section>
 
-          {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
-            <GraficoSemanal velas={analisis.velasSemanales} smis={analisis.smisSemanales || []} />
-          )}
+          {/* ── AVISOS POR EMAIL (subido) ── */}
+          <section className="v3-seccion">
+            <h2 className="v3-seccion-titulo">Avisos por email</h2>
+            <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
+              Te avisamos cuando esta empresa cambie de zona en su rango de 60 sesiones. Solo el
+              dato, sin interpretación.
+            </p>
+            <FormularioAlerta empresa={empresa} />
+          </section>
 
-          <Comparador
-            tickerActual={empresa.ticker}
-            nombreActual={empresa.nombre}
-            tickerMejorSector={contexto.ranking[0]?.ticker || null}
-            nombreMejorSector={contexto.ranking[0]?.nombre || null}
-          />
+          {/* ── COMENTARIOS (subido, justo debajo de avisos) ── */}
+          <Comentarios ticker={empresa.ticker} nombreEmpresa={empresa.nombre} />
 
-          {analisis.noticias && analisis.noticias.length > 0 && (
-            <ContextoReciente noticias={analisis.noticias} />
-          )}     
-          <Comentarios ticker={empresa.ticker} nombreEmpresa={empresa.nombre} />          
           <details style={estiloAcordeon}>
             <summary style={estiloSummary}>Divulgación regulatoria y metodología</summary>
             <div style={{ padding: '0 20px 20px 20px', fontSize: '13px', lineHeight: 1.7 }}>
@@ -569,7 +572,7 @@ export default async function PaginaEmpresa({ params }) {
                 de este tipo, se haría constar de forma expresa y visible. La plataforma puede
                 generar ingresos por publicidad, suscripciones o servicios de datos agregados, sin
                 que estas fuentes condicionen la elaboración del contenido estadístico, que se rige
-                por criterios descriptivos y neutrales. El contenido de esta ficha se elabora de
+                por criterios descriptivos y neutros. El contenido de esta ficha se elabora de
                 forma independiente a las circunstancias personales de cada lector y no constituye
                 asesoramiento financiero personalizado.
               </p>
@@ -577,10 +580,16 @@ export default async function PaginaEmpresa({ params }) {
           </details>
         </div>
 
+        {/* ───────── COLUMNA DERECHA ───────── */}
         <div>
           <WatchlistZona>
             <ActividadFavoritos empresas={empresasParaActividad} modo="compacto" />
           </WatchlistZona>
+
+          {/* ── GRÁFICO SEMANAL (bajado a la derecha) ── */}
+          {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
+            <GraficoSemanal velas={analisis.velasSemanales} smis={analisis.smisSemanales || []} />
+          )}
 
           <ContextoSector
             tickerActual={empresa.ticker}
@@ -591,14 +600,13 @@ export default async function PaginaEmpresa({ params }) {
             extremosBajos={contexto.extremosBajos}
           />
 
-          <section className="v3-seccion">
-            <h2 className="v3-seccion-titulo">Avisos por email</h2>
-            <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
-              Te avisamos cuando esta empresa cambie de zona en su rango de 60 sesiones. Solo el
-              dato, sin interpretación.
-            </p>
-            <FormularioAlerta empresa={empresa} />
-          </section>
+          {/* ── COMPARADOR (bajado a la derecha) ── */}
+          <Comparador
+            tickerActual={empresa.ticker}
+            nombreActual={empresa.nombre}
+            tickerMejorSector={contexto.ranking[0]?.ticker || null}
+            nombreMejorSector={contexto.ranking[0]?.nombre || null}
+          />
 
           <ConsensoComunidad ticker={empresa.ticker} />
 
