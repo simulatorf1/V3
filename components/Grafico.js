@@ -133,7 +133,7 @@ export default function Grafico({ velas, smis, smiActual }) {
     }
   
     // Ancho actual de vela en píxeles
-    let barSpacing = 6;
+    let barSpacing = 4;
     try {
       barSpacing = chart.timeScale().options().barSpacing || 4;
     } catch (e) {}
@@ -144,7 +144,7 @@ export default function Grafico({ velas, smis, smiActual }) {
     try {
       const xBase = chart.timeScale().logicalToCoordinate(velas.length);
       if (xBase !== null && isFinite(xBase)) {
-        x = xBase + barSpacing * 1.5;
+        x = xBase + barSpacing * 5.5;
       }
     } catch (e) {
       x = null;
