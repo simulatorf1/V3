@@ -470,8 +470,8 @@ export default function Grafico({ velas, smis, smiActual }) {
             areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
 
             const lineaFutura = chart.addLineSeries({
-              color: 'rgba(156, 163, 175, 0.7)',
-              lineWidth: 1.5,
+              color: 'rgba(220, 38, 38, 0.9)',
+              lineWidth: 2,
               lineStyle: LineStyle.Dashed,
               priceScaleId: 'right',
               priceLineVisible: false,
@@ -480,6 +480,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             });
             lineaFutura.setData(lineaFuturaData);
 
+            
             chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
           }
         };
