@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const VELAS_ATRAS = 30;
 const VENTANA = 10;
@@ -93,8 +93,7 @@ export default function Grafico({ velas, smis, smiActual }) {
   const [coincidencias, setCoincidencias] = useState([]);
   const [posicion, setPosicion] = useState(-1);
   const [infoSeleccion, setInfoSeleccion] = useState(null);
-
-  // Posición (en píxeles) de la línea vertical PAST/FUTURE
+  // NUEVO: X en píxeles de la línea vertical PAST/FUTURE
   const [divisorX, setDivisorX] = useState(null);
 
   const smiFinal =
@@ -111,8 +110,8 @@ export default function Grafico({ velas, smis, smiActual }) {
     setPosicion(-1);
   }, [velas, smis, smiFinal]);
 
-  // Recalcula la X del divisor a partir del índice seleccionado
-  const recalcularDivisor = useCallback(() => {
+  // NUEVO: recalcula la X del divisor a partir de la vela seleccionada
+  function actualizarDivisor() {
     const chart = chartRef.current;
     if (!chart || posicion < 0) {
       setDivisorX(null);
@@ -124,7 +123,7 @@ export default function Grafico({ velas, smis, smiActual }) {
     } catch (e) {
       setDivisorX(null);
     }
-  }, [posicion]);
+  }
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
@@ -300,7 +299,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null, lineaDivisoria: null };
+        chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
 
         chart._limpiarZona = () => {
           if (chart._zonaSeries.areaSup) {
@@ -315,50 +314,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           if (chart._zonaSeries.lineaFutura) {
             try { chart.removeSeries(chart._zonaSeries.lineaFutura); } catch (e) {}
           }
-          if (chart._zonaSeries.lineaDivisoria) {
-            try { chart.removeSeries(chart._zonaSeries.lineaDivisoria); } catch (e) {}
-          }
-          chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null, lineaDivisoria: null };
-        };
-
-        // Línea vertical gruesa en el índice seleccionado, separando PAST y FUTURE.
-        // Usamos una serie de línea con 2 puntos (arriba/abajo del rango visible)
-        // para que aparezca también si el usuario exporta la imagen del chart.
-        chart._dibujarDivisoria = (idx) => {
-          if (!chart._zonaSeries) return;
-          if (chart._zonaSeries.lineaDivisoria) {
-            try { chart.removeSeries(chart._zonaSeries.lineaDivisoria); } catch (e) {}
-            chart._zonaSeries.lineaDivisoria = null;
-          }
-          if (idx < 0 || idx >= velas.length) return;
-
-          const fecha = velas[idx].date;
-          // Dos puntos con el mismo time no se permite en lightweight-charts.
-          // Usamos un time ligeramente posterior para crear la línea vertical.
-          // Truco: usamos la fecha del índice y la del índice+1 como extremos.
-          const fechaSiguiente =
-            idx + 1 < velas.length
-              ? velas[idx + 1].date
-              : sumarDiasHabiles(fecha, 1);
-
-          const lineaDivisoria = chart.addLineSeries({
-            color: '#111827',
-            lineWidth: 3,
-            lineStyle: LineStyle.Solid,
-            priceScaleId: 'right',
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false
-          });
-
-          // Dos puntos casi verticales: mismo precio en fechas contiguas
-          const precioRef = (velas[idx].high + velas[idx].low) / 2;
-          lineaDivisoria.setData([
-            { time: fecha, value: precioRef },
-            { time: fechaSiguiente, value: precioRef }
-          ]);
-
-          chart._zonaSeries.lineaDivisoria = lineaDivisoria;
+          chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
         };
 
         chart._mostrarZona = (idx, conFuturo) => {
@@ -406,7 +362,7 @@ export default function Grafico({ velas, smis, smiActual }) {
           });
           areaInf.setData(fechas.map((f) => ({ time: f, value: minH })));
 
-          chart._zonaSeries = { areaSup, areaInf, areaFutura: null, lineaFutura: null, lineaDivisoria: chart._zonaSeries?.lineaDivisoria || null };
+          chart._zonaSeries = { areaSup, areaInf, areaFutura: null, lineaFutura: null };
 
           if (conFuturo) {
             const datosFuturos = [];
@@ -452,22 +408,26 @@ export default function Grafico({ velas, smis, smiActual }) {
             });
             lineaFutura.setData(lineaFuturaData);
 
-            chart._zonaSeries = {
-              areaSup,
-              areaInf,
-              areaFutura,
-              lineaFutura,
-              lineaDivisoria: chart._zonaSeries?.lineaDivisoria || null
-            };
+            chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
           }
         };
 
-        // Recalcular el divisor HTML al hacer zoom/scroll/resize
-        const onVisibleRangeChange = () => {
-          recalcularDivisor();
+        // NUEVO: suscribirse al cambio de rango visible para recalcular la X del divisor
+        const onRangoVisible = () => {
+          const chartActual = chartRef.current;
+          if (!chartActual) return;
+          // Usamos el estado actual via ref no disponible; recalculamos en el useEffect de posicion.
+          // Para el caso de zoom/scroll, forzamos un re-render leyendo la posicion del closure.
+          // Como posicion no está en el closure, usamos un pequeño hack: leemos del state via
+          // el propio componente no es posible, así que delegamos en el useEffect de posicion.
+          // Pero necesitamos que al hacer zoom la línea siga a la vela: lo hacemos con
+          // logicalToCoordinate dentro del propio callback, leyendo una variable de módulo.
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
+          }
         };
         try {
-          chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+          chart.timeScale().subscribeVisibleLogicalRangeChange(onRangoVisible);
         } catch (e) {}
 
         const totalVelas = velas.length;
@@ -482,7 +442,9 @@ export default function Grafico({ velas, smis, smiActual }) {
         function handleResize() {
           if (chart && contenedorRef.current) {
             chart.applyOptions({ width: contenedorRef.current.clientWidth });
-            recalcularDivisor();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('equaty:rango-visible'));
+            }
           }
         }
         window.addEventListener('resize', handleResize);
@@ -490,7 +452,7 @@ export default function Grafico({ velas, smis, smiActual }) {
         cleanup = () => {
           window.removeEventListener('resize', handleResize);
           try {
-            chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+            chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRangoVisible);
           } catch (e) {}
           if (chart) chart.remove();
           chartRef.current = null;
@@ -506,7 +468,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       cancelado = true;
       cleanup();
     };
-  }, [velas, smis, recalcularDivisor]);
+  }, [velas, smis]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -522,8 +484,6 @@ export default function Grafico({ velas, smis, smiActual }) {
     }
 
     chartRef.current._mostrarZona(idx, true);
-    chartRef.current._dibujarDivisoria(idx);
-    recalcularDivisor();
 
     const idxInicio = idx;
     const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
@@ -547,7 +507,33 @@ export default function Grafico({ velas, smis, smiActual }) {
     try {
       chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
     } catch (e) {}
-  }, [posicion, velas, recalcularDivisor]);
+
+    // NUEVO: calcular X del divisor
+    try {
+      const x = chartRef.current.timeScale().logicalToCoordinate(idx);
+      setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
+    } catch (e) {
+      setDivisorX(null);
+    }
+  }, [posicion, velas]);
+
+  // NUEVO: escuchar el evento de zoom/scroll/resize para recalcular el divisor
+  useEffect(() => {
+    function onRangoVisible() {
+      if (posicion < 0) {
+        setDivisorX(null);
+        return;
+      }
+      const chart = chartRef.current;
+      if (!chart) return;
+      try {
+        const x = chart.timeScale().logicalToCoordinate(posicion);
+        setDivisorX(typeof x === 'number' && isFinite(x) ? x : null);
+      } catch (e) {}
+    }
+    window.addEventListener('equaty:rango-visible', onRangoVisible);
+    return () => window.removeEventListener('equaty:rango-visible', onRangoVisible);
+  }, [posicion]);
 
   function handleSlider(e) {
     setPosicion(parseInt(e.target.value, 10));
@@ -608,7 +594,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-        {/* Línea vertical gruesa + etiquetas PAST / FUTURE (solo cuando hay selección) */}
+        {/* NUEVO: línea vertical gruesa + etiquetas PAST / FUTURE (solo cuando hay selección) */}
         {divisorX !== null && posicion >= 0 && (
           <>
             <div
@@ -626,7 +612,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             <div
               style={{
                 position: 'absolute',
-                left: `${divisorX - 12}px`,
+                left: `${divisorX - 10}px`,
                 top: '10px',
                 transform: 'translateX(-100%)',
                 background: '#111827',
@@ -641,12 +627,12 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 6
               }}
             >
-              ← PAST
+              PAST ←
             </div>
             <div
               style={{
                 position: 'absolute',
-                left: `${divisorX + 12}px`,
+                left: `${divisorX + 10}px`,
                 top: '10px',
                 background: '#f59e0b',
                 color: '#111827',
@@ -660,7 +646,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 6
               }}
             >
-              FUTURE →
+              → FUTURE
             </div>
           </>
         )}
