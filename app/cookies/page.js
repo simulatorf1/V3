@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import BotonOptOut from './BotonOptOut';
 
 export const metadata = {
   title: 'Política de Cookies — Equaty',
@@ -8,18 +6,6 @@ export const metadata = {
 };
 
 export default function Cookies() {
-  const [desactivado, setDesactivado] = useState(false);
-
-  function desactivarAnalytics() {
-    document.cookie = 'ga-disable-G-LVV061GCPF=true; path=/; max-age=31536000; SameSite=Lax';
-    setDesactivado(true);
-  }
-
-  function reactivarAnalytics() {
-    document.cookie = 'ga-disable-G-LVV061GCPF=; path=/; max-age=0';
-    setDesactivado(false);
-  }
-
   return (
     <main className="v3-container" style={{ maxWidth: '820px', paddingTop: '40px', paddingBottom: '60px' }}>
       <h1>Política de Cookies</h1>
@@ -68,45 +54,7 @@ export default function Cookies() {
         impide que Analytics envíe datos desde este navegador.
       </p>
 
-      <div style={{ margin: '16px 0', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        {!desactivado ? (
-          <button
-            onClick={desactivarAnalytics}
-            style={{
-              padding: '10px 18px',
-              background: '#2563eb',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px'
-            }}
-          >
-            Desactivar Google Analytics
-          </button>
-        ) : (
-          <>
-            <span style={{ alignSelf: 'center', color: '#166534', fontWeight: 600, fontSize: '14px' }}>
-              ✓ Google Analytics desactivado en este navegador
-            </span>
-            <button
-              onClick={reactivarAnalytics}
-              style={{
-                padding: '10px 18px',
-                background: '#fff',
-                color: '#111',
-                border: '1px solid #ccc',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Reactivar
-            </button>
-          </>
-        )}
-      </div>
+      <BotonOptOut />
 
       <h2>Cookies propias del consenso de la comunidad</h2>
       <p>
