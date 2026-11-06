@@ -4,6 +4,7 @@ import Script from 'next/script';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
+import BannerAviso from '../components/BannerAviso';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -96,6 +97,7 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-LVV061GCPF');
           `}
         </Script>
+        <BannerAviso />          
       </body>
     </html>
   );
