@@ -46,8 +46,7 @@ export default function BannerAviso() {
       }}
     >
       <div style={{ flex: 1, minWidth: '220px' }}>
-        Esta web usa cookies propias (para el consenso de la comunidad) y de Google Analytics
-        (para medir visitas). Puedes informarte o desactivar Analytics en{' '}
+        Esta web utiliza cookies. Más información en{' '}
         <Link href="/cookies" style={{ color: '#2563eb', fontWeight: 600 }}>
           Política de cookies
         </Link>
