@@ -11,7 +11,17 @@ export async function POST(request) {
 
     const pais = request.headers.get('x-vercel-ip-country') || null;
     const referer = request.headers.get('referer') || null;
-    const userAgent = request.headers.get('user-agent') || null;
+    const userAgent = request.headers.get('user-agent') || '';
+
+    // ─── FILTRO DE BOTS POR USER-AGENT ───
+    const esBot =
+      /bot|crawler|spider|crawling|curl|wget|python|java|go-http|axios|node-fetch|headless|phantom|selenium|puppeteer|playwright|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|slack|discord|bingbot|googlebot|yandex|baidu|semrush|ahrefs|mj12|dotbot|petalbot|bytespider|gptbot|chatgpt|claude|anthropic|ccbot|uptime|pingdom|monitoring|statuscake|site24x7|newrelic|datadog/i.test(
+        userAgent
+      );
+
+    if (esBot) {
+      return Response.json({ ok: true, ignorada: true });
+    }
 
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -62,7 +72,7 @@ export async function POST(request) {
       ruta,
       referer,
       pais,
-      user_agent: userAgent,
+      user_agent: userAgent || null,
       ip_hash: hashIp
     });
 
