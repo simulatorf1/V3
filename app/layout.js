@@ -46,7 +46,7 @@ export const metadata = {
     title: 'Equaty — Análisis bursátil estadístico',
     description:
       'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
-    images: [`${BASE_URL}/og-image.png`]
+    images: [`${BASE_URL}/og-image.png?v=3`]
   },
   robots: {
     index: true,
