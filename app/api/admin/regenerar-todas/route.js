@@ -5,6 +5,79 @@ import { generarAnalisis } from '../../../../lib/autogenerar';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+// Helpers duplicados para no tener que exportarlos desde autogenerar
+function parseDatos(datos) {
+  if (!datos) return null;
+  if (typeof datos === 'string') {
+    try {
+      return JSON.parse(datos);
+    } catch (e) {
+      return null;
+    }
+  }
+  return datos;
+}
+
+function mergeVelas(prevVelas, nextVelas) {
+  if (!Array.isArray(prevVelas) || prevVelas.length === 0) {
+    return Array.isArray(nextVelas) ? nextVelas : [];
+  }
+  if (!Array.isArray(nextVelas) || nextVelas.length === 0) {
+    return prevVelas;
+  }
+  const mapa = new Map();
+  for (const v of prevVelas) {
+    if (v && v.date) mapa.set(v.date, v);
+  }
+  for (const v of nextVelas) {
+    if (v && v.date) mapa.set(v.date, v);
+  }
+  return Array.from(mapa.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+function mergeAnalisisSimple(prev, next) {
+  if (!prev) return next;
+  if (!next) return prev;
+
+  const velasFusionadas = mergeVelas(prev.velasUltimas60, next.velasUltimas60);
+  const velasCambiaron = velasFusionadas.length !== (next.velasUltimas60?.length || 0);
+
+  let smisFusionados = next.smisUltimos60;
+  if (velasCambiaron && Array.isArray(next.smisUltimos60)) {
+    // Si cambió el número de velas, no podemos recalcular SMI aquí sin importar calcularSMI.
+    // Fallback: conservar los SMIs del anterior si existen y tienen la misma longitud.
+    if (Array.isArray(prev.smisUltimos60) && prev.smisUltimos60.length >= velasFusionadas.length) {
+      smisFusionados = prev.smisUltimos60.slice(-velasFusionadas.length);
+    }
+  }
+
+  return {
+    ...next,
+    velasUltimas60: velasFusionadas,
+    smisUltimos60: smisFusionados,
+    precioActual:
+      velasFusionadas.length > 0
+        ? velasFusionadas[velasFusionadas.length - 1].close
+        : next.precioActual ?? prev.precioActual ?? null,
+    velasSemanales:
+      Array.isArray(next.velasSemanales) && next.velasSemanales.length
+        ? next.velasSemanales
+        : prev.velasSemanales || [],
+    smisSemanales:
+      Array.isArray(next.smisSemanales) && next.smisSemanales.length
+        ? next.smisSemanales
+        : prev.smisSemanales || [],
+    smiSemanalActual: next.smiSemanalActual ?? prev.smiSemanalActual ?? null,
+    zonaSemanal: next.zonaSemanal ?? prev.zonaSemanal ?? null,
+    noticias:
+      Array.isArray(next.noticias) && next.noticias.length
+        ? next.noticias
+        : prev.noticias || [],
+    sectorInfo: next.sectorInfo ?? prev.sectorInfo ?? null,
+    fundamentales: next.fundamentales ?? prev.fundamentales ?? null
+  };
+}
+
 export async function POST(request) {
   if (!tokenValido()) {
     return Response.json({ error: 'No autorizado' }, { status: 401 });
@@ -37,7 +110,9 @@ export async function POST(request) {
       try {
         const analisis = await generarAnalisis(tickerUpper, empresa);
 
+        // Leer el anterior para merge y para movimientoAnterior
         let movimientoAnterior = null;
+        let datosAntiguos = null;
         const { data: cacheAnterior } = await supabaseAdmin
           .from('paginas')
           .select('datos')
@@ -45,10 +120,7 @@ export async function POST(request) {
           .maybeSingle();
 
         if (cacheAnterior && cacheAnterior.datos) {
-          let datosAntiguos = cacheAnterior.datos;
-          if (typeof datosAntiguos === 'string') {
-            try { datosAntiguos = JSON.parse(datosAntiguos); } catch (e) { datosAntiguos = null; }
-          }
+          datosAntiguos = parseDatos(cacheAnterior.datos);
           if (datosAntiguos) {
             let senalesAntiguas = datosAntiguos.senales;
             if (typeof senalesAntiguas === 'string') {
@@ -59,6 +131,9 @@ export async function POST(request) {
             }
           }
         }
+
+        // Merge: recupera velas perdidas por huecos de Yahoo
+        const final = mergeAnalisisSimple(datosAntiguos, analisis);
 
         const slug = `${tickerUpper.toLowerCase()}__${empresa.nombre
           .toLowerCase()
@@ -74,7 +149,7 @@ export async function POST(request) {
               empresa_id: empresa.id,
               ticker: tickerUpper,
               slug,
-              datos: analisis,
+              datos: final,
               ultimo_movimiento_anterior: movimientoAnterior,
               actualizado_at: new Date().toISOString()
             },
