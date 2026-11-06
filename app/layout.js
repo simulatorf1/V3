@@ -4,7 +4,6 @@ import Script from 'next/script';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
-import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -51,22 +50,12 @@ export const metadata = {
   robots: {
     index: true,
     follow: true
-  },
-  other: {
-    'google-adsense-account': 'ca-pub-4266340077922462'
   }
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="es" className={inter.className}>
-      <head>
-        {/* Passiro PRIMERO - él bloqueará Analytics y AdSense hasta el consentimiento */}
-        <script
-          src="https://cdn.passiro.com/passiro.js"
-          data-site-id="ac3c0f6d4c8620f8df718345d967d98b"
-        ></script>
-      </head>
       <body
         style={{
           margin: 0,
@@ -80,17 +69,33 @@ export default function RootLayout({ children }) {
         <div style={{ minHeight: '60vh' }}>{children}</div>
         <Pie />
 
-        {/* Analytics con @next/third-parties. Passiro lo detecta y lo bloquea hasta el consentimiento. */}
-        <GoogleAnalytics gaId="G-LVV061GCPF" />
+        {/* Consent Mode v2: todo denied por defecto -> GA sin cookies, sin banner */}
+        <Script id="consent-default" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              ad_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied',
+              analytics_storage: 'denied',
+              wait_for_update: 500
+            });
+          `}
+        </Script>
 
-        {/* AdSense con next/script. Passiro lo detecta y lo bloquea hasta el consentimiento. */}
         <Script
-          id="adsbygoogle-init"
-          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-LVV061GCPF"
           strategy="afterInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4266340077922462"
-          crossOrigin="anonymous"
         />
+        <Script id="ga-config" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-LVV061GCPF');
+          `}
+        </Script>
       </body>
     </html>
   );
