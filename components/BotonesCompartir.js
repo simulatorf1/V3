@@ -2,10 +2,96 @@
 
 import { useState } from 'react';
 
+const VENTANA = 10;
+const RANGO_VALOR = 30;
+const MAX_TUIT = 280;
+
 function situacionDesdeZona(zona) {
   if (zona === 'alta') return 'parte alta del rango';
   if (zona === 'baja') return 'parte baja del rango';
   return 'parte intermedia del rango';
+}
+
+function calcularPendiente(smis, idx) {
+  if (idx < 1) return null;
+  const actual = smis[idx];
+  const anterior = smis[idx - 1];
+  if (actual === null || actual === undefined || anterior === null || anterior === undefined) {
+    return null;
+  }
+  return actual - anterior;
+}
+
+function calcularProyeccion(velas, smis) {
+  if (!velas || !smis || velas.length < 20 || smis.length < 20) return null;
+
+  const idxActual = smis.length - 1;
+  const smiActual = smis[idxActual];
+  if (smiActual === null || smiActual === undefined) return null;
+
+  const pendienteActual = calcularPendiente(smis, idxActual);
+  const casos = [];
+
+  for (let i = idxActual - 1; i >= 0; i--) {
+    if (i + VENTANA >= velas.length) continue;
+
+    const v = smis[i];
+    if (v === null || v === undefined) continue;
+    if (Math.abs(v - smiActual) > RANGO_VALOR) continue;
+
+    const pend = calcularPendiente(smis, i);
+    if (pend === null) continue;
+
+    if (pendienteActual !== null) {
+      if (pendienteActual >= 0 && pend < 0) continue;
+      if (pendienteActual < 0 && pend >= 0) continue;
+    }
+
+    const precioInicio = velas[i].close;
+    const precioFin = velas[i + VENTANA].close;
+    const variacion = ((precioFin - precioInicio) / precioInicio) * 100;
+
+    casos.push({ fecha: velas[i].date, variacion });
+  }
+
+  if (casos.length === 0) return null;
+
+  const subidas = casos.filter((c) => c.variacion > 0);
+  const bajadas = casos.filter((c) => c.variacion < 0);
+
+  const mediaSubidas =
+    subidas.length > 0
+      ? subidas.reduce((a, c) => a + c.variacion, 0) / subidas.length
+      : null;
+  const mediaBajadas =
+    bajadas.length > 0
+      ? bajadas.reduce((a, c) => a + c.variacion, 0) / bajadas.length
+      : null;
+
+  return {
+    total: casos.length,
+    subidas: subidas.length,
+    bajadas: bajadas.length,
+    mediaSubidas,
+    mediaBajadas
+  };
+}
+
+/**
+ * Recorta el texto a MAX_TUIT caracteres sin romper el enlace final.
+ * Si hay que recortar, quita caracteres del cuerpo (no del enlace).
+ */
+function recortarTuit(cuerpo, enlace) {
+  const sufijo = `\n${enlace}`;
+  const espacioCuerpo = MAX_TUIT - sufijo.length;
+
+  if (cuerpo.length + sufijo.length <= MAX_TUIT) {
+    return cuerpo + sufijo;
+  }
+
+  // Recortar cuerpo y añadir "…" antes del enlace
+  const recortado = cuerpo.slice(0, espacioCuerpo - 1).trimEnd() + '…';
+  return recortado + sufijo;
 }
 
 export default function BotonesCompartir({ empresa, analisis, url }) {
@@ -16,12 +102,12 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
   function generarTextoTuit() {
     if (!empresa || !analisis) return '';
 
-    const ticker = empresa.ticker;
     const nombre = empresa.nombre;
     const precio = analisis.precioActual?.toFixed(2) || '—';
     const situacion = situacionDesdeZona(analisis.zona);
-
     const velas = analisis.velasUltimas60 || [];
+    const smis = analisis.smisUltimos60 || [];
+
     let variacion60 = null;
     if (velas.length >= 2) {
       const primero = velas[0]?.close;
@@ -31,54 +117,40 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
       }
     }
 
-    const variacionTexto =
-      variacion60 === null
-        ? ''
-        : variacion60 > 0.05
-        ? `ha subido un ${variacion60.toFixed(1)}%`
-        : variacion60 < -0.05
-        ? `ha bajado un ${Math.abs(variacion60).toFixed(1)}%`
-        : 'se ha mantenido prácticamente estable';
+    const proyeccion = calcularProyeccion(velas, smis);
 
-    const variacionSector60 =
-      analisis.sectorInfo && analisis.sectorInfo.variacionSector60 !== null
-        ? analisis.sectorInfo.variacionSector60
-        : null;
-
-    let comparacionTexto = '';
-    if (variacion60 !== null && variacionSector60 !== null) {
-      const diff = variacion60 - variacionSector60;
-      if (Math.abs(diff) < 2) comparacionTexto = 'Evolución similar a su sector.';
-      else if (diff > 0) comparacionTexto = 'Evolución algo mejor que su sector.';
-      else comparacionTexto = 'Evolución algo peor que su sector.';
-    }
-
-    const enlace = `Más en: ${url}`;
-
-    // Hashtag del nombre: sin espacios
     const hashtagNombre = `#${nombre.replace(/\s+/g, '')}`;
-
-    // Hashtag del ticker: sin sufijo de mercado (.MC, .DE, etc.)
-    // SOLO la parte antes del primer punto. Ej: SLR.MC -> SLR
-    const tickerLimpio = ticker.split('.')[0];
+    const tickerLimpio = empresa.ticker.split('.')[0];
     const hashtagTicker = `#${tickerLimpio}`;
 
-    let texto = `${hashtagNombre} ${hashtagTicker} · Precio ${precio} €. `;
-    if (variacionTexto) {
-      texto += `En las últimas 60 sesiones, el precio ${variacionTexto} y se sitúa en la ${situacion}. `;
+    // ─── Construir cuerpo (sin enlace) ───
+    let cuerpo = `${hashtagNombre} ${hashtagTicker}\n`;
+    cuerpo += `Precio: ${precio} €`;
+    if (variacion60 !== null) {
+      const signo = variacion60 >= 0 ? '+' : '';
+      cuerpo += ` · 60 sesiones: ${signo}${variacion60.toFixed(1)}%`;
+    }
+    cuerpo += `\n${situacion}\n\n`;
+
+    if (proyeccion) {
+      cuerpo += `Últimas ${proyeccion.total} veces en posición similar:\n`;
+      if (proyeccion.subidas > 0) {
+        const signo = proyeccion.mediaSubidas >= 0 ? '+' : '';
+        cuerpo += `• ${proyeccion.subidas} ${proyeccion.subidas === 1 ? 'vez subió' : 'veces subió'} (media ${signo}${proyeccion.mediaSubidas.toFixed(1)}%)\n`;
+      }
+      if (proyeccion.bajadas > 0) {
+        const signo = proyeccion.mediaBajadas >= 0 ? '+' : '';
+        cuerpo += `• ${proyeccion.bajadas} ${proyeccion.bajadas === 1 ? 'vez bajó' : 'veces bajó'} (media ${signo}${proyeccion.mediaBajadas.toFixed(1)}%)\n`;
+      }
+      cuerpo += `\n`;
     } else {
-      texto += `El precio se sitúa en la ${situacion}. `;
-    }
-    if (comparacionTexto) texto += `${comparacionTexto} `;
-    texto += `Información histórica, no predictiva ni recomendación de inversión. `;
-    texto += enlace;
-
-    if (texto.length > 280) {
-      const espacio = 280 - enlace.length - 4;
-      texto = texto.slice(0, espacio) + '... ' + enlace;
+      cuerpo += `Sin coincidencias históricas suficientes para esta posición.\n\n`;
     }
 
-    return texto;
+    cuerpo += `¿Tú qué crees que hará? 👇`;
+
+    // ─── Recortar a 280 respetando el enlace ───
+    return recortarTuit(cuerpo, url);
   }
 
   function abrirModal() {
@@ -208,8 +280,8 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
             <textarea
               value={textoTuit}
               onChange={(e) => setTextoTuit(e.target.value)}
-              rows={7}
-              maxLength={280}
+              rows={10}
+              maxLength={MAX_TUIT}
               style={{
                 width: '100%',
                 padding: '10px',
@@ -222,8 +294,16 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
               }}
             />
 
-            <p style={{ color: 'var(--v3-text-mute)', fontSize: '12px', marginTop: '4px' }}>
-              {textoTuit.length} / 280 caracteres
+            <p
+              style={{
+                color: textoTuit.length > MAX_TUIT ? '#dc2626' : 'var(--v3-text-mute)',
+                fontSize: '12px',
+                marginTop: '4px',
+                fontWeight: textoTuit.length > MAX_TUIT ? 600 : 400
+              }}
+            >
+              {textoTuit.length} / {MAX_TUIT} caracteres
+              {textoTuit.length > MAX_TUIT && ' — te has pasado'}
             </p>
 
             <div
@@ -248,7 +328,16 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
               >
                 Cancelar
               </button>
-              <button onClick={publicarEnX} className="v3-btn">
+              <button
+                onClick={publicarEnX}
+                className="v3-btn"
+                disabled={textoTuit.length > MAX_TUIT}
+                style={
+                  textoTuit.length > MAX_TUIT
+                    ? { opacity: 0.5, cursor: 'not-allowed' }
+                    : undefined
+                }
+              >
                 Publicar en X
               </button>
             </div>
