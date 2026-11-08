@@ -14,10 +14,8 @@ function construirSlug(item) {
 }
 
 function pendienteDesdeCategoria(cat) {
-  // 'C' = compra = pendiente pasa a positiva
-  if (cat === 'C') return 'pendiente positiva';
-  // 'A' = venta = pendiente pasa a negativa
-  if (cat === 'A') return 'pendiente negativa';
+  if (cat === 'positiva') return 'pendiente positiva';
+  if (cat === 'negativa') return 'pendiente negativa';
   return 'sin pendiente';
 }
 
