@@ -319,12 +319,14 @@ export default async function PaginaEmpresa({ params }) {
 
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
-
+  
   const precioActual = analisis.precioActual;
   const precio5Atras = velas.length >= 6 ? velas[velas.length - 6].close : precioActual;
   const variacion5 = precio5Atras ? ((precioActual - precio5Atras) / precio5Atras) * 100 : 0;
-
-  const smisValidos = smis.filter((v) => v !== null && v !== undefined);
+  
+  // Percentil: se calcula sobre las últimas 60 sesiones (no sobre las 120)
+  const smis60 = smis.slice(-60);
+  const smisValidos = smis60.filter((v) => v !== null && v !== undefined);
   const smisOrdenados = [...smisValidos].sort((a, b) => a - b);
   let percentil = 0;
   if (smisOrdenados.length > 0) {
@@ -335,12 +337,15 @@ export default async function PaginaEmpresa({ params }) {
   const situacionActual = situacionDesdeZona(analisis.zona);
   const consenso = await cargarConsenso(empresa.ticker);
 
-  const primerCierre = velas[0]?.close;
-  const ultimoCierre = velas[velas.length - 1]?.close;
+  // Variación 60: se calcula sobre las últimas 60 velas (no sobre las 120)
+  const ultimas60 = velas.slice(-60);
+  const primerCierre = ultimas60[0]?.close;
+  const ultimoCierre = ultimas60[ultimas60.length - 1]?.close;
   const variacion60 = primerCierre ? ((ultimoCierre - primerCierre) / primerCierre) * 100 : 0;
-
-  const max60 = velas.length > 0 ? Math.max(...velas.map((v) => v.high)) : null;
-  const min60 = velas.length > 0 ? Math.min(...velas.map((v) => v.low)) : null;
+  
+  // Max/min 60: sobre las últimas 60 velas (no sobre las 120)
+  const max60 = ultimas60.length > 0 ? Math.max(...ultimas60.map((v) => v.high)) : null;
+  const min60 = ultimas60.length > 0 ? Math.min(...ultimas60.map((v) => v.low)) : null;
   const distanciaMax = max60 ? ((precioActual - max60) / max60) * 100 : null;
   const distanciaMin = min60 ? ((precioActual - min60) / min60) * 100 : null;
 
