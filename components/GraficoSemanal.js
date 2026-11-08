@@ -65,7 +65,6 @@ function buscarCoincidencias(velas, smis, smiActual) {
     if (!demasiadoCerca) seleccionadas.push(c);
   }
 
-  // Ordenadas por cercanía al SMI actual (la más cercana primero)
   return seleccionadas.sort((a, b) => a.distancia - b.distancia);
 }
 
@@ -127,37 +126,23 @@ export default function GraficoSemanal({ velas, smis }) {
       return;
     }
 
-    let barSpacing = 4;
+    const fechaUltima = velas[velas.length - 1].date;
+
+    let xIni = null;
+
     try {
-      barSpacing = chart.timeScale().options().barSpacing || 4;
+      const xU = chart.timeScale().timeToCoordinate(fechaUltima);
+      if (xU !== null && isFinite(xU)) xIni = xU;
     } catch (e) {}
 
-    let x = null;
-
-    try {
-      const xBase = chart.timeScale().logicalToCoordinate(velas.length);
-      if (xBase !== null && isFinite(xBase)) {
-        x = xBase + barSpacing * 5.5;
-      }
-    } catch (e) {
-      x = null;
-    }
-
-    if (x === null || !isFinite(x)) {
+    if (xIni === null || !isFinite(xIni)) {
       try {
-        const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
-        if (xUltima !== null && isFinite(xUltima)) {
-          x = xUltima + barSpacing * 6.5;
-        }
+        const xLog = chart.timeScale().logicalToCoordinate(velas.length - 1);
+        if (xLog !== null && isFinite(xLog)) xIni = xLog;
       } catch (e) {}
     }
 
-    if (x === null || !isFinite(x)) {
-      const ancho = cont.clientWidth;
-      x = ancho - barSpacing / 2;
-    }
-
-    setDivisorX(x);
+    setDivisorX(xIni);
   }
 
   useEffect(() => {
@@ -334,23 +319,15 @@ export default function GraficoSemanal({ velas, smis }) {
           })
         });
 
-
-        chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+        // Array de series de zona (para limpiar todas, incluidas huérfanas)
+        chart._zonaSeries = [];
 
         chart._limpiarZona = () => {
-          if (chart._zonaSeries.areaSup) {
-            try { chart.removeSeries(chart._zonaSeries.areaSup); } catch (e) {}
+          if (!Array.isArray(chart._zonaSeries)) chart._zonaSeries = [];
+          for (const s of chart._zonaSeries) {
+            try { chart.removeSeries(s); } catch (e) {}
           }
-          if (chart._zonaSeries.areaInf) {
-            try { chart.removeSeries(chart._zonaSeries.areaInf); } catch (e) {}
-          }
-          if (chart._zonaSeries.areaFutura) {
-            try { chart.removeSeries(chart._zonaSeries.areaFutura); } catch (e) {}
-          }
-          if (chart._zonaSeries.lineaFutura) {
-            try { chart.removeSeries(chart._zonaSeries.lineaFutura); } catch (e) {}
-          }
-          chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+          chart._zonaSeries = [];
         };
 
         chart._mostrarZona = (idx, conFuturo) => {
@@ -385,6 +362,7 @@ export default function GraficoSemanal({ velas, smis }) {
             crosshairMarkerVisible: false
           });
           areaSup.setData(fechas.map((f) => ({ time: f, value: maxH })));
+          chart._zonaSeries.push(areaSup);
 
           const areaInf = chart.addAreaSeries({
             topColor: 'rgba(0,0,0,0)',
@@ -397,8 +375,7 @@ export default function GraficoSemanal({ velas, smis }) {
             crosshairMarkerVisible: false
           });
           areaInf.setData(fechas.map((f) => ({ time: f, value: minH })));
-
-          chart._zonaSeries = { areaSup, areaInf, areaFutura: null, lineaFutura: null };
+          chart._zonaSeries.push(areaInf);
 
           if (conFuturo) {
             const datosFuturos = [];
@@ -432,6 +409,7 @@ export default function GraficoSemanal({ velas, smis }) {
               crosshairMarkerVisible: false
             });
             areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
+            chart._zonaSeries.push(areaFutura);
 
             const lineaFutura = chart.addLineSeries({
               color: 'rgba(220, 38, 38, 0.9)',
@@ -443,8 +421,7 @@ export default function GraficoSemanal({ velas, smis }) {
               crosshairMarkerVisible: true
             });
             lineaFutura.setData(lineaFuturaData);
-
-            chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
+            chart._zonaSeries.push(lineaFutura);
           }
         };
 
@@ -568,7 +545,6 @@ export default function GraficoSemanal({ velas, smis }) {
   const totalVelas = velas ? velas.length : 0;
   const maxSlider = totalVelas > 0 ? totalVelas - VENTANA - 1 : 0;
 
-  // ─── Resumen de probabilidad histórica real ───
   const resumen =
     coincidencias.length > 0
       ? (() => {
@@ -634,18 +610,6 @@ export default function GraficoSemanal({ velas, smis }) {
 
         {divisorX !== null && posicion >= 0 && (
           <>
-            <div
-              style={{
-                position: 'absolute',
-                left: `${divisorX}px`,
-                top: 0,
-                bottom: 0,
-                right: 0,
-                background: 'rgba(245, 158, 11, 0.12)',
-                pointerEvents: 'none',
-                zIndex: 4
-              }}
-            />
             <div
               style={{
                 position: 'absolute',
