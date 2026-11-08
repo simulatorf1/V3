@@ -352,22 +352,15 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+        // Array de series de zona (para limpiar todas, incluidas huérfanas)
+        chart._zonaSeries = [];
 
         chart._limpiarZona = () => {
-          if (chart._zonaSeries.areaSup) {
-            try { chart.removeSeries(chart._zonaSeries.areaSup); } catch (e) {}
+          if (!Array.isArray(chart._zonaSeries)) chart._zonaSeries = [];
+          for (const s of chart._zonaSeries) {
+            try { chart.removeSeries(s); } catch (e) {}
           }
-          if (chart._zonaSeries.areaInf) {
-            try { chart.removeSeries(chart._zonaSeries.areaInf); } catch (e) {}
-          }
-          if (chart._zonaSeries.areaFutura) {
-            try { chart.removeSeries(chart._zonaSeries.areaFutura); } catch (e) {}
-          }
-          if (chart._zonaSeries.lineaFutura) {
-            try { chart.removeSeries(chart._zonaSeries.lineaFutura); } catch (e) {}
-          }
-          chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+          chart._zonaSeries = [];
         };
 
         chart._mostrarZona = (idx, conFuturo) => {
@@ -402,6 +395,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             crosshairMarkerVisible: false
           });
           areaSup.setData(fechas.map((f) => ({ time: f, value: maxH })));
+          chart._zonaSeries.push(areaSup);
 
           const areaInf = chart.addAreaSeries({
             topColor: 'rgba(0,0,0,0)',
@@ -414,8 +408,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             crosshairMarkerVisible: false
           });
           areaInf.setData(fechas.map((f) => ({ time: f, value: minH })));
-
-          chart._zonaSeries = { areaSup, areaInf, areaFutura: null, lineaFutura: null };
+          chart._zonaSeries.push(areaInf);
 
           if (conFuturo) {
             const datosFuturos = [];
@@ -449,6 +442,7 @@ export default function Grafico({ velas, smis, smiActual }) {
               crosshairMarkerVisible: false
             });
             areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
+            chart._zonaSeries.push(areaFutura);
 
             const lineaFutura = chart.addLineSeries({
               color: 'rgba(220, 38, 38, 0.9)',
@@ -460,8 +454,7 @@ export default function Grafico({ velas, smis, smiActual }) {
               crosshairMarkerVisible: true
             });
             lineaFutura.setData(lineaFuturaData);
-
-            chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
+            chart._zonaSeries.push(lineaFutura);
           }
         };
 
