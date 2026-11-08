@@ -41,6 +41,35 @@ function calcularPercentil(smis, smiActual) {
   return Math.round((menores / validos.length) * 100);
 }
 
+/**
+ * Detecta cambio de pendiente en la última vela:
+ * - negativa → positiva = 'compra'
+ * - positiva → negativa = 'venta'
+ * Sin filtros de posición ni de SMI.
+ */
+function detectarCambioPendiente(smis) {
+  if (!smis || smis.length < 3) return null;
+
+  const s0 = smis[smis.length - 1];
+  const s1 = smis[smis.length - 2];
+  const s2 = smis[smis.length - 3];
+
+  if (s0 === null || s0 === undefined) return null;
+  if (s1 === null || s1 === undefined) return null;
+  if (s2 === null || s2 === undefined) return null;
+
+  const pendActual = s0 - s1;
+  const pendAnterior = s1 - s2;
+
+  if (pendAnterior <= 0 && pendActual > 0) {
+    return { categoriaAnterior: 'negativa', categoriaNueva: 'positiva', tipo: 'compra' };
+  }
+  if (pendAnterior >= 0 && pendActual < 0) {
+    return { categoriaAnterior: 'positiva', categoriaNueva: 'negativa', tipo: 'venta' };
+  }
+  return null;
+}
+
 async function cargarDatos() {
   const vacio = {
     ranking: [],
@@ -54,26 +83,17 @@ async function cargarDatos() {
   };
 
   try {
-    const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-    const [paginasRes, empresasRes, cambiosRes] = await Promise.all([
+    const [paginasRes, empresasRes] = await Promise.all([
       supabase
         .from('paginas')
         .select('ticker, datos')
         .order('actualizado_at', { ascending: false })
         .limit(500),
-      supabase.from('empresas').select('ticker, nombre, sector'),
-      supabase
-        .from('cambios_movimiento')
-        .select('ticker, movimiento_anterior, movimiento_nuevo, detectado_at')
-        .gte('detectado_at', hace24h)
-        .order('detectado_at', { ascending: false })
-        .limit(40)
+      supabase.from('empresas').select('ticker, nombre, sector')
     ]);
 
     const paginas = paginasRes?.data || [];
     const empresas = empresasRes?.data || [];
-    const cambiosZonaRaw = cambiosRes?.data || [];
 
     const empresasMap = {};
     for (const e of empresas) {
@@ -85,6 +105,7 @@ async function cargarDatos() {
     const extremosBajos = [];
     const porSector = {};
     const empresasLigeras = [];
+    const cambiosZona = [];
 
     for (const p of paginas) {
       const datos = parseDatos(p.datos);
@@ -130,6 +151,18 @@ async function cargarDatos() {
           porSector[emp.sector].push(item);
         }
       }
+
+      // ─── CAMBIO DE PENDIENTE (al vuelo, sin filtros) ───
+      const cambio = detectarCambioPendiente(smis);
+      if (cambio) {
+        cambiosZona.push({
+          ticker: p.ticker,
+          nombre: emp.nombre,
+          sector: emp.sector || null,
+          categoriaAnterior: cambio.categoriaAnterior,
+          categoriaNueva: cambio.categoriaNueva
+        });
+      }
     }
 
     const rankingOrdenado = ranking
@@ -140,24 +173,6 @@ async function cargarDatos() {
 
     extremosAltos.sort((a, b) => b.percentil - a.percentil);
     extremosBajos.sort((a, b) => a.percentil - b.percentil);
-
-    const cambiosZona = cambiosZonaRaw.map((c) => ({
-      ticker: c.ticker,
-      nombre: empresasMap[c.ticker]?.nombre || c.ticker,
-      sector: empresasMap[c.ticker]?.sector || null,
-      categoriaAnterior:
-        c.movimiento_anterior === 'venta'
-          ? 'A'
-          : c.movimiento_anterior === 'compra'
-          ? 'C'
-          : 'B',
-      categoriaNueva:
-        c.movimiento_nuevo === 'venta'
-          ? 'A'
-          : c.movimiento_nuevo === 'compra'
-          ? 'C'
-          : 'B'
-    }));
 
     const conteoSectores = {};
     for (const e of empresas) {
