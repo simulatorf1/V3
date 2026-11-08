@@ -345,40 +345,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        const lineaDivisoria = chart.addLineSeries({
-          color: '#111827',
-          lineWidth: 4,
-          lineStyle: LineStyle.Solid,
-          priceScaleId: 'divisoria',
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: false
-        });
-
-        chart.priceScale('divisoria').applyOptions({
-          visible: false,
-          scaleMargins: { top: 0, bottom: 0 }
-        });
-
-        lineaDivisoria.applyOptions({
-          autoscaleInfoProvider: () => null
-        });
-
-        chart._lineaDivisoria = lineaDivisoria;
-
-        chart._pintarDivisoria = (visible) => {
-          if (!chart._lineaDivisoria) return;
-          if (!visible) {
-            chart._lineaDivisoria.setData([]);
-            return;
-          }
-          const ultima = velas[velas.length - 1];
-          const t = Math.floor(new Date(ultima.date + 'T00:00:00Z').getTime() / 1000);
-          chart._lineaDivisoria.setData([
-            { time: t, value: 0 },
-            { time: t + 1, value: 1 }
-          ]);
-        };
 
         chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
 
@@ -556,14 +522,12 @@ export default function Grafico({ velas, smis, smiActual }) {
 
     if (idx < 0) {
       chartRef.current._limpiarZona();
-      if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(false);
       setInfoSeleccion(null);
       setDivisorX(null);
       return;
     }
 
     chartRef.current._mostrarZona(idx, true);
-    if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(true);
 
     const idxInicio = idx;
     const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
