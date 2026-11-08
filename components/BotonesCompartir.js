@@ -10,7 +10,7 @@ function situacionDesdeZona(zona) {
   return 'parte intermedia del rango';
 }
 
-function bloqueDireccionCorto(proyeccion, etiqueta) {
+function bloqueDireccionCorto(proyeccion, horizonte) {
   if (!proyeccion) return null;
   const { total, subidas, bajadas } = proyeccion;
   if (total === 0) return null;
@@ -19,17 +19,35 @@ function bloqueDireccionCorto(proyeccion, etiqueta) {
   const pctBajadas = 100 - pctSubidas;
 
   if (subidas > bajadas) {
-    return `${etiqueta}: subió ${subidas}/${total} (${pctSubidas}% subidas)`;
+    return `${horizonte}: subió ${subidas}/${total} (${pctSubidas}% subidas)`;
   }
   if (bajadas > subidas) {
-    return `${etiqueta}: bajó ${bajadas}/${total} (${pctBajadas}% bajadas)`;
+    return `${horizonte}: bajó ${bajadas}/${total} (${pctBajadas}% bajadas)`;
   }
-  return `${etiqueta}: ${subidas} subidas / ${bajadas} bajadas`;
+  return `${horizonte}: ${subidas} subidas / ${bajadas} bajadas`;
 }
 
-/**
- * Recorta el texto a MAX_TUIT caracteres sin romper el enlace final.
- */
+function cierreCorto(proyeccionDiaria, proyeccionSemanal) {
+  const partes = [];
+  if (proyeccionDiaria) {
+    const { total, subidas, bajadas } = proyeccionDiaria;
+    if (total > 0) {
+      if (bajadas > subidas) partes.push('A corto plazo, ha bajado más veces.');
+      else if (subidas > bajadas) partes.push('A corto plazo, ha subido más veces.');
+      else partes.push('A corto plazo, ha subido y bajado por igual.');
+    }
+  }
+  if (proyeccionSemanal) {
+    const { total, subidas, bajadas } = proyeccionSemanal;
+    if (total > 0) {
+      if (bajadas > subidas) partes.push('A largo plazo, ha bajado más veces.');
+      else if (subidas > bajadas) partes.push('A largo plazo, ha subido más veces.');
+      else partes.push('A largo plazo, ha subido y bajado por igual.');
+    }
+  }
+  return partes.join(' ');
+}
+
 function recortarTuit(cuerpo, enlace) {
   const sufijo = `\n${enlace}`;
   const espacioCuerpo = MAX_TUIT - sufijo.length;
@@ -60,8 +78,8 @@ export default function BotonesCompartir({
     const precio = analisis.precioActual?.toFixed(2) || '—';
     const situacion = situacionDesdeZona(analisis.zona);
 
-    const bDiario = bloqueDireccionCorto(proyeccionDiaria, 'Diario');
-    const bSemanal = bloqueDireccionCorto(proyeccionSemanal, 'Semanal');
+    const bDiario = bloqueDireccionCorto(proyeccionDiaria, '10 días siguientes');
+    const bSemanal = bloqueDireccionCorto(proyeccionSemanal, '10 semanas siguientes');
 
     const hashtagNombre = `#${nombre.replace(/\s+/g, '')}`;
     const tickerLimpio = empresa.ticker.split('.')[0];
@@ -75,6 +93,8 @@ export default function BotonesCompartir({
       if (bDiario) cuerpo += `• ${bDiario}\n`;
       if (bSemanal) cuerpo += `• ${bSemanal}\n`;
       cuerpo += `\n`;
+      const cierre = cierreCorto(proyeccionDiaria, proyeccionSemanal);
+      if (cierre) cuerpo += `${cierre}\n\n`;
     } else {
       cuerpo += `Sin suficientes casos históricos similares.\n\n`;
     }
