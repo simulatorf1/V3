@@ -41,12 +41,17 @@ function buscarCoincidencias(velas, smis, smiActual) {
       if (pendienteActual < 0 && pend >= 0) continue;
     }
 
+    const precioInicio = velas[i].close;
+    const precioFin = velas[i + VENTANA].close;
+    const variacion = ((precioFin - precioInicio) / precioInicio) * 100;
+
     coincidencias.push({
       indexFecha: i,
       fecha: velas[i].date,
       fechaFin: velas[Math.min(i + VENTANA, velas.length - 1)].date,
       smi: v,
-      distancia: Math.abs(v - smiActual)
+      distancia: Math.abs(v - smiActual),
+      variacion
     });
   }
 
@@ -60,7 +65,8 @@ function buscarCoincidencias(velas, smis, smiActual) {
     if (!demasiadoCerca) seleccionadas.push(c);
   }
 
-  return seleccionadas.sort((a, b) => a.indexFecha - b.indexFecha);
+  // Ordenadas por cercanía al SMI actual (la más cercana primero)
+  return seleccionadas.sort((a, b) => a.distancia - b.distancia);
 }
 
 function sumarDiasHabiles(fechaStr, dias) {
@@ -85,6 +91,12 @@ function formatearFecha(fechaStr) {
   } catch (e) {
     return '';
   }
+}
+
+function formatearVariacion(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const signo = v >= 0 ? '+' : '';
+  return `${signo}${v.toFixed(1)}%`;
 }
 
 export default function Grafico({ velas, smis, smiActual }) {
@@ -114,7 +126,6 @@ export default function Grafico({ velas, smis, smiActual }) {
     posicionRef.current = posicion;
   }, [posicion]);
 
-  // Solo para posicionar tintes y etiquetas HTML (la línea la pinta el chart)
   function calcularDivisorX() {
     const chart = chartRef.current;
     const cont = contenedorRef.current;
@@ -334,8 +345,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        // ── LÍNEA VERTICAL ANCLADA A LA ÚLTIMA VELA REAL ──
-        // Serie en su PROPIO price scale para no afectar al autoscale del precio.
         const lineaDivisoria = chart.addLineSeries({
           color: '#111827',
           lineWidth: 4,
@@ -480,7 +489,6 @@ export default function Grafico({ velas, smis, smiActual }) {
             });
             lineaFutura.setData(lineaFuturaData);
 
-            
             chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
           }
         };
@@ -548,12 +556,14 @@ export default function Grafico({ velas, smis, smiActual }) {
 
     if (idx < 0) {
       chartRef.current._limpiarZona();
+      if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(false);
       setInfoSeleccion(null);
       setDivisorX(null);
       return;
     }
 
     chartRef.current._mostrarZona(idx, true);
+    if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(true);
 
     const idxInicio = idx;
     const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
@@ -605,6 +615,22 @@ export default function Grafico({ velas, smis, smiActual }) {
   const totalVelas = velas ? velas.length : 0;
   const maxSlider = totalVelas > 0 ? totalVelas - VENTANA - 1 : 0;
 
+  // ─── Resumen de probabilidad histórica real ───
+  const resumen =
+    coincidencias.length > 0
+      ? (() => {
+          const subidas = coincidencias.filter((c) => c.variacion > 0).length;
+          const bajadas = coincidencias.filter((c) => c.variacion < 0).length;
+          const total = coincidencias.length;
+          return {
+            total,
+            subidas,
+            bajadas,
+            pctSubidas: total > 0 ? Math.round((subidas / total) * 100) : 0
+          };
+        })()
+      : null;
+
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico principal (diario)</h2>
@@ -653,10 +679,8 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-
         {divisorX !== null && posicion >= 0 && (
           <>
-            {/* Tinte ámbar suave solo a la DERECHA (proyección/futuro) */}
             <div
               style={{
                 position: 'absolute',
@@ -669,7 +693,6 @@ export default function Grafico({ velas, smis, smiActual }) {
                 zIndex: 4
               }}
             />
-            {/* Etiqueta PAST — sin fondo de zona, solo la etiqueta */}
             <div
               style={{
                 position: 'absolute',
@@ -691,7 +714,6 @@ export default function Grafico({ velas, smis, smiActual }) {
             >
               ← PAST
             </div>
-            {/* Etiqueta FUTURE */}
             <div
               style={{
                 position: 'absolute',
@@ -714,7 +736,6 @@ export default function Grafico({ velas, smis, smiActual }) {
             </div>
           </>
         )}
-
       </div>
 
       <div
@@ -827,6 +848,29 @@ export default function Grafico({ velas, smis, smiActual }) {
 
         {coincidencias.length > 0 && (
           <div style={{ marginTop: '14px' }}>
+            {resumen && (
+              <div
+                style={{
+                  marginBottom: '10px',
+                  padding: '10px 12px',
+                  background: '#fff',
+                  border: '1px solid var(--v3-border)',
+                  borderRadius: '6px',
+                  fontSize: '12.5px',
+                  lineHeight: 1.6
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: '2px' }}>
+                  De las {resumen.total} veces que estuvo en una posición similar:
+                </div>
+                <div>
+                  <strong>{resumen.subidas}</strong> veces el precio subió ·{' '}
+                  <strong>{resumen.bajadas}</strong> veces bajó ·{' '}
+                  <strong>{resumen.pctSubidas}%</strong> de subidas.
+                </div>
+              </div>
+            )}
+
             <div
               style={{
                 fontSize: '12px',
@@ -835,9 +879,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 marginBottom: '6px'
               }}
             >
-              {coincidencias.length === 1
-                ? 'Se ha encontrado 1 coincidencia:'
-                : `Se han encontrado ${coincidencias.length} coincidencias:`}
+              Casos ordenados por cercanía a la situación actual:
             </div>
             <div
               style={{
@@ -851,7 +893,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                   key={i}
                   onClick={() => irACoincidencia(c)}
                   style={{
-                    padding: '6px 12px',
+                    padding: '6px 10px',
                     fontSize: '12px',
                     fontWeight: 600,
                     borderRadius: '999px',
@@ -862,10 +904,23 @@ export default function Grafico({ velas, smis, smiActual }) {
                     background:
                       posicion === c.indexFecha ? '#fef3c7' : '#fffbeb',
                     color: '#78350f',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    gap: '6px',
+                    alignItems: 'center'
                   }}
                 >
-                  {formatearFecha(c.fecha)} → {formatearFecha(c.fechaFin)}
+                  <span>
+                    {formatearFecha(c.fecha)} → {formatearFecha(c.fechaFin)}
+                  </span>
+                  <span
+                    style={{
+                      fontWeight: 800,
+                      color: c.variacion >= 0 ? '#166534' : '#991b1b'
+                    }}
+                  >
+                    {formatearVariacion(c.variacion)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -877,8 +932,9 @@ export default function Grafico({ velas, smis, smiActual }) {
                 lineHeight: 1.5
               }}
             >
-              Pulsa una fecha para colocarte en esa coincidencia y ver qué pasó después. También
-              puedes desplazar la barra manualmente para explorar cualquier otra fecha.
+              Pulsa una fecha para colocarte en esa coincidencia y ver qué pasó después. Las
+              coincidencias están ordenadas de más a menos parecida a la situación actual (sin
+              contar la variación posterior).
             </div>
           </div>
         )}
