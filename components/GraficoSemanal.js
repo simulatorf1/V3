@@ -398,7 +398,15 @@ export default function GraficoSemanal({ velas, smis }) {
               lineaFuturaData.push({ time: df.fechaFutura, value: medioAcum });
             }
 
-            const areaFutura = chart.addAreaSeries({
+            // Rango de todas las velas para que las áreas cubran toda la altura
+            const todosLosHighs = velas.map((v) => v.high);
+            const todosLosLows = velas.map((v) => v.low);
+            const precioMax = Math.max(...todosLosHighs);
+            const precioMin = Math.min(...todosLosLows);
+            const margen = (precioMax - precioMin) * 2;
+            
+            // Área superior: desde muy arriba hasta el precio de la proyección
+            const areaFuturaSup = chart.addAreaSeries({
               topColor: 'rgba(156, 163, 175, 0.10)',
               bottomColor: 'rgba(156, 163, 175, 0.10)',
               lineColor: 'rgba(0,0,0,0)',
@@ -408,8 +416,32 @@ export default function GraficoSemanal({ velas, smis }) {
               lastValueVisible: false,
               crosshairMarkerVisible: false
             });
-            areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
-            chart._zonaSeries.push(areaFutura);
+            areaFuturaSup.applyOptions({
+              autoscaleInfoProvider: () => null
+            });
+            areaFuturaSup.setData(
+              lineaFuturaData.map((p) => ({ time: p.time, value: precioMax + margen }))
+            );
+            chart._zonaSeries.push(areaFuturaSup);
+            
+            // Área inferior: desde muy abajo hasta el precio de la proyección
+            const areaFuturaInf = chart.addAreaSeries({
+              topColor: 'rgba(156, 163, 175, 0.10)',
+              bottomColor: 'rgba(156, 163, 175, 0.10)',
+              lineColor: 'rgba(0,0,0,0)',
+              lineWidth: 1,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false
+            });
+            areaFuturaInf.applyOptions({
+              autoscaleInfoProvider: () => null
+            });
+            areaFuturaInf.setData(
+              lineaFuturaData.map((p) => ({ time: p.time, value: precioMin - margen }))
+            );
+            chart._zonaSeries.push(areaFuturaInf);
 
             const lineaFutura = chart.addLineSeries({
               color: 'rgba(220, 38, 38, 0.9)',
