@@ -79,7 +79,6 @@ function calcularPercentil(smis, smiActual) {
   return Math.round((menores / validos.length) * 100);
 }
 
-// NUEVO: convierte **texto** en <strong>texto</strong>
 function renderizarNegritas(texto) {
   if (!texto) return null;
   const partes = texto.split(/(\*\*[^*]+\*\*)/g);
@@ -390,7 +389,6 @@ export default async function PaginaEmpresa({ params }) {
       ? analisis.sectorInfo.variacionSector60
       : null;
 
-  // NUEVO: proyección histórica diaria y semanal
   const proyeccionDiaria = calcularProyeccion(
     analisis.velasUltimas60,
     analisis.smisUltimos60
@@ -551,7 +549,6 @@ export default async function PaginaEmpresa({ params }) {
                 <BarraIndicadorVisual valor={analisis.smiActual} />
               </div>
 
-              {/* NUEVO: bloque compacto de proyección histórica */}
               {(proyeccionDiaria || proyeccionSemanal) && (
                 <div
                   style={{
@@ -692,7 +689,13 @@ export default async function PaginaEmpresa({ params }) {
 
           <ConsensoComunidad ticker={empresa.ticker} />
 
-          <BotonesCompartir empresa={empresa} analisis={analisis} url={canonical} />
+          <BotonesCompartir
+            empresa={empresa}
+            analisis={analisis}
+            url={canonical}
+            proyeccionDiaria={proyeccionDiaria}
+            proyeccionSemanal={proyeccionSemanal}
+          />
         </div>
       </div>
     </div>
