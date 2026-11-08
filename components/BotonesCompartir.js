@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 
-const VENTANA = 10;
-const RANGO_VALOR = 30;
 const MAX_TUIT = 280;
 
 function situacionDesdeZona(zona) {
@@ -12,74 +10,25 @@ function situacionDesdeZona(zona) {
   return 'parte intermedia del rango';
 }
 
-function calcularPendiente(smis, idx) {
-  if (idx < 1) return null;
-  const actual = smis[idx];
-  const anterior = smis[idx - 1];
-  if (actual === null || actual === undefined || anterior === null || anterior === undefined) {
-    return null;
+function bloqueDireccionCorto(proyeccion, etiqueta) {
+  if (!proyeccion) return null;
+  const { total, subidas, bajadas } = proyeccion;
+  if (total === 0) return null;
+
+  const pctSubidas = Math.round((subidas / total) * 100);
+  const pctBajadas = 100 - pctSubidas;
+
+  if (subidas > bajadas) {
+    return `${etiqueta}: subió ${subidas}/${total} (${pctSubidas}% subidas)`;
   }
-  return actual - anterior;
-}
-
-function calcularProyeccion(velas, smis) {
-  if (!velas || !smis || velas.length < 20 || smis.length < 20) return null;
-
-  const idxActual = smis.length - 1;
-  const smiActual = smis[idxActual];
-  if (smiActual === null || smiActual === undefined) return null;
-
-  const pendienteActual = calcularPendiente(smis, idxActual);
-  const casos = [];
-
-  for (let i = idxActual - 1; i >= 0; i--) {
-    if (i + VENTANA >= velas.length) continue;
-
-    const v = smis[i];
-    if (v === null || v === undefined) continue;
-    if (Math.abs(v - smiActual) > RANGO_VALOR) continue;
-
-    const pend = calcularPendiente(smis, i);
-    if (pend === null) continue;
-
-    if (pendienteActual !== null) {
-      if (pendienteActual >= 0 && pend < 0) continue;
-      if (pendienteActual < 0 && pend >= 0) continue;
-    }
-
-    const precioInicio = velas[i].close;
-    const precioFin = velas[i + VENTANA].close;
-    const variacion = ((precioFin - precioInicio) / precioInicio) * 100;
-
-    casos.push({ fecha: velas[i].date, variacion });
+  if (bajadas > subidas) {
+    return `${etiqueta}: bajó ${bajadas}/${total} (${pctBajadas}% bajadas)`;
   }
-
-  if (casos.length === 0) return null;
-
-  const subidas = casos.filter((c) => c.variacion > 0);
-  const bajadas = casos.filter((c) => c.variacion < 0);
-
-  const mediaSubidas =
-    subidas.length > 0
-      ? subidas.reduce((a, c) => a + c.variacion, 0) / subidas.length
-      : null;
-  const mediaBajadas =
-    bajadas.length > 0
-      ? bajadas.reduce((a, c) => a + c.variacion, 0) / bajadas.length
-      : null;
-
-  return {
-    total: casos.length,
-    subidas: subidas.length,
-    bajadas: bajadas.length,
-    mediaSubidas,
-    mediaBajadas
-  };
+  return `${etiqueta}: ${subidas} subidas / ${bajadas} bajadas`;
 }
 
 /**
  * Recorta el texto a MAX_TUIT caracteres sin romper el enlace final.
- * Si hay que recortar, quita caracteres del cuerpo (no del enlace).
  */
 function recortarTuit(cuerpo, enlace) {
   const sufijo = `\n${enlace}`;
@@ -89,12 +38,17 @@ function recortarTuit(cuerpo, enlace) {
     return cuerpo + sufijo;
   }
 
-  // Recortar cuerpo y añadir "…" antes del enlace
   const recortado = cuerpo.slice(0, espacioCuerpo - 1).trimEnd() + '…';
   return recortado + sufijo;
 }
 
-export default function BotonesCompartir({ empresa, analisis, url }) {
+export default function BotonesCompartir({
+  empresa,
+  analisis,
+  url,
+  proyeccionDiaria,
+  proyeccionSemanal
+}) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [textoTuit, setTextoTuit] = useState('');
   const [copiado, setCopiado] = useState(false);
@@ -105,51 +59,28 @@ export default function BotonesCompartir({ empresa, analisis, url }) {
     const nombre = empresa.nombre;
     const precio = analisis.precioActual?.toFixed(2) || '—';
     const situacion = situacionDesdeZona(analisis.zona);
-    const velas = analisis.velasUltimas60 || [];
-    const smis = analisis.smisUltimos60 || [];
 
-    let variacion60 = null;
-    if (velas.length >= 2) {
-      const primero = velas[0]?.close;
-      const ultimo = velas[velas.length - 1]?.close;
-      if (primero) {
-        variacion60 = ((ultimo - primero) / primero) * 100;
-      }
-    }
-
-    const proyeccion = calcularProyeccion(velas, smis);
+    const bDiario = bloqueDireccionCorto(proyeccionDiaria, 'Diario');
+    const bSemanal = bloqueDireccionCorto(proyeccionSemanal, 'Semanal');
 
     const hashtagNombre = `#${nombre.replace(/\s+/g, '')}`;
     const tickerLimpio = empresa.ticker.split('.')[0];
     const hashtagTicker = `#${tickerLimpio}`;
 
-    // ─── Construir cuerpo (sin enlace) ───
     let cuerpo = `${hashtagNombre} ${hashtagTicker}\n`;
-    cuerpo += `Precio: ${precio} €`;
-    if (variacion60 !== null) {
-      const signo = variacion60 >= 0 ? '+' : '';
-      cuerpo += ` · 60 sesiones: ${signo}${variacion60.toFixed(1)}%`;
-    }
-    cuerpo += `\n${situacion}\n\n`;
+    cuerpo += `Precio: ${precio} € · ${situacion}\n\n`;
 
-    if (proyeccion) {
-      cuerpo += `Últimas ${proyeccion.total} veces en posición similar:\n`;
-      if (proyeccion.subidas > 0) {
-        const signo = proyeccion.mediaSubidas >= 0 ? '+' : '';
-        cuerpo += `• ${proyeccion.subidas} ${proyeccion.subidas === 1 ? 'vez subió' : 'veces subió'} (media ${signo}${proyeccion.mediaSubidas.toFixed(1)}%)\n`;
-      }
-      if (proyeccion.bajadas > 0) {
-        const signo = proyeccion.mediaBajadas >= 0 ? '+' : '';
-        cuerpo += `• ${proyeccion.bajadas} ${proyeccion.bajadas === 1 ? 'vez bajó' : 'veces bajó'} (media ${signo}${proyeccion.mediaBajadas.toFixed(1)}%)\n`;
-      }
+    if (bDiario || bSemanal) {
+      cuerpo += `Según nuestro indicador Equaty, las últimas veces que estuvo en una posición similar:\n`;
+      if (bDiario) cuerpo += `• ${bDiario}\n`;
+      if (bSemanal) cuerpo += `• ${bSemanal}\n`;
       cuerpo += `\n`;
     } else {
-      cuerpo += `Sin coincidencias históricas suficientes para esta posición.\n\n`;
+      cuerpo += `Sin suficientes casos históricos similares.\n\n`;
     }
 
     cuerpo += `¿Tú qué crees que hará? 👇`;
 
-    // ─── Recortar a 280 respetando el enlace ───
     return recortarTuit(cuerpo, url);
   }
 
