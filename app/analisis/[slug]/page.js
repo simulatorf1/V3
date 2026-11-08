@@ -12,7 +12,8 @@ import WatchlistBoton from '../../../components/WatchlistBoton';
 import ContextoSector from '../../../components/ContextoSector';
 import BarraIndicadorVisual from '../../../components/BarraIndicadorVisual';
 import ActividadFavoritos from '../../../components/ActividadFavoritos';
-import { generarTextoSituacion } from '../../../lib/textoSituacion';
+import { generarTextoProyeccion } from '../../../lib/textoSituacion';
+import { calcularProyeccion } from '../../../lib/proyeccion';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import WatchlistZona from '../../../components/WatchlistZona';
 import Comentarios from '../../../components/Comentarios';
@@ -70,37 +71,24 @@ function calcularVariacion(velas, sesiones) {
   return ((ultimo - primero) / primero) * 100;
 }
 
-function detectarCambioPendiente(smis) {
-  if (!smis || smis.length < 3) return null;
-
-  const s0 = smis[smis.length - 1];
-  const s1 = smis[smis.length - 2];
-  const s2 = smis[smis.length - 3];
-
-  if (s0 === null || s0 === undefined) return null;
-  if (s1 === null || s1 === undefined) return null;
-  if (s2 === null || s2 === undefined) return null;
-
-  const pendActual = s0 - s1;
-  const pendAnterior = s1 - s2;
-
-  // Cambio de negativa a positiva → señal de compra
-  if (pendAnterior <= 0 && pendActual > 0) {
-    return { categoriaAnterior: 'negativa', categoriaNueva: 'positiva' };
-  }
-  // Cambio de positiva a negativa → señal de venta
-  if (pendAnterior >= 0 && pendActual < 0) {
-    return { categoriaAnterior: 'positiva', categoriaNueva: 'negativa' };
-  }
-  return null;
-}
-
 function calcularPercentil(smis, smiActual) {
   if (!smis || smis.length === 0 || smiActual === null || smiActual === undefined) return null;
   const validos = smis.filter((v) => v !== null && v !== undefined);
   if (validos.length === 0) return null;
   const menores = validos.filter((v) => v < smiActual).length;
   return Math.round((menores / validos.length) * 100);
+}
+
+// NUEVO: convierte **texto** en <strong>texto</strong>
+function renderizarNegritas(texto) {
+  if (!texto) return null;
+  const partes = texto.split(/(\*\*[^*]+\*\*)/g);
+  return partes.map((p, i) => {
+    if (p.startsWith('**') && p.endsWith('**')) {
+      return <strong key={i}>{p.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{p}</span>;
+  });
 }
 
 async function cargarConsenso(ticker) {
@@ -130,6 +118,29 @@ async function cargarConsenso(ticker) {
   } catch (e) {
     return { total: 0, sentimiento: null, conteo: { seguimiento: 0, cartera: 0, fuera: 0 } };
   }
+}
+
+function detectarCambioPendiente(smis) {
+  if (!smis || smis.length < 3) return null;
+
+  const s0 = smis[smis.length - 1];
+  const s1 = smis[smis.length - 2];
+  const s2 = smis[smis.length - 3];
+
+  if (s0 === null || s0 === undefined) return null;
+  if (s1 === null || s1 === undefined) return null;
+  if (s2 === null || s2 === undefined) return null;
+
+  const pendActual = s0 - s1;
+  const pendAnterior = s1 - s2;
+
+  if (pendAnterior <= 0 && pendActual > 0) {
+    return { categoriaAnterior: 'negativa', categoriaNueva: 'positiva' };
+  }
+  if (pendAnterior >= 0 && pendActual < 0) {
+    return { categoriaAnterior: 'positiva', categoriaNueva: 'negativa' };
+  }
+  return null;
 }
 
 async function cargarContextoSector(tickerActual, sector) {
@@ -175,7 +186,6 @@ async function cargarContextoSector(tickerActual, sector) {
         zona: datos.zona || null
       });
 
-      // ─── CAMBIO DE PENDIENTE (al vuelo, sin filtros) ───
       const cambio = detectarCambioPendiente(smis);
       if (cambio) {
         cambiosZona.push({
@@ -342,12 +352,11 @@ export default async function PaginaEmpresa({ params }) {
 
   const velas = analisis.velasUltimas60 || [];
   const smis = analisis.smisUltimos60 || [];
-  
+
   const precioActual = analisis.precioActual;
   const precio5Atras = velas.length >= 6 ? velas[velas.length - 6].close : precioActual;
   const variacion5 = precio5Atras ? ((precioActual - precio5Atras) / precio5Atras) * 100 : 0;
-  
-  // Percentil: se calcula sobre las últimas 60 sesiones (no sobre las 120)
+
   const smis60 = smis.slice(-60);
   const smisValidos = smis60.filter((v) => v !== null && v !== undefined);
   const smisOrdenados = [...smisValidos].sort((a, b) => a - b);
@@ -360,13 +369,11 @@ export default async function PaginaEmpresa({ params }) {
   const situacionActual = situacionDesdeZona(analisis.zona);
   const consenso = await cargarConsenso(empresa.ticker);
 
-  // Variación 60: se calcula sobre las últimas 60 velas (no sobre las 120)
   const ultimas60 = velas.slice(-60);
   const primerCierre = ultimas60[0]?.close;
   const ultimoCierre = ultimas60[ultimas60.length - 1]?.close;
   const variacion60 = primerCierre ? ((ultimoCierre - primerCierre) / primerCierre) * 100 : 0;
-  
-  // Max/min 60: sobre las últimas 60 velas (no sobre las 120)
+
   const max60 = ultimas60.length > 0 ? Math.max(...ultimas60.map((v) => v.high)) : null;
   const min60 = ultimas60.length > 0 ? Math.min(...ultimas60.map((v) => v.low)) : null;
   const distanciaMax = max60 ? ((precioActual - max60) / max60) * 100 : null;
@@ -383,17 +390,21 @@ export default async function PaginaEmpresa({ params }) {
       ? analisis.sectorInfo.variacionSector60
       : null;
 
-  const textoSituacion = generarTextoSituacion({
+  // NUEVO: proyección histórica diaria y semanal
+  const proyeccionDiaria = calcularProyeccion(
+    analisis.velasUltimas60,
+    analisis.smisUltimos60
+  );
+  const proyeccionSemanal = calcularProyeccion(
+    analisis.velasSemanales,
+    analisis.smisSemanales
+  );
+
+  const textoProyeccion = generarTextoProyeccion({
     nombre: empresa.nombre,
-    zona: analisis.zona,
-    percentil,
-    smiActual: analisis.smiActual,
-    pendienteIndicador,
-    posicionRango: null,
-    distanciaMax,
-    distanciaMin,
-    variacionSector60,
-    variacion60
+    precioActual: analisis.precioActual,
+    proyeccionDiaria,
+    proyeccionSemanal
   });
 
   const contexto = await cargarContextoSector(empresa.ticker, empresa.sector);
@@ -460,7 +471,7 @@ export default async function PaginaEmpresa({ params }) {
         {desdeCache && ' · desde caché'}
       </p>
 
-      {textoSituacion && (
+      {textoProyeccion && (
         <p
           style={{
             marginTop: '16px',
@@ -470,7 +481,7 @@ export default async function PaginaEmpresa({ params }) {
             color: 'var(--v3-text)'
           }}
         >
-          {textoSituacion}
+          {renderizarNegritas(textoProyeccion)}
         </p>
       )}
 
@@ -540,6 +551,49 @@ export default async function PaginaEmpresa({ params }) {
                 <BarraIndicadorVisual valor={analisis.smiActual} />
               </div>
 
+              {/* NUEVO: bloque compacto de proyección histórica */}
+              {(proyeccionDiaria || proyeccionSemanal) && (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--v3-border)',
+                    fontSize: '12.5px',
+                    lineHeight: 1.7
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>
+                    Proyección histórica
+                  </div>
+                  {proyeccionDiaria && (
+                    <div>
+                      <strong>Diario:</strong> {proyeccionDiaria.total} casos ·{' '}
+                      <strong>{proyeccionDiaria.subidas} subidas</strong>
+                      {proyeccionDiaria.bajadas > 0 && (
+                        <>
+                          {' / '}
+                          <strong>{proyeccionDiaria.bajadas} bajadas</strong>
+                        </>
+                      )}{' '}
+                      · <strong>{proyeccionDiaria.pctSubidas}%</strong> de subidas.
+                    </div>
+                  )}
+                  {proyeccionSemanal && (
+                    <div>
+                      <strong>Semanal:</strong> {proyeccionSemanal.total} casos ·{' '}
+                      <strong>{proyeccionSemanal.subidas} subidas</strong>
+                      {proyeccionSemanal.bajadas > 0 && (
+                        <>
+                          {' / '}
+                          <strong>{proyeccionSemanal.bajadas} bajadas</strong>
+                        </>
+                      )}{' '}
+                      · <strong>{proyeccionSemanal.pctSubidas}%</strong> de subidas.
+                    </div>
+                  )}
+                </div>
+              )}
+
               <p style={{ margin: '8px 0 0 0', fontSize: '11.5px', color: 'var(--v3-text-mute)' }}>
                 Datos históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
               </p>
@@ -555,7 +609,6 @@ export default async function PaginaEmpresa({ params }) {
             />
           </section>
 
-          {/* ── AVISOS POR EMAIL (subido) ── */}
           <section className="v3-seccion">
             <h2 className="v3-seccion-titulo">Avisos por email</h2>
             <p style={{ color: 'var(--v3-text-soft)', fontSize: '14px', marginTop: '-4px' }}>
@@ -565,10 +618,8 @@ export default async function PaginaEmpresa({ params }) {
             <FormularioAlerta empresa={empresa} />
           </section>
 
-          {/* ── COMENTARIOS ── */}
           <Comentarios ticker={empresa.ticker} nombreEmpresa={empresa.nombre} />
 
-          {/* ── NOTICIAS (debajo de comentarios, en la izquierda) ── */}
           {analisis.noticias && analisis.noticias.length > 0 && (
             <ContextoReciente noticias={analisis.noticias} />
           )}
@@ -619,7 +670,6 @@ export default async function PaginaEmpresa({ params }) {
             <ActividadFavoritos empresas={empresasParaActividad} modo="compacto" />
           </WatchlistZona>
 
-          {/* ── GRÁFICO SEMANAL (bajado a la derecha) ── */}
           {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
             <GraficoSemanal velas={analisis.velasSemanales} smis={analisis.smisSemanales || []} />
           )}
@@ -633,7 +683,6 @@ export default async function PaginaEmpresa({ params }) {
             extremosBajos={contexto.extremosBajos}
           />
 
-          {/* ── COMPARADOR (bajado a la derecha) ── */}
           <Comparador
             tickerActual={empresa.ticker}
             nombreActual={empresa.nombre}
