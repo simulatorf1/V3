@@ -145,14 +145,14 @@ export default function Grafico({ velas, smis, smiActual }) {
 
     let x = null;
 
-    try {
-      const xBase = chart.timeScale().logicalToCoordinate(velas.length);
-      if (xBase !== null && isFinite(xBase)) {
-        x = xBase;
-      }
-    } catch (e) {
-      x = null;
+  try {
+    const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
+    if (xUltima !== null && isFinite(xUltima)) {
+      x = xUltima;
     }
+  } catch (e) {
+    x = null;
+  }
 
     if (x === null || !isFinite(x)) {
       try {
