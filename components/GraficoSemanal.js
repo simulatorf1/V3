@@ -1,168 +1,898 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const VELAS_ATRAS = 104;
+const VENTANA = 10;
+const RANGO_VALOR = 30;
+const SEPARACION_MINIMA = 5;
+
+function calcularPendiente(smis, idx) {
+  if (idx < 1) return null;
+  const actual = smis[idx];
+  const anterior = smis[idx - 1];
+  if (actual === null || actual === undefined || anterior === null || anterior === undefined) {
+    return null;
+  }
+  return actual - anterior;
+}
+
+function buscarCoincidencias(velas, smis, smiActual) {
+  if (!velas || !smis || velas.length < 10 || smis.length < 10) return [];
+  if (smiActual === null || smiActual === undefined) return [];
+
+  const idxActual = smis.length - 1;
+  const pendienteActual = calcularPendiente(smis, idxActual);
+
+  const coincidencias = [];
+
+  for (let i = idxActual - 1; i >= 0; i--) {
+    if (i + VENTANA >= velas.length) continue;
+
+    const v = smis[i];
+    if (v === null || v === undefined) continue;
+    if (Math.abs(v - smiActual) > RANGO_VALOR) continue;
+
+    const pend = calcularPendiente(smis, i);
+    if (pend === null) continue;
+
+    if (pendienteActual !== null) {
+      if (pendienteActual >= 0 && pend < 0) continue;
+      if (pendienteActual < 0 && pend >= 0) continue;
+    }
+
+    coincidencias.push({
+      indexFecha: i,
+      fecha: velas[i].date,
+      fechaFin: velas[Math.min(i + VENTANA, velas.length - 1)].date,
+      smi: v,
+      distancia: Math.abs(v - smiActual)
+    });
+  }
+
+  const ordenadas = coincidencias.sort((a, b) => a.distancia - b.distancia);
+
+  const seleccionadas = [];
+  for (const c of ordenadas) {
+    const demasiadoCerca = seleccionadas.some(
+      (s) => Math.abs(s.indexFecha - c.indexFecha) < SEPARACION_MINIMA
+    );
+    if (!demasiadoCerca) seleccionadas.push(c);
+  }
+
+  return seleccionadas.sort((a, b) => a.indexFecha - b.indexFecha);
+}
+
+function sumarSemanas(fechaStr, semanas) {
+  const f = new Date(fechaStr + 'T00:00:00');
+  f.setDate(f.getDate() + semanas * 7);
+  return f.toISOString().slice(0, 10);
+}
+
+function formatearFecha(fechaStr) {
+  if (!fechaStr) return '';
+  try {
+    const d = new Date(fechaStr + 'T00:00:00');
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return `${d.getDate()}-${meses[d.getMonth()]}`;
+  } catch (e) {
+    return '';
+  }
+}
 
 export default function GraficoSemanal({ velas, smis }) {
   const contenedorRef = useRef(null);
+  const chartRef = useRef(null);
+  const posicionRef = useRef(-1);
+  const [coincidencias, setCoincidencias] = useState([]);
+  const [posicion, setPosicion] = useState(-1);
+  const [infoSeleccion, setInfoSeleccion] = useState(null);
+  const [divisorX, setDivisorX] = useState(null);
+
+  const smiFinal =
+    smis && smis.length > 0 ? smis[smis.length - 1] : null;
 
   useEffect(() => {
     if (!velas || velas.length === 0) return;
+    const encontradas = buscarCoincidencias(velas, smis, smiFinal);
+    setCoincidencias(encontradas);
+    setPosicion(-1);
+  }, [velas, smis, smiFinal]);
+
+  useEffect(() => {
+    posicionRef.current = posicion;
+  }, [posicion]);
+
+  function calcularDivisorX() {
+    const chart = chartRef.current;
+    const cont = contenedorRef.current;
+    if (!chart || !cont || !velas || velas.length === 0) {
+      setDivisorX(null);
+      return;
+    }
+    if (posicionRef.current < 0) {
+      setDivisorX(null);
+      return;
+    }
+
+    let barSpacing = 4;
+    try {
+      barSpacing = chart.timeScale().options().barSpacing || 4;
+    } catch (e) {}
+
+    let x = null;
+
+    try {
+      const xBase = chart.timeScale().logicalToCoordinate(velas.length);
+      if (xBase !== null && isFinite(xBase)) {
+        x = xBase + barSpacing * 5.5;
+      }
+    } catch (e) {
+      x = null;
+    }
+
+    if (x === null || !isFinite(x)) {
+      try {
+        const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
+        if (xUltima !== null && isFinite(xUltima)) {
+          x = xUltima + barSpacing * 6.5;
+        }
+      } catch (e) {}
+    }
+
+    if (x === null || !isFinite(x)) {
+      const ancho = cont.clientWidth;
+      x = ancho - barSpacing / 2;
+    }
+
+    setDivisorX(x);
+  }
+
+  useEffect(() => {
+    if (!velas || velas.length === 0) return;
+    if (!contenedorRef.current) return;
+
+    if (chartRef.current) {
+      try {
+        chartRef.current.remove();
+      } catch (e) {}
+      chartRef.current = null;
+    }
 
     let chart;
     let cleanup = () => {};
+    let cancelado = false;
 
     async function init() {
-      const { createChart, LineStyle } = await import('lightweight-charts');
+      try {
+        const { createChart, LineStyle } = await import('lightweight-charts');
+        if (cancelado) return;
+        if (!contenedorRef.current) return;
 
-      const velasData = velas.map((v) => ({
-        time: v.date,
-        open: v.open,
-        high: v.high,
-        low: v.low,
-        close: v.close
-      }));
+        chart = createChart(contenedorRef.current, {
+          width: contenedorRef.current.clientWidth,
+          height: 420,
+          layout: {
+            background: { color: '#ffffff' },
+            textColor: '#666',
+            fontSize: 10,
+            fontFamily: 'sans-serif'
+          },
+          grid: {
+            vertLines: { color: '#f5f5f5' },
+            horzLines: { color: '#f5f5f5' }
+          },
+          timeScale: {
+            borderColor: '#e5e7eb',
+            rightOffset: 0,
+            barSpacing: 4,
+            minBarSpacing: 1
+          },
+          rightPriceScale: {
+            borderColor: '#e5e7eb',
+            scaleMargins: { top: 0, bottom: 0 }
+          },
+          leftPriceScale: {
+            borderColor: '#e5e7eb',
+            visible: true,
+            scaleMargins: { top: 0, bottom: 0 }
+          }
+        });
 
-      const smiData = [];
-      for (let i = 0; i < smis.length; i++) {
-        if (smis[i] === null || smis[i] === undefined) continue;
-        if (!velas[i]) continue;
-        smiData.push({ time: velas[i].date, value: smis[i] });
-      }
+        chartRef.current = chart;
 
-      chart = createChart(contenedorRef.current, {
-        width: contenedorRef.current.clientWidth,
-        height: 420,
-        layout: { background: { color: '#ffffff' }, textColor: '#333' },
-        grid: {
-          vertLines: { color: '#f0f0f0' },
-          horzLines: { color: '#f0f0f0' }
-        },
-        timeScale: { borderColor: '#ddd' },
-        rightPriceScale: { borderColor: '#ddd', scaleMargins: { top: 0.1, bottom: 0.1 } },
-        leftPriceScale: {
-          borderColor: '#ddd',
-          visible: true,
-          scaleMargins: { top: 0.1, bottom: 0.1 }
+        const ultimaVela = velas[velas.length - 1];
+        const cierreActual = ultimaVela.close;
+
+        const velasSeries = chart.addCandlestickSeries({
+          upColor: '#2563eb',
+          downColor: '#9ca3af',
+          borderUpColor: '#2563eb',
+          borderDownColor: '#9ca3af',
+          wickUpColor: '#2563eb',
+          wickDownColor: '#9ca3af',
+          priceScaleId: 'right'
+        });
+        velasSeries.setData(
+          velas.map((v) => ({
+            time: v.date,
+            open: v.open,
+            high: v.high,
+            low: v.low,
+            close: v.close
+          }))
+        );
+
+        const lineaMediaData = velas.map((v) => ({
+          time: v.date,
+          value: (v.high + v.low) / 2
+        }));
+
+        const lineaMedia = chart.addLineSeries({
+          color: '#ea580c',
+          lineWidth: 1.5,
+          priceScaleId: 'right',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
+        lineaMedia.setData(lineaMediaData);
+
+        const smiData = [];
+        for (let i = 0; i < smis.length; i++) {
+          if (smis[i] === null || smis[i] === undefined) continue;
+          if (!velas[i]) continue;
+          smiData.push({ time: velas[i].date, value: smis[i] });
         }
-      });
 
-      const velasSeries = chart.addCandlestickSeries({
-        upColor: '#2563eb',
-        downColor: '#9ca3af',
-        borderUpColor: '#2563eb',
-        borderDownColor: '#9ca3af',
-        wickUpColor: '#2563eb',
-        wickDownColor: '#9ca3af',
-        priceScaleId: 'right'
-      });
-      velasSeries.setData(velasData);
+        const zonaSuperior = chart.addBaselineSeries({
+          baseValue: { type: 'price', price: 40 },
+          topFillColor1: 'rgba(37, 99, 235, 0.35)',
+          topFillColor2: 'rgba(37, 99, 235, 0.08)',
+          bottomFillColor1: 'rgba(37, 99, 235, 0)',
+          bottomFillColor2: 'rgba(37, 99, 235, 0)',
+          topLineColor: 'rgba(37, 99, 235, 0.3)',
+          bottomLineColor: 'rgba(37, 99, 235, 0)',
+          lineWidth: 1,
+          priceScaleId: 'left',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
+        zonaSuperior.setData(smiData);
 
-      const zonaSuperior = chart.addBaselineSeries({
-        baseValue: { type: 'price', price: 40 },
-        topFillColor1: 'rgba(37, 99, 235, 0.35)',
-        topFillColor2: 'rgba(37, 99, 235, 0.08)',
-        bottomFillColor1: 'rgba(37, 99, 235, 0)',
-        bottomFillColor2: 'rgba(37, 99, 235, 0)',
-        topLineColor: 'rgba(37, 99, 235, 0.3)',
-        bottomLineColor: 'rgba(37, 99, 235, 0)',
-        lineWidth: 1,
-        priceScaleId: 'left',
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
-      });
-      zonaSuperior.setData(smiData);
+        const zonaInferior = chart.addBaselineSeries({
+          baseValue: { type: 'price', price: -40 },
+          topFillColor1: 'rgba(156, 163, 175, 0)',
+          topFillColor2: 'rgba(156, 163, 175, 0)',
+          bottomFillColor1: 'rgba(156, 163, 175, 0.35)',
+          bottomFillColor2: 'rgba(156, 163, 175, 0.08)',
+          topLineColor: 'rgba(156, 163, 175, 0)',
+          bottomLineColor: 'rgba(156, 163, 175, 0.3)',
+          lineWidth: 1,
+          priceScaleId: 'left',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
+        zonaInferior.setData(smiData);
 
-      const zonaInferior = chart.addBaselineSeries({
-        baseValue: { type: 'price', price: -40 },
-        topFillColor1: 'rgba(156, 163, 175, 0)',
-        topFillColor2: 'rgba(156, 163, 175, 0)',
-        bottomFillColor1: 'rgba(156, 163, 175, 0.35)',
-        bottomFillColor2: 'rgba(156, 163, 175, 0.08)',
-        topLineColor: 'rgba(156, 163, 175, 0)',
-        bottomLineColor: 'rgba(156, 163, 175, 0.3)',
-        lineWidth: 1,
-        priceScaleId: 'left',
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
-      });
-      zonaInferior.setData(smiData);
+        const smiLine = chart.addLineSeries({
+          color: '#7b1fa2',
+          lineWidth: 2,
+          title: 'Indicador semanal',
+          priceScaleId: 'left'
+        });
+        smiLine.setData(smiData);
 
-      const smiLine = chart.addLineSeries({
-        color: '#7b1fa2',
-        lineWidth: 2,
-        title: 'Indicador semanal',
-        priceScaleId: 'left'
-      });
-      smiLine.setData(smiData);
+        smiLine.createPriceLine({
+          price: 40,
+          color: '#2563eb',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'parte alta',
+          priceScaleId: 'left'
+        });
+        smiLine.createPriceLine({
+          price: -40,
+          color: '#9ca3af',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'parte baja',
+          priceScaleId: 'left'
+        });
+        smiLine.createPriceLine({
+          price: 0,
+          color: '#aaa',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          priceScaleId: 'left'
+        });
 
-      smiLine.createPriceLine({
-        price: 40,
-        color: '#2563eb',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: 'parte alta',
-        priceScaleId: 'left'
-      });
-      smiLine.createPriceLine({
-        price: -40,
-        color: '#9ca3af',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: 'parte baja',
-        priceScaleId: 'left'
-      });
-      smiLine.createPriceLine({
-        price: 0,
-        color: '#aaa',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dotted,
-        axisLabelVisible: false,
-        priceScaleId: 'left'
-      });
+        chart.priceScale('left').applyOptions({
+          autoScale: false,
+          scaleMargins: { top: 0, bottom: 0 }
+        });
+        smiLine.applyOptions({
+          autoscaleInfoProvider: () => ({
+            priceRange: { minValue: -100, maxValue: 100 }
+          })
+        });
 
-      chart.priceScale('left').applyOptions({
-        autoScale: false,
-        scaleMargins: { top: 0.1, bottom: 0.1 }
-      });
-      smiLine.applyOptions({
-        autoscaleInfoProvider: () => ({
-          priceRange: { minValue: -100, maxValue: 100 }
-        })
-      });
+        // Línea vertical anclada a la última vela (misma lógica que el diario)
+        const lineaDivisoria = chart.addLineSeries({
+          color: '#111827',
+          lineWidth: 4,
+          lineStyle: LineStyle.Solid,
+          priceScaleId: 'divisoria',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false
+        });
 
-      chart.timeScale().fitContent();
+        chart.priceScale('divisoria').applyOptions({
+          visible: false,
+          scaleMargins: { top: 0, bottom: 0 }
+        });
 
-      function handleResize() {
-        if (chart && contenedorRef.current) {
-          chart.applyOptions({ width: contenedorRef.current.clientWidth });
+        lineaDivisoria.applyOptions({
+          autoscaleInfoProvider: () => null
+        });
+
+        chart._lineaDivisoria = lineaDivisoria;
+
+        chart._pintarDivisoria = (visible) => {
+          if (!chart._lineaDivisoria) return;
+          if (!visible) {
+            chart._lineaDivisoria.setData([]);
+            return;
+          }
+          const ultima = velas[velas.length - 1];
+          const t = Math.floor(new Date(ultima.date + 'T00:00:00Z').getTime() / 1000);
+          chart._lineaDivisoria.setData([
+            { time: t, value: 0 },
+            { time: t + 1, value: 1 }
+          ]);
+        };
+
+        chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+
+        chart._limpiarZona = () => {
+          if (chart._zonaSeries.areaSup) {
+            try { chart.removeSeries(chart._zonaSeries.areaSup); } catch (e) {}
+          }
+          if (chart._zonaSeries.areaInf) {
+            try { chart.removeSeries(chart._zonaSeries.areaInf); } catch (e) {}
+          }
+          if (chart._zonaSeries.areaFutura) {
+            try { chart.removeSeries(chart._zonaSeries.areaFutura); } catch (e) {}
+          }
+          if (chart._zonaSeries.lineaFutura) {
+            try { chart.removeSeries(chart._zonaSeries.lineaFutura); } catch (e) {}
+          }
+          chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
+        };
+
+        chart._mostrarZona = (idx, conFuturo) => {
+          chart._limpiarZona();
+
+          if (idx < 0 || idx >= velas.length) return;
+
+          const idxInicio = idx;
+          const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
+
+          const fechas = [];
+          const highs = [];
+          const lows = [];
+
+          for (let j = idxInicio; j <= idxFin; j++) {
+            fechas.push(velas[j].date);
+            highs.push(velas[j].high);
+            lows.push(velas[j].low);
+          }
+
+          const maxH = Math.max(...highs);
+          const minH = Math.min(...lows);
+
+          const areaSup = chart.addAreaSeries({
+            topColor: 'rgba(251, 191, 36, 0.25)',
+            bottomColor: 'rgba(0,0,0,0)',
+            lineColor: 'rgba(0,0,0,0)',
+            lineWidth: 1,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          areaSup.setData(fechas.map((f) => ({ time: f, value: maxH })));
+
+          const areaInf = chart.addAreaSeries({
+            topColor: 'rgba(0,0,0,0)',
+            bottomColor: 'rgba(251, 191, 36, 0.25)',
+            lineColor: 'rgba(0,0,0,0)',
+            lineWidth: 1,
+            priceScaleId: 'right',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+          });
+          areaInf.setData(fechas.map((f) => ({ time: f, value: minH })));
+
+          chart._zonaSeries = { areaSup, areaInf, areaFutura: null, lineaFutura: null };
+
+          if (conFuturo) {
+            const datosFuturos = [];
+            for (let d = 1; d <= VENTANA; d++) {
+              const idxVela = idxInicio + d;
+              if (idxVela >= velas.length) break;
+              const fechaFutura = sumarSemanas(ultimaVela.date, d);
+              const velaPasada = velas[idxVela];
+              const velaAnterior = velas[idxVela - 1];
+              const medio = (velaPasada.high + velaPasada.low) / 2;
+              const medioAnterior = (velaAnterior.high + velaAnterior.low) / 2;
+              const delta = medio - medioAnterior;
+              datosFuturos.push({ fechaFutura, delta });
+            }
+
+            const lineaFuturaData = [{ time: ultimaVela.date, value: cierreActual }];
+            let medioAcum = cierreActual;
+            for (const df of datosFuturos) {
+              medioAcum += df.delta;
+              lineaFuturaData.push({ time: df.fechaFutura, value: medioAcum });
+            }
+
+            const areaFutura = chart.addAreaSeries({
+              topColor: 'rgba(156, 163, 175, 0.10)',
+              bottomColor: 'rgba(156, 163, 175, 0.10)',
+              lineColor: 'rgba(0,0,0,0)',
+              lineWidth: 1,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false
+            });
+            areaFutura.setData(lineaFuturaData.map((p) => ({ time: p.time, value: p.value })));
+
+            const lineaFutura = chart.addLineSeries({
+              color: 'rgba(220, 38, 38, 0.9)',
+              lineWidth: 2,
+              lineStyle: LineStyle.Dashed,
+              priceScaleId: 'right',
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: true
+            });
+            lineaFutura.setData(lineaFuturaData);
+
+            chart._zonaSeries = { areaSup, areaInf, areaFutura, lineaFutura };
+          }
+        };
+
+        const onRangoVisible = () => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('equaty:rango-visible-semanal'));
+          }
+        };
+        try {
+          chart.timeScale().subscribeVisibleLogicalRangeChange(onRangoVisible);
+        } catch (e) {}
+
+        const totalVelas = velas.length;
+        const desde = Math.max(0, totalVelas - 1 - VELAS_ATRAS);
+        const hasta = totalVelas + VENTANA;
+        try {
+          chart.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
+        } catch (e) {
+          chart.timeScale().fitContent();
         }
-      }
-      window.addEventListener('resize', handleResize);
 
-      cleanup = () => {
-        window.removeEventListener('resize', handleResize);
-        if (chart) chart.remove();
-      };
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('equaty:rango-visible-semanal'));
+          }
+        }, 100);
+
+        function handleResize() {
+          if (chart && contenedorRef.current) {
+            chart.applyOptions({ width: contenedorRef.current.clientWidth });
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('equaty:rango-visible-semanal'));
+            }
+          }
+        }
+        window.addEventListener('resize', handleResize);
+
+        cleanup = () => {
+          window.removeEventListener('resize', handleResize);
+          try {
+            chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRangoVisible);
+          } catch (e) {}
+          if (chart) chart.remove();
+          chartRef.current = null;
+        };
+      } catch (e) {
+        console.error('Error inicializando chart semanal:', e);
+      }
     }
 
     init();
 
-    return () => cleanup();
+    return () => {
+      cancelado = true;
+      cleanup();
+    };
   }, [velas, smis]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    if (!velas || velas.length === 0) return;
+
+    const idx = posicion < 0 ? -1 : posicion;
+
+    if (idx < 0) {
+      chartRef.current._limpiarZona();
+      if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(false);
+      setInfoSeleccion(null);
+      setDivisorX(null);
+      return;
+    }
+
+    chartRef.current._mostrarZona(idx, true);
+    if (chartRef.current._pintarDivisoria) chartRef.current._pintarDivisoria(true);
+
+    const idxInicio = idx;
+    const idxFin = Math.min(idxInicio + VENTANA, velas.length - 1);
+    const precios = [];
+    for (let j = idxInicio; j <= idxFin; j++) {
+      precios.push(velas[j].low);
+      precios.push(velas[j].high);
+    }
+    const precioMin = Math.min(...precios);
+    const precioMax = Math.max(...precios);
+    setInfoSeleccion({
+      fecha: velas[idxInicio].date,
+      fechaFin: velas[idxFin].date,
+      precioMin,
+      precioMax
+    });
+
+    const totalVelas = velas.length;
+    const desde = Math.max(0, Math.min(idxInicio - 5, totalVelas - 1 - VELAS_ATRAS));
+    const hasta = totalVelas + VENTANA;
+    try {
+      chartRef.current.timeScale().setVisibleLogicalRange({ from: desde, to: hasta });
+    } catch (e) {}
+
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('equaty:rango-visible-semanal'));
+      }
+    }, 50);
+  }, [posicion, velas]);
+
+  useEffect(() => {
+    function onRangoVisible() {
+      calcularDivisorX();
+    }
+    window.addEventListener('equaty:rango-visible-semanal', onRangoVisible);
+    calcularDivisorX();
+    return () => window.removeEventListener('equaty:rango-visible-semanal', onRangoVisible);
+  }, [posicion, velas]);
+
+  function handleSlider(e) {
+    setPosicion(parseInt(e.target.value, 10));
+  }
+
+  function irACoincidencia(c) {
+    setPosicion(c.indexFecha);
+  }
+
+  const totalVelas = velas ? velas.length : 0;
+  const maxSlider = totalVelas > 0 ? totalVelas - VENTANA - 1 : 0;
 
   return (
     <section className="v3-seccion">
-      <h2 className="v3-seccion-titulo">Evolución semanal del precio</h2>
-      <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Cada vela representa una semana. La línea morada es el indicador calculado con velas
-        semanales. Para más detalle, consulta el "Cómo leer este gráfico" del gráfico diario.
-      </p>
-      <div className="v3-card" style={{ padding: '12px', background: '#fff' }}>
+      <h2 className="v3-seccion-titulo">Gráfico principal (semanal)</h2>
+
+      <details
+        style={{
+          marginBottom: '8px',
+          fontSize: '13px',
+          color: 'var(--v3-text-soft)'
+        }}
+      >
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+          Cómo leer este gráfico
+        </summary>
+        <div style={{ paddingTop: '8px', lineHeight: 1.6 }}>
+          <p style={{ margin: '0 0 6px 0' }}>
+            Cada vela representa una semana: azul si cerró por encima de su apertura, gris si
+            cerró por debajo. La línea naranja es la media del precio de cada vela. El indicador
+            morado se sombrea en azul cuando supera +40 y en gris cuando baja de -40.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Importante:</strong> la proyección que activas tú moviendo la barra no es una
+            predicción. Es una copia de lo que ocurrió en el pasado en una situación similar. No
+            indica lo que va a pasar. No es una recomendación de inversión.
+          </p>
+        </div>
+      </details>
+
+      <div
+        style={{
+          marginBottom: '8px',
+          padding: '8px 12px',
+          background: '#eff6ff',
+          border: '1px solid #93c5fd',
+          borderRadius: '6px',
+          fontSize: '12px',
+          color: '#1e3a8a',
+          lineHeight: 1.5
+        }}
+      >
+        <strong>Herramienta de exploración histórica.</strong> Esta proyección la activas tú
+        moviendo el control. No es una predicción ni una recomendación de inversión. Es una copia
+        de lo que ocurrió en el pasado en una situación similar.
+      </div>
+
+      <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
+
+        {divisorX !== null && posicion >= 0 && (
+          <>
+            <div
+              style={{
+                position: 'absolute',
+                left: `${divisorX}px`,
+                top: 0,
+                bottom: 0,
+                right: 0,
+                background: 'rgba(245, 158, 11, 0.12)',
+                pointerEvents: 'none',
+                zIndex: 4
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                left: `${divisorX - 14}px`,
+                top: '12px',
+                transform: 'translateX(-100%)',
+                background: 'rgba(30, 58, 138, 0.45)',
+                color: 'rgba(255,255,255,0.95)',
+                fontSize: '16px',
+                fontWeight: 900,
+                letterSpacing: '1px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+                zIndex: 2,
+                backdropFilter: 'blur(2px)'
+              }}
+            >
+              ← PAST
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                left: `${divisorX + 14}px`,
+                top: '12px',
+                background: 'rgba(245, 158, 11, 0.45)',
+                color: 'rgba(17,24,39,0.95)',
+                fontSize: '16px',
+                fontWeight: 900,
+                letterSpacing: '1px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+                zIndex: 2,
+                backdropFilter: 'blur(2px)'
+              }}
+            >
+              FUTURE →
+            </div>
+          </>
+        )}
+      </div>
+
+      <div
+        style={{
+          marginTop: '12px',
+          padding: '14px 16px',
+          background: '#f9fafb',
+          border: '1px solid var(--v3-border)',
+          borderRadius: '6px'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '10px',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: 'var(--v3-text)',
+                marginBottom: '2px'
+              }}
+            >
+              Explora la evolución del indicador Equaty (semanal)
+            </div>
+            <div
+              style={{
+                fontSize: '12px',
+                color: 'var(--v3-text-soft)',
+                lineHeight: 1.5
+              }}
+            >
+              Desplaza la barra para recorrer el histórico. Las marcas naranjas indican otras
+              veces en las que el indicador estuvo en una situación similar a la actual. Al
+              colocarte en una de ellas, verás qué sucedió después en el precio.
+            </div>
+          </div>
+          <button
+            onClick={() => setPosicion(-1)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: '999px',
+              border: '1px solid var(--v3-border)',
+              background: '#fff',
+              color: 'var(--v3-text)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Volver a la vista actual
+          </button>
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <input
+            id="slider-explorar-semanal"
+            type="range"
+            min={0}
+            max={maxSlider > 0 ? maxSlider : 0}
+            value={posicion < 0 ? Math.floor(maxSlider / 2) : posicion}
+            onChange={handleSlider}
+            style={{
+              width: '100%',
+              height: '24px',
+              cursor: 'pointer',
+              accentColor: '#2563eb'
+            }}
+          />
+          {coincidencias.length > 0 && maxSlider > 0 && (
+            <div
+              style={{
+                position: 'relative',
+                height: '8px',
+                marginTop: '-6px',
+                pointerEvents: 'none'
+              }}
+            >
+              {coincidencias.map((c, i) => {
+                const pct = (c.indexFecha / maxSlider) * 100;
+                if (pct < 0 || pct > 100) return null;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      left: `${pct}%`,
+                      top: 0,
+                      width: '4px',
+                      height: '8px',
+                      background: '#f59e0b',
+                      borderRadius: '2px',
+                      transform: 'translateX(-50%)'
+                    }}
+                    title={`Coincidencia: ${formatearFecha(c.fecha)}`}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {coincidencias.length > 0 && (
+          <div style={{ marginTop: '14px' }}>
+            <div
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: 'var(--v3-text)',
+                marginBottom: '6px'
+              }}
+            >
+              {coincidencias.length === 1
+                ? 'Se ha encontrado 1 coincidencia:'
+                : `Se han encontrado ${coincidencias.length} coincidencias:`}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '6px',
+                flexWrap: 'wrap'
+              }}
+            >
+              {coincidencias.map((c, i) => (
+                <button
+                  key={i}
+                  onClick={() => irACoincidencia(c)}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '999px',
+                    border:
+                      posicion === c.indexFecha
+                        ? '2px solid #f59e0b'
+                        : '1px solid #fcd34d',
+                    background:
+                      posicion === c.indexFecha ? '#fef3c7' : '#fffbeb',
+                    color: '#78350f',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {formatearFecha(c.fecha)} → {formatearFecha(c.fechaFin)}
+                </button>
+              ))}
+            </div>
+            <div
+              style={{
+                marginTop: '6px',
+                fontSize: '11px',
+                color: 'var(--v3-text-mute)',
+                lineHeight: 1.5
+              }}
+            >
+              Pulsa una fecha para colocarte en esa coincidencia y ver qué pasó después. También
+              puedes desplazar la barra manualmente para explorar cualquier otra fecha.
+            </div>
+          </div>
+        )}
+
+        <div
+          style={{
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid var(--v3-border)',
+            fontSize: '12px',
+            color: 'var(--v3-text-soft)',
+            lineHeight: 1.6
+          }}
+        >
+          {posicion < 0 ? (
+            <>
+              La barra está en la vista actual. Para explorar, desplázala a la izquierda o pulsa
+              una de las fechas de coincidencia de arriba.
+            </>
+          ) : infoSeleccion ? (
+            <>
+              <strong>Explorando: {formatearFecha(infoSeleccion.fecha)} al{' '}
+              {formatearFecha(infoSeleccion.fechaFin)}.</strong> En esas {VENTANA} semanas, el
+              precio se movió entre <strong>{infoSeleccion.precioMin.toFixed(2)} €</strong> y{' '}
+              <strong>{infoSeleccion.precioMax.toFixed(2)} €</strong>. Esto no es una predicción,
+              es una copia del pasado.
+            </>
+          ) : (
+            'Selecciona una fecha para ver qué pasó.'
+          )}
+        </div>
       </div>
     </section>
   );
