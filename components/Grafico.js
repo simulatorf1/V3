@@ -652,18 +652,6 @@ export default function Grafico({ velas, smis, smiActual }) {
             <div
               style={{
                 position: 'absolute',
-                left: `${divisorX}px`,
-                top: 0,
-                bottom: 0,
-                width: `${anchoTinte}px`,
-                background: 'rgba(245, 158, 11, 0.12)',
-                pointerEvents: 'none',
-                zIndex: 4
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
                 left: `${divisorX - 14}px`,
                 top: '12px',
                 transform: 'translateX(-100%)',
