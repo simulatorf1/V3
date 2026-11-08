@@ -11,10 +11,8 @@ function construirSlug(cambio) {
 }
 
 function etiquetaPendiente(cat) {
-  // 'C' viene de movimiento 'compra' = pendiente pasa a POSITIVA
-  if (cat === 'C') return { texto: 'pendiente positiva', clase: 'v3-zona-alta' };
-  // 'A' viene de movimiento 'venta' = pendiente pasa a NEGATIVA
-  if (cat === 'A') return { texto: 'pendiente negativa', clase: 'v3-zona-baja' };
+  if (cat === 'positiva') return { texto: 'pendiente positiva', clase: 'v3-zona-alta' };
+  if (cat === 'negativa') return { texto: 'pendiente negativa', clase: 'v3-zona-baja' };
   return { texto: 'sin pendiente', clase: 'v3-zona-intermedia' };
 }
 
@@ -86,94 +84,35 @@ export default function ListaCambiosZona({ cambios }) {
       <section className="v3-seccion">
         <h2 className="v3-seccion-titulo">Cambios de pendiente de hoy</h2>
         <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-          Ninguna empresa ha cambiado de pendiente en las últimas 24 horas.
+          Ninguna empresa ha cambiado de pendiente en la última sesión.
         </p>
       </section>
     );
   }
 
-  // 'compra' = pendiente pasa a positiva. Se guarda como categoriaNueva = 'C'.
-  const aPositiva = cambios.filter((c) => c.categoriaNueva === 'C');
-  // 'venta' = pendiente pasa a negativa. Se guarda como categoriaNueva = 'A'.
-  const aNegativa = cambios.filter((c) => c.categoriaNueva === 'A');
-  const otros = cambios.filter(
-    (c) => c.categoriaNueva !== 'C' && c.categoriaNueva !== 'A'
-  );
-
-  const hayGrupos = aPositiva.length > 0 || aNegativa.length > 0;
+  // 'positiva' = pendiente pasa a positiva (señal de compra)
+  const aPositiva = cambios.filter((c) => c.categoriaNueva === 'positiva');
+  // 'negativa' = pendiente pasa a negativa (señal de venta)
+  const aNegativa = cambios.filter((c) => c.categoriaNueva === 'negativa');
 
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Cambios de pendiente de hoy</h2>
       <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-        Empresas cuyo indicador Equaty ha cambiado de pendiente en las últimas 24 horas. Dato
+        Empresas cuyo indicador Equaty ha cambiado de pendiente en la última sesión. Dato
         descriptivo.
       </p>
 
-      {hayGrupos ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '16px',
-            marginTop: '12px'
-          }}
-        >
-          <Bloque titulo="Pendiente pasa a positiva" items={aPositiva} />
-          <Bloque titulo="Pendiente pasa a negativa" items={aNegativa} />
-        </div>
-      ) : (
-        <div style={{ marginTop: '12px', display: 'grid', gap: '6px' }}>
-          {otros.map((c) => {
-            const ant = etiquetaPendiente(c.categoriaAnterior);
-            const nue = etiquetaPendiente(c.categoriaNueva);
-            return (
-              <Link
-                key={c.ticker}
-                href={`/analisis/${construirSlug(c)}`}
-                style={{
-                  display: 'block',
-                  padding: '10px 12px',
-                  background: '#fff',
-                  border: '1px solid var(--v3-border)',
-                  borderRadius: 'var(--v3-radius-sm)',
-                  textDecoration: 'none',
-                  color: 'var(--v3-text)'
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: '13px' }}>{c.nombre}</div>
-                <div style={{ color: 'var(--v3-text-mute)', fontSize: '11px' }}>
-                  {c.ticker}
-                  {c.sector && ` · ${c.sector}`}
-                </div>
-                <div style={{ marginTop: '6px', fontSize: '11px' }}>
-                  <span className={`v3-zona-tag ${ant.clase}`}>{ant.texto}</span>
-                  <span style={{ margin: '0 4px', color: 'var(--v3-text-mute)' }}>→</span>
-                  <span className={`v3-zona-tag ${nue.clase}`}>{nue.texto}</span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      <div style={{ marginTop: '12px', textAlign: 'center' }}>
-        <Link
-          href="/cambios"
-          style={{
-            display: 'inline-block',
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
-            borderRadius: 'var(--v3-radius-sm)',
-            border: '1px solid var(--v3-border-strong)',
-            background: '#fff',
-            color: 'var(--v3-text)',
-            textDecoration: 'none'
-          }}
-        >
-          Ver historial completo
-        </Link>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '16px',
+          marginTop: '12px'
+        }}
+      >
+        <Bloque titulo="Pendiente pasa a positiva" items={aPositiva} />
+        <Bloque titulo="Pendiente pasa a negativa" items={aNegativa} />
       </div>
     </section>
   );
