@@ -65,7 +65,6 @@ function buscarCoincidencias(velas, smis, smiActual) {
     if (!demasiadoCerca) seleccionadas.push(c);
   }
 
-  // Ordenadas por cercanía al SMI actual (la más cercana primero)
   return seleccionadas.sort((a, b) => a.distancia - b.distancia);
 }
 
@@ -107,6 +106,7 @@ export default function Grafico({ velas, smis, smiActual }) {
   const [posicion, setPosicion] = useState(-1);
   const [infoSeleccion, setInfoSeleccion] = useState(null);
   const [divisorX, setDivisorX] = useState(null);
+  const [divisorXFin, setDivisorXFin] = useState(null);
 
   const smiFinal =
     smiActual !== null && smiActual !== undefined
@@ -131,10 +131,12 @@ export default function Grafico({ velas, smis, smiActual }) {
     const cont = contenedorRef.current;
     if (!chart || !cont || !velas || velas.length === 0) {
       setDivisorX(null);
+      setDivisorXFin(null);
       return;
     }
     if (posicionRef.current < 0) {
       setDivisorX(null);
+      setDivisorXFin(null);
       return;
     }
 
@@ -143,32 +145,37 @@ export default function Grafico({ velas, smis, smiActual }) {
       barSpacing = chart.timeScale().options().barSpacing || 4;
     } catch (e) {}
 
-    let x = null;
+    const fechaUltima = velas[velas.length - 1].date;
+    const fechaFinProyeccion = sumarDiasHabiles(fechaUltima, VENTANA);
 
-  try {
-    const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
-    if (xUltima !== null && isFinite(xUltima)) {
-      x = xUltima;
-    }
-  } catch (e) {
-    x = null;
-  }
+    let xIni = null;
+    let xFin = null;
 
-    if (x === null || !isFinite(x)) {
+    try {
+      const xU = chart.timeScale().timeToCoordinate(fechaUltima);
+      if (xU !== null && isFinite(xU)) xIni = xU;
+    } catch (e) {}
+
+    try {
+      const xF = chart.timeScale().timeToCoordinate(fechaFinProyeccion);
+      if (xF !== null && isFinite(xF)) xFin = xF;
+    } catch (e) {}
+
+    if (xIni === null || !isFinite(xIni)) {
       try {
-        const xUltima = chart.timeScale().timeToCoordinate(velas[velas.length - 1].date);
-        if (xUltima !== null && isFinite(xUltima)) {
-          x = xUltima + barSpacing * 6.5;
-        }
+        const xLog = chart.timeScale().logicalToCoordinate(velas.length - 1);
+        if (xLog !== null && isFinite(xLog)) xIni = xLog;
       } catch (e) {}
     }
 
-    if (x === null || !isFinite(x)) {
-      const ancho = cont.clientWidth;
-      x = ancho - barSpacing / 2;
+    if (xFin === null || !isFinite(xFin)) {
+      if (xIni !== null && isFinite(xIni)) {
+        xFin = xIni + barSpacing * VENTANA;
+      }
     }
 
-    setDivisorX(x);
+    setDivisorX(xIni);
+    setDivisorXFin(xFin);
   }
 
   useEffect(() => {
@@ -344,7 +351,6 @@ export default function Grafico({ velas, smis, smiActual }) {
             priceRange: { minValue: -100, maxValue: 100 }
           })
         });
-
 
         chart._zonaSeries = { areaSup: null, areaInf: null, areaFutura: null, lineaFutura: null };
 
@@ -524,6 +530,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       chartRef.current._limpiarZona();
       setInfoSeleccion(null);
       setDivisorX(null);
+      setDivisorXFin(null);
       return;
     }
 
@@ -579,7 +586,6 @@ export default function Grafico({ velas, smis, smiActual }) {
   const totalVelas = velas ? velas.length : 0;
   const maxSlider = totalVelas > 0 ? totalVelas - VENTANA - 1 : 0;
 
-  // ─── Resumen de probabilidad histórica real ───
   const resumen =
     coincidencias.length > 0
       ? (() => {
@@ -593,6 +599,11 @@ export default function Grafico({ velas, smis, smiActual }) {
             pctSubidas: total > 0 ? Math.round((subidas / total) * 100) : 0
           };
         })()
+      : null;
+
+  const anchoTinte =
+    divisorX !== null && divisorXFin !== null && divisorXFin > divisorX
+      ? divisorXFin - divisorX
       : null;
 
   return (
@@ -643,7 +654,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-        {divisorX !== null && posicion >= 0 && (
+        {divisorX !== null && anchoTinte !== null && posicion >= 0 && (
           <>
             <div
               style={{
@@ -651,7 +662,7 @@ export default function Grafico({ velas, smis, smiActual }) {
                 left: `${divisorX}px`,
                 top: 0,
                 bottom: 0,
-                right: 0,
+                width: `${anchoTinte}px`,
                 background: 'rgba(245, 158, 11, 0.12)',
                 pointerEvents: 'none',
                 zIndex: 4
