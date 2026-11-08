@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const VELAS_ATRAS = 30;
+const VELAS_ATRAS = 120;
 const VENTANA = 10;
 const RANGO_VALOR = 30;
 const SEPARACION_MINIMA = 5;
