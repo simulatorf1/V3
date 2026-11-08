@@ -148,7 +148,7 @@ export default function Grafico({ velas, smis, smiActual }) {
     try {
       const xBase = chart.timeScale().logicalToCoordinate(velas.length);
       if (xBase !== null && isFinite(xBase)) {
-        x = xBase + barSpacing * 5.5;
+        x = xBase;
       }
     } catch (e) {
       x = null;
