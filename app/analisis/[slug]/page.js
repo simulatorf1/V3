@@ -70,6 +70,31 @@ function calcularVariacion(velas, sesiones) {
   return ((ultimo - primero) / primero) * 100;
 }
 
+function detectarCambioPendiente(smis) {
+  if (!smis || smis.length < 3) return null;
+
+  const s0 = smis[smis.length - 1];
+  const s1 = smis[smis.length - 2];
+  const s2 = smis[smis.length - 3];
+
+  if (s0 === null || s0 === undefined) return null;
+  if (s1 === null || s1 === undefined) return null;
+  if (s2 === null || s2 === undefined) return null;
+
+  const pendActual = s0 - s1;
+  const pendAnterior = s1 - s2;
+
+  // Cambio de negativa a positiva → señal de compra
+  if (pendAnterior <= 0 && pendActual > 0) {
+    return { categoriaAnterior: 'negativa', categoriaNueva: 'positiva' };
+  }
+  // Cambio de positiva a negativa → señal de venta
+  if (pendAnterior >= 0 && pendActual < 0) {
+    return { categoriaAnterior: 'positiva', categoriaNueva: 'negativa' };
+  }
+  return null;
+}
+
 function calcularPercentil(smis, smiActual) {
   if (!smis || smis.length === 0 || smiActual === null || smiActual === undefined) return null;
   const validos = smis.filter((v) => v !== null && v !== undefined);
@@ -130,13 +155,18 @@ async function cargarContextoSector(tickerActual, sector) {
       .in('ticker', tickersSector);
 
     const items = [];
+    const cambiosZona = [];
+
     for (const p of paginas || []) {
       const datos = parseDatos(p.datos);
       if (!datos) continue;
+
       const velas = datos.velasUltimas60 || [];
       const smis = datos.smisUltimos60 || [];
+
       const v60 = calcularVariacion(velas, 60);
       const percentil = calcularPercentil(smis, datos.smiActual);
+
       items.push({
         ticker: p.ticker,
         nombre: empresasMap[p.ticker]?.nombre || p.ticker,
@@ -144,6 +174,17 @@ async function cargarContextoSector(tickerActual, sector) {
         percentil,
         zona: datos.zona || null
       });
+
+      // ─── CAMBIO DE PENDIENTE (al vuelo, sin filtros) ───
+      const cambio = detectarCambioPendiente(smis);
+      if (cambio) {
+        cambiosZona.push({
+          ticker: p.ticker,
+          nombre: empresasMap[p.ticker]?.nombre || p.ticker,
+          categoriaAnterior: cambio.categoriaAnterior,
+          categoriaNueva: cambio.categoriaNueva
+        });
+      }
     }
 
     const ranking = items
@@ -160,24 +201,6 @@ async function cargarContextoSector(tickerActual, sector) {
       .filter((i) => i.percentil !== null && i.percentil <= 10)
       .sort((a, b) => a.percentil - b.percentil)
       .slice(0, 8);
-
-    const hace7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: cambiosRaw } = await supabaseAdmin
-      .from('cambios_movimiento')
-      .select('ticker, movimiento_anterior, movimiento_nuevo, detectado_at')
-      .gte('detectado_at', hace7d)
-      .in('ticker', tickersSector)
-      .order('detectado_at', { ascending: false })
-      .limit(20);
-
-    const cambiosZona = (cambiosRaw || []).map((c) => ({
-      ticker: c.ticker,
-      nombre: empresasMap[c.ticker]?.nombre || c.ticker,
-      categoriaAnterior:
-        c.movimiento_anterior === 'venta' ? 'A' : c.movimiento_anterior === 'compra' ? 'C' : 'B',
-      categoriaNueva:
-        c.movimiento_nuevo === 'venta' ? 'A' : c.movimiento_nuevo === 'compra' ? 'C' : 'B'
-    }));
 
     return { ranking, cambiosZona, extremosAltos, extremosBajos };
   } catch (e) {
