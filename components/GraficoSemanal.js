@@ -91,7 +91,7 @@ function formatearVariacion(v) {
   return `${signo}${v.toFixed(1)}%`;
 }
 
-export default function GraficoSemanal({ velas, smis }) {
+export default function GraficoSemanal({ velas, smis, nombreEmpresa }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
   const posicionRef = useRef(-1);
@@ -319,7 +319,6 @@ export default function GraficoSemanal({ velas, smis }) {
           })
         });
 
-        // Array de series de zona (para limpiar todas, incluidas huérfanas)
         chart._zonaSeries = [];
 
         chart._limpiarZona = () => {
@@ -404,8 +403,7 @@ export default function GraficoSemanal({ velas, smis }) {
             const precioMax = Math.max(...todosLosHighs);
             const precioMin = Math.min(...todosLosLows);
             const margen = (precioMax - precioMin) * 2;
-            
-            // Área superior: desde muy arriba hasta el precio de la proyección
+
             const areaFuturaSup = chart.addAreaSeries({
               topColor: 'rgba(156, 163, 175, 0.10)',
               bottomColor: 'rgba(156, 163, 175, 0.10)',
@@ -423,8 +421,7 @@ export default function GraficoSemanal({ velas, smis }) {
               lineaFuturaData.map((p) => ({ time: p.time, value: precioMax + margen }))
             );
             chart._zonaSeries.push(areaFuturaSup);
-            
-            // Área inferior: desde muy abajo hasta el precio de la proyección
+
             const areaFuturaInf = chart.addAreaSeries({
               topColor: 'rgba(156, 163, 175, 0.10)',
               bottomColor: 'rgba(156, 163, 175, 0.10)',
@@ -639,6 +636,30 @@ export default function GraficoSemanal({ velas, smis }) {
 
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
+
+        {/* Rótulo del nombre de la empresa, centrado y semitransparente */}
+        {nombreEmpresa && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '42px',
+              fontWeight: 900,
+              color: 'rgba(17, 24, 39, 0.12)',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+              zIndex: 1,
+              userSelect: 'none'
+            }}
+          >
+            {nombreEmpresa}
+          </div>
+        )}
 
         {divisorX !== null && posicion >= 0 && (
           <>
