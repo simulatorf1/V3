@@ -653,17 +653,20 @@ export default function Grafico({ velas, smis, smiActual, nombreEmpresa }) {
           <div
             style={{
               position: 'absolute',
-              top: '50%',
+              top: '16px',
               left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '42px',
+              transform: 'translateX(-50%)',
+              maxWidth: '90%',
+              fontSize: 'clamp(18px, 4vw, 42px)',
               fontWeight: 900,
-              color: 'rgba(17, 24, 39, 0.12)',
+              color: 'rgba(17, 24, 39, 0.20)',
               letterSpacing: '2px',
               textTransform: 'uppercase',
               textAlign: 'center',
               pointerEvents: 'none',
-              whiteSpace: 'nowrap',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              lineHeight: 1.1,
               zIndex: 1,
               userSelect: 'none'
             }}
