@@ -602,7 +602,7 @@ export default async function PaginaEmpresa({ params }) {
             <Grafico
               velas={analisis.velasUltimas60}
               smis={analisis.smisUltimos60}
-              smiActual={analisis.smiActual}.
+              smiActual={analisis.smiActual}
               nombreEmpresa={empresa.nombre}
             />
           </section>
