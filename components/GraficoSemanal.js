@@ -642,7 +642,7 @@ export default function GraficoSemanal({ velas, smis, nombreEmpresa }) {
           <div
             style={{
               position: 'absolute',
-              top: '16px',
+              top: '56px',
               left: '50%',
               transform: 'translateX(-50%)',
               maxWidth: '90%',
