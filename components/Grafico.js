@@ -98,7 +98,7 @@ function formatearVariacion(v) {
   return `${signo}${v.toFixed(1)}%`;
 }
 
-export default function Grafico({ velas, smis, smiActual }) {
+export default function Grafico({ velas, smis, smiActual, nombreEmpresa }) {
   const contenedorRef = useRef(null);
   const chartRef = useRef(null);
   const posicionRef = useRef(-1);
@@ -106,7 +106,6 @@ export default function Grafico({ velas, smis, smiActual }) {
   const [posicion, setPosicion] = useState(-1);
   const [infoSeleccion, setInfoSeleccion] = useState(null);
   const [divisorX, setDivisorX] = useState(null);
-  const [divisorXFin, setDivisorXFin] = useState(null);
 
   const smiFinal =
     smiActual !== null && smiActual !== undefined
@@ -131,34 +130,20 @@ export default function Grafico({ velas, smis, smiActual }) {
     const cont = contenedorRef.current;
     if (!chart || !cont || !velas || velas.length === 0) {
       setDivisorX(null);
-      setDivisorXFin(null);
       return;
     }
     if (posicionRef.current < 0) {
       setDivisorX(null);
-      setDivisorXFin(null);
       return;
     }
 
-    let barSpacing = 4;
-    try {
-      barSpacing = chart.timeScale().options().barSpacing || 4;
-    } catch (e) {}
-
     const fechaUltima = velas[velas.length - 1].date;
-    const fechaFinProyeccion = sumarDiasHabiles(fechaUltima, VENTANA);
 
     let xIni = null;
-    let xFin = null;
 
     try {
       const xU = chart.timeScale().timeToCoordinate(fechaUltima);
       if (xU !== null && isFinite(xU)) xIni = xU;
-    } catch (e) {}
-
-    try {
-      const xF = chart.timeScale().timeToCoordinate(fechaFinProyeccion);
-      if (xF !== null && isFinite(xF)) xFin = xF;
     } catch (e) {}
 
     if (xIni === null || !isFinite(xIni)) {
@@ -168,14 +153,7 @@ export default function Grafico({ velas, smis, smiActual }) {
       } catch (e) {}
     }
 
-    if (xFin === null || !isFinite(xFin)) {
-      if (xIni !== null && isFinite(xIni)) {
-        xFin = xIni + barSpacing * VENTANA;
-      }
-    }
-
     setDivisorX(xIni);
-    setDivisorXFin(xFin);
   }
 
   useEffect(() => {
@@ -352,7 +330,6 @@ export default function Grafico({ velas, smis, smiActual }) {
           })
         });
 
-        // Array de series de zona (para limpiar todas, incluidas huérfanas)
         chart._zonaSeries = [];
 
         chart._limpiarZona = () => {
@@ -437,8 +414,7 @@ export default function Grafico({ velas, smis, smiActual }) {
             const precioMax = Math.max(...todosLosHighs);
             const precioMin = Math.min(...todosLosLows);
             const margen = (precioMax - precioMin) * 2;
-            
-            // Área superior: desde muy arriba hasta el precio de la proyección
+
             const areaFuturaSup = chart.addAreaSeries({
               topColor: 'rgba(156, 163, 175, 0.10)',
               bottomColor: 'rgba(156, 163, 175, 0.10)',
@@ -456,8 +432,7 @@ export default function Grafico({ velas, smis, smiActual }) {
               lineaFuturaData.map((p) => ({ time: p.time, value: precioMax + margen }))
             );
             chart._zonaSeries.push(areaFuturaSup);
-            
-            // Área inferior: desde muy abajo hasta el precio de la proyección
+
             const areaFuturaInf = chart.addAreaSeries({
               topColor: 'rgba(156, 163, 175, 0.10)',
               bottomColor: 'rgba(156, 163, 175, 0.10)',
@@ -555,7 +530,6 @@ export default function Grafico({ velas, smis, smiActual }) {
       chartRef.current._limpiarZona();
       setInfoSeleccion(null);
       setDivisorX(null);
-      setDivisorXFin(null);
       return;
     }
 
@@ -626,11 +600,6 @@ export default function Grafico({ velas, smis, smiActual }) {
         })()
       : null;
 
-  const anchoTinte =
-    divisorX !== null && divisorXFin !== null && divisorXFin > divisorX
-      ? divisorXFin - divisorX
-      : null;
-
   return (
     <section className="v3-seccion">
       <h2 className="v3-seccion-titulo">Gráfico principal (diario)</h2>
@@ -679,7 +648,31 @@ export default function Grafico({ velas, smis, smiActual }) {
       <div className="v3-card" style={{ padding: '4px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
         <div ref={contenedorRef} style={{ width: '100%' }} />
 
-        {divisorX !== null && anchoTinte !== null && posicion >= 0 && (
+        {/* Rótulo del nombre de la empresa, centrado y semitransparente */}
+        {nombreEmpresa && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '42px',
+              fontWeight: 900,
+              color: 'rgba(17, 24, 39, 0.12)',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+              zIndex: 1,
+              userSelect: 'none'
+            }}
+          >
+            {nombreEmpresa}
+          </div>
+        )}
+
+        {divisorX !== null && posicion >= 0 && (
           <>
             <div
               style={{
