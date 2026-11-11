@@ -602,7 +602,8 @@ export default async function PaginaEmpresa({ params }) {
             <Grafico
               velas={analisis.velasUltimas60}
               smis={analisis.smisUltimos60}
-              smiActual={analisis.smiActual}
+              smiActual={analisis.smiActual}.
+              nombreEmpresa={empresa.nombre}
             />
           </section>
 
@@ -668,7 +669,11 @@ export default async function PaginaEmpresa({ params }) {
           </WatchlistZona>
 
           {analisis.velasSemanales && analisis.velasSemanales.length > 0 && (
-            <GraficoSemanal velas={analisis.velasSemanales} smis={analisis.smisSemanales || []} />
+            <GraficoSemanal
+              velas={analisis.velasSemanales}
+              smis={analisis.smisSemanales || []}
+              nombreEmpresa={empresa.nombre}
+            />
           )}
 
           <ContextoSector
