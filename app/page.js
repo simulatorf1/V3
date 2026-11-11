@@ -215,8 +215,23 @@ async function cargarDatos() {
 export default async function Home() {
   const datos = await cargarDatos();
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Equaty',
+    alternateName: 'Equaty.es',
+    url: 'https://equaty.es/'
+  };
+
   return (
     <main className="v3-container">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c')
+        }}
+      />
+
       <section className="v3-hero">
         <h1>Equaty — Análisis bursátil estadístico</h1>
         <p>
@@ -224,6 +239,7 @@ export default async function Home() {
           ticker.
         </p>
       </section>
+
 
       <Buscador />
 
