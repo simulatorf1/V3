@@ -4,24 +4,11 @@ import ListaExtremos from '../components/ListaExtremos';
 import ListaCambiosZona from '../components/ListaCambiosZona';
 import MapaCalorSector from '../components/MapaCalorSector';
 import WatchlistBloque from '../components/WatchlistBloque';
-import CambiosDesdeUltimaVisita from '../components/CambiosDesdeUltimaVisita';
 import ActividadFavoritos from '../components/ActividadFavoritos';
 import WatchlistZona from '../components/WatchlistZona';
 import { supabase } from '../lib/supabase';
 
 export const revalidate = 300; // 5 minutos
-
-function parseDatos(datos) {
-  if (!datos) return null;
-  if (typeof datos === 'string') {
-    try {
-      return JSON.parse(datos);
-    } catch (e) {
-      return null;
-    }
-  }
-  return datos;
-}
 
 function calcularVariacion(velas, sesiones) {
   if (!velas || velas.length < 2) return null;
@@ -31,43 +18,6 @@ function calcularVariacion(velas, sesiones) {
   const ultimo = velas[velas.length - 1]?.close;
   if (!primero || primero === 0) return null;
   return ((ultimo - primero) / primero) * 100;
-}
-
-function calcularPercentil(smis, smiActual) {
-  if (!smis || smis.length === 0 || smiActual === null || smiActual === undefined) return null;
-  const validos = smis.filter((v) => v !== null && v !== undefined);
-  if (validos.length === 0) return null;
-  const menores = validos.filter((v) => v < smiActual).length;
-  return Math.round((menores / validos.length) * 100);
-}
-
-/**
- * Detecta cambio de pendiente en la última vela:
- * - negativa → positiva = 'compra'
- * - positiva → negativa = 'venta'
- * Sin filtros de posición ni de SMI.
- */
-function detectarCambioPendiente(smis) {
-  if (!smis || smis.length < 3) return null;
-
-  const s0 = smis[smis.length - 1];
-  const s1 = smis[smis.length - 2];
-  const s2 = smis[smis.length - 3];
-
-  if (s0 === null || s0 === undefined) return null;
-  if (s1 === null || s1 === undefined) return null;
-  if (s2 === null || s2 === undefined) return null;
-
-  const pendActual = s0 - s1;
-  const pendAnterior = s1 - s2;
-
-  if (pendAnterior <= 0 && pendActual > 0) {
-    return { categoriaAnterior: 'negativa', categoriaNueva: 'positiva', tipo: 'compra' };
-  }
-  if (pendAnterior >= 0 && pendActual < 0) {
-    return { categoriaAnterior: 'positiva', categoriaNueva: 'negativa', tipo: 'venta' };
-  }
-  return null;
 }
 
 async function cargarDatos() {
@@ -86,7 +36,7 @@ async function cargarDatos() {
     const [paginasRes, empresasRes] = await Promise.all([
       supabase
         .from('paginas')
-        .select('ticker, datos')
+        .select('ticker, precio_actual, zona, variacion60, percentil, smi_actual, smi_ultimos_3')
         .order('actualizado_at', { ascending: false })
         .limit(100),
       supabase.from('empresas').select('ticker, nombre, sector')
@@ -108,28 +58,17 @@ async function cargarDatos() {
     const cambiosZona = [];
 
     for (const p of paginas) {
-      const datos = parseDatos(p.datos);
-      if (!datos) continue;
       const emp = empresasMap[p.ticker];
       if (!emp) continue;
-
-      const velas = datos.velasUltimas60 || [];
-      const smis = datos.smisUltimos60 || [];
-      const smiActual = datos.smiActual;
-
-      const variacion5 = calcularVariacion(velas, 5);
-      const variacion60 = calcularVariacion(velas, 60);
-      const percentil = calcularPercentil(smis, smiActual);
 
       const item = {
         ticker: p.ticker,
         nombre: emp.nombre,
         sector: emp.sector,
-        precio: datos.precioActual,
-        zona: datos.zona,
-        variacion5,
-        variacion60,
-        percentil
+        precio: p.precio_actual,
+        zona: p.zona,
+        variacion60: p.variacion60,
+        percentil: p.percentil
       };
 
       ranking.push(item);
@@ -138,35 +77,53 @@ async function cargarDatos() {
         ticker: p.ticker,
         nombre: emp.nombre,
         sector: emp.sector,
-        precio: datos.precioActual,
-        zona: datos.zona,
-        variacion60
+        precio: p.precio_actual,
+        zona: p.zona,
+        variacion60: p.variacion60
       });
 
-      if (percentil !== null) {
-        if (percentil >= 90) extremosAltos.push(item);
-        if (percentil <= 10) extremosBajos.push(item);
+      if (p.percentil !== null && p.percentil !== undefined) {
+        if (p.percentil >= 90) extremosAltos.push(item);
+        if (p.percentil <= 10) extremosBajos.push(item);
         if (emp.sector) {
           if (!porSector[emp.sector]) porSector[emp.sector] = [];
           porSector[emp.sector].push(item);
         }
       }
 
-      // ─── CAMBIO DE PENDIENTE (al vuelo, sin filtros) ───
-      const cambio = detectarCambioPendiente(smis);
-      if (cambio) {
-        cambiosZona.push({
-          ticker: p.ticker,
-          nombre: emp.nombre,
-          sector: emp.sector || null,
-          categoriaAnterior: cambio.categoriaAnterior,
-          categoriaNueva: cambio.categoriaNueva
-        });
+      // Cambio de pendiente con los últimos 3 SMIs
+      const smis3 = Array.isArray(p.smi_ultimos_3) ? p.smi_ultimos_3 : null;
+      if (
+        smis3 &&
+        smis3.length === 3 &&
+        smis3.every((v) => v !== null && v !== undefined)
+      ) {
+        const [s2, s1, s0] = smis3;
+        const pendActual = s0 - s1;
+        const pendAnterior = s1 - s2;
+
+        if (pendAnterior <= 0 && pendActual > 0) {
+          cambiosZona.push({
+            ticker: p.ticker,
+            nombre: emp.nombre,
+            sector: emp.sector || null,
+            categoriaAnterior: 'negativa',
+            categoriaNueva: 'positiva'
+          });
+        } else if (pendAnterior >= 0 && pendActual < 0) {
+          cambiosZona.push({
+            ticker: p.ticker,
+            nombre: emp.nombre,
+            sector: emp.sector || null,
+            categoriaAnterior: 'positiva',
+            categoriaNueva: 'negativa'
+          });
+        }
       }
     }
 
     const rankingOrdenado = ranking
-      .filter((i) => i.variacion60 !== null)
+      .filter((i) => i.variacion60 !== null && i.variacion60 !== undefined)
       .sort((a, b) => b.variacion60 - a.variacion60);
 
     const totalRanking = rankingOrdenado.length;
@@ -239,7 +196,6 @@ export default async function Home() {
           ticker.
         </p>
       </section>
-
 
       <Buscador />
 
