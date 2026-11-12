@@ -1,17 +1,5 @@
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
-function parseDatos(datos) {
-  if (!datos) return null;
-  if (typeof datos === 'string') {
-    try {
-      return JSON.parse(datos);
-    } catch (e) {
-      return null;
-    }
-  }
-  return datos;
-}
-
 function pendienteDesdeMovimiento(movimiento) {
   if (movimiento === 'venta') return 'positiva';
   if (movimiento === 'compra') return 'negativa';
@@ -81,6 +69,25 @@ async function enviarEmailCambioPendiente(
   return true;
 }
 
+/**
+ * Dado [s2, s1, s0], devuelve:
+ * - 'compra' si la pendiente pasa de negativa a positiva
+ * - 'venta' si pasa de positiva a negativa
+ * - null si no cambia
+ */
+function movimientoDesdeSmis3(smis3) {
+  if (!Array.isArray(smis3) || smis3.length < 3) return null;
+  if (!smis3.every((v) => v !== null && v !== undefined)) return null;
+
+  const [s2, s1, s0] = smis3;
+  const pendActual = s0 - s1;
+  const pendAnterior = s1 - s2;
+
+  if (pendAnterior <= 0 && pendActual > 0) return 'compra';
+  if (pendAnterior >= 0 && pendActual < 0) return 'venta';
+  return null;
+}
+
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -97,8 +104,7 @@ export async function GET(request) {
     return Response.json({ error: 'Configuración incompleta' }, { status: 500 });
   }
 
-  // Solo leemos las páginas que ya tienen ultimo_movimiento_anterior (las que
-  // ya se inicializaron). Las que no, se inicializan abajo en un UPDATE masivo.
+  // Solo leemos columnas ligeras (smi_ultimos_3), no el JSON datos
   const { data: paginas, error } = await supabaseAdmin
     .from('paginas')
     .select('ticker, smi_ultimos_3, ultimo_movimiento_anterior')
@@ -114,30 +120,10 @@ export async function GET(request) {
   let inicializados = 0;
 
   for (const p of paginas || []) {
-    const datos = parseDatos(p.datos);
-    if (!datos) continue;
+    const movimientoActual = movimientoDesdeSmis3(p.smi_ultimos_3);
+    if (!movimientoActual) continue;
 
-    let senales = datos.senales;
-    if (typeof senales === 'string') {
-      try {
-        senales = JSON.parse(senales);
-      } catch (e) {
-        senales = [];
-      }
-    }
-    if (!Array.isArray(senales) || senales.length === 0) continue;
-
-    const movimientoActual = senales[senales.length - 1].tipo;
     const movimientoAyer = p.ultimo_movimiento_anterior;
-
-    if (!movimientoAyer) {
-      await supabaseAdmin
-        .from('paginas')
-        .update({ ultimo_movimiento_anterior: movimientoActual })
-        .eq('ticker', p.ticker);
-      inicializados++;
-      continue;
-    }
 
     if (movimientoActual === movimientoAyer) continue;
 
@@ -191,22 +177,17 @@ export async function GET(request) {
   }
 
   // Inicializar las que no tienen ultimo_movimiento_anterior (solo la primera vez)
+  // Leemos smi_ultimos_3, no datos
   if (inicializados === 0) {
     const { data: sinInicializar } = await supabaseAdmin
       .from('paginas')
-      .select('ticker, datos')
+      .select('ticker, smi_ultimos_3')
       .is('ultimo_movimiento_anterior', null)
-      .limit(100); // limitamos para no leer 400 JSONs de golpe
+      .limit(100);
 
     for (const p of sinInicializar || []) {
-      const datos = parseDatos(p.datos);
-      if (!datos) continue;
-      let senales = datos.senales;
-      if (typeof senales === 'string') {
-        try { senales = JSON.parse(senales); } catch (e) { senales = []; }
-      }
-      if (!Array.isArray(senales) || senales.length === 0) continue;
-      const movimientoActual = senales[senales.length - 1].tipo;
+      const movimientoActual = movimientoDesdeSmis3(p.smi_ultimos_3);
+      if (!movimientoActual) continue;
       await supabaseAdmin
         .from('paginas')
         .update({ ultimo_movimiento_anterior: movimientoActual })
