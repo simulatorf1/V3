@@ -1,34 +1,16 @@
 import Buscador from '../components/Buscador';
 import RankingTabla from '../components/RankingTabla';
-import ListaExtremos from '../components/ListaExtremos';
-import ListaCambiosZona from '../components/ListaCambiosZona';
-import MapaCalorSector from '../components/MapaCalorSector';
 import WatchlistBloque from '../components/WatchlistBloque';
 import ActividadFavoritos from '../components/ActividadFavoritos';
 import WatchlistZona from '../components/WatchlistZona';
 import { supabase } from '../lib/supabase';
 
-export const revalidate = 300; // 5 minutos
-
-function calcularVariacion(velas, sesiones) {
-  if (!velas || velas.length < 2) return null;
-  let primero;
-  if (sesiones >= velas.length - 1) primero = velas[0]?.close;
-  else primero = velas[velas.length - sesiones - 1]?.close;
-  const ultimo = velas[velas.length - 1]?.close;
-  if (!primero || primero === 0) return null;
-  return ((ultimo - primero) / primero) * 100;
-}
+export const revalidate = 300;
 
 async function cargarDatos() {
   const vacio = {
     ranking: [],
     totalRanking: 0,
-    extremosAltos: [],
-    extremosBajos: [],
-    cambiosZona: [],
-    sectoresData: {},
-    sectoresOrden: [],
     empresas: []
   };
 
@@ -51,11 +33,7 @@ async function cargarDatos() {
     }
 
     const ranking = [];
-    const extremosAltos = [];
-    const extremosBajos = [];
-    const porSector = {};
     const empresasLigeras = [];
-    const cambiosZona = [];
 
     for (const p of paginas) {
       const emp = empresasMap[p.ticker];
@@ -81,86 +59,15 @@ async function cargarDatos() {
         zona: p.zona,
         variacion60: p.variacion60
       });
-
-      if (p.percentil !== null && p.percentil !== undefined) {
-        if (p.percentil >= 90) extremosAltos.push(item);
-        if (p.percentil <= 10) extremosBajos.push(item);
-        if (emp.sector) {
-          if (!porSector[emp.sector]) porSector[emp.sector] = [];
-          porSector[emp.sector].push(item);
-        }
-      }
-
-      // Cambio de pendiente con los últimos 3 SMIs
-      const smis3 = Array.isArray(p.smi_ultimos_3) ? p.smi_ultimos_3 : null;
-      if (
-        smis3 &&
-        smis3.length === 3 &&
-        smis3.every((v) => v !== null && v !== undefined)
-      ) {
-        const [s2, s1, s0] = smis3;
-        const pendActual = s0 - s1;
-        const pendAnterior = s1 - s2;
-
-        if (pendAnterior <= 0 && pendActual > 0) {
-          cambiosZona.push({
-            ticker: p.ticker,
-            nombre: emp.nombre,
-            sector: emp.sector || null,
-            categoriaAnterior: 'negativa',
-            categoriaNueva: 'positiva'
-          });
-        } else if (pendAnterior >= 0 && pendActual < 0) {
-          cambiosZona.push({
-            ticker: p.ticker,
-            nombre: emp.nombre,
-            sector: emp.sector || null,
-            categoriaAnterior: 'positiva',
-            categoriaNueva: 'negativa'
-          });
-        }
-      }
     }
 
     const rankingOrdenado = ranking
       .filter((i) => i.variacion60 !== null && i.variacion60 !== undefined)
       .sort((a, b) => b.variacion60 - a.variacion60);
 
-    const totalRanking = rankingOrdenado.length;
-
-    extremosAltos.sort((a, b) => b.percentil - a.percentil);
-    extremosBajos.sort((a, b) => a.percentil - b.percentil);
-
-    const conteoSectores = {};
-    for (const e of empresas) {
-      if (!e || !e.sector) continue;
-      conteoSectores[e.sector] = (conteoSectores[e.sector] || 0) + 1;
-    }
-
-    const sectoresConDatos = Object.keys(porSector)
-      .filter((s) => porSector[s].length > 0)
-      .sort((a, b) => {
-        const na = conteoSectores[a] || 0;
-        const nb = conteoSectores[b] || 0;
-        return nb - na;
-      })
-      .slice(0, 12);
-
-    const sectoresData = {};
-    for (const s of sectoresConDatos) {
-      sectoresData[s] = porSector[s]
-        .sort((a, b) => b.percentil - a.percentil)
-        .slice(0, 30);
-    }
-
     return {
       ranking: rankingOrdenado.slice(0, 15),
-      totalRanking,
-      extremosAltos: extremosAltos.slice(0, 8),
-      extremosBajos: extremosBajos.slice(0, 8),
-      cambiosZona,
-      sectoresData,
-      sectoresOrden: sectoresConDatos,
+      totalRanking: rankingOrdenado.length,
       empresas: empresasLigeras
     };
   } catch (e) {
@@ -209,7 +116,7 @@ export default async function Home() {
             <WatchlistBloque empresas={datos.empresas} />
           </div>
 
-          <div>
+          <div className="v3-span-2">
             <RankingTabla
               items={datos.ranking}
               tipo="variacion60"
@@ -220,22 +127,6 @@ export default async function Home() {
               filasIniciales={6}
             />
           </div>
-          <div>
-            <ListaCambiosZona cambios={datos.cambiosZona} />
-          </div>
-
-          <div className="v3-span-2">
-            <ListaExtremos altos={datos.extremosAltos} bajos={datos.extremosBajos} />
-          </div>
-
-          {datos.sectoresOrden && datos.sectoresOrden.length > 0 && (
-            <div className="v3-span-2">
-              <MapaCalorSector
-                sectoresData={datos.sectoresData}
-                sectoresOrden={datos.sectoresOrden}
-              />
-            </div>
-          )}
         </div>
       </WatchlistZona>
 
