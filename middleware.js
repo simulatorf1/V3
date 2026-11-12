@@ -4,7 +4,6 @@ export function middleware(request) {
   const ua = request.headers.get('user-agent') || '';
   const method = request.method;
 
-  // Bloquear bots de redes sociales y rastreadores que no aportan tráfico
   const botsBloqueados = [
     'meta-webindexer',
     'facebookexternalhit',
@@ -15,7 +14,32 @@ export function middleware(request) {
     'slack',
     'discord',
     'pinterest',
-    'redditbot'
+    'redditbot',
+    'mj12bot',
+    'ahrefsbot',
+    'semrushbot',
+    'dotbot',
+    'petalbot',
+    'bytespider',
+    'gptbot',
+    'chatgpt',
+    'claude',
+    'anthropic',
+    'ccbot',
+    'blexbot',
+    'seznam',
+    'yandex',
+    'baidu',
+    'sogou',
+    'exabot',
+    'ia_archiver',
+    'archive.org_bot',
+    'uptimerobot',
+    'pingdom',
+    'statuscake',
+    'site24x7',
+    'newrelic',
+    'datadog'
   ];
 
   const esBotBloqueado = botsBloqueados.some((bot) =>
@@ -26,7 +50,6 @@ export function middleware(request) {
     return new NextResponse(null, { status: 403 });
   }
 
-  // Bloquear peticiones HEAD que se disfrazan de Chrome (bot de San Francisco)
   if (method === 'HEAD' && ua.includes('Chrome/')) {
     return new NextResponse(null, { status: 403 });
   }
