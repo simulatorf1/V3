@@ -7,7 +7,6 @@ import RegistrarVisita from '../../../components/RegistrarVisita';
 import BotonesCompartir from '../../../components/BotonesCompartir';
 import ConsensoComunidad from '../../../components/ConsensoComunidad';
 import FormularioAlerta from '../../../components/FormularioAlerta';
-import Comparador from '../../../components/Comparador';
 import WatchlistBoton from '../../../components/WatchlistBoton';
 import ContextoSector from '../../../components/ContextoSector';
 import BarraIndicadorVisual from '../../../components/BarraIndicadorVisual';
@@ -18,7 +17,7 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import WatchlistZona from '../../../components/WatchlistZona';
 import Comentarios from '../../../components/Comentarios';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // 1 minuto
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
@@ -162,7 +161,8 @@ async function cargarContextoSector(tickerActual, sector) {
     const { data: paginas } = await supabaseAdmin
       .from('paginas')
       .select('ticker, datos')
-      .in('ticker', tickersSector);
+      .in('ticker', tickersSector)
+      .limit(50);
 
     const items = [];
     const cambiosZona = [];
@@ -685,12 +685,7 @@ export default async function PaginaEmpresa({ params }) {
             extremosBajos={contexto.extremosBajos}
           />
 
-          <Comparador
-            tickerActual={empresa.ticker}
-            nombreActual={empresa.nombre}
-            tickerMejorSector={contexto.ranking[0]?.ticker || null}
-            nombreMejorSector={contexto.ranking[0]?.nombre || null}
-          />
+
 
           <ConsensoComunidad ticker={empresa.ticker} />
 
