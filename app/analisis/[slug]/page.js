@@ -17,7 +17,7 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import WatchlistZona from '../../../components/WatchlistZona';
 import Comentarios from '../../../components/Comentarios';
 
-export const revalidate = 60; // 1 minuto
+export const revalidate = 60;
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
@@ -118,29 +118,6 @@ async function cargarConsenso(ticker) {
   }
 }
 
-function detectarCambioPendiente(smis) {
-  if (!smis || smis.length < 3) return null;
-
-  const s0 = smis[smis.length - 1];
-  const s1 = smis[smis.length - 2];
-  const s2 = smis[smis.length - 3];
-
-  if (s0 === null || s0 === undefined) return null;
-  if (s1 === null || s1 === undefined) return null;
-  if (s2 === null || s2 === undefined) return null;
-
-  const pendActual = s0 - s1;
-  const pendAnterior = s1 - s2;
-
-  if (pendAnterior <= 0 && pendActual > 0) {
-    return { categoriaAnterior: 'negativa', categoriaNueva: 'positiva' };
-  }
-  if (pendAnterior >= 0 && pendActual < 0) {
-    return { categoriaAnterior: 'positiva', categoriaNueva: 'negativa' };
-  }
-  return null;
-}
-
 async function cargarContextoSector(tickerActual, sector) {
   if (!sector) return { ranking: [], cambiosZona: [], extremosAltos: [], extremosBajos: [] };
 
@@ -158,9 +135,10 @@ async function cargarContextoSector(tickerActual, sector) {
     const empresasMap = {};
     for (const e of empresasSector) empresasMap[e.ticker] = e;
 
+    // Leemos solo columnas ligeras, no el JSON `datos`
     const { data: paginas } = await supabaseAdmin
       .from('paginas')
-      .select('ticker, datos')
+      .select('ticker, smi_ultimos_3, variacion60, percentil, zona')
       .in('ticker', tickersSector)
       .limit(50);
 
@@ -168,31 +146,36 @@ async function cargarContextoSector(tickerActual, sector) {
     const cambiosZona = [];
 
     for (const p of paginas || []) {
-      const datos = parseDatos(p.datos);
-      if (!datos) continue;
-
-      const velas = datos.velasUltimas60 || [];
-      const smis = datos.smisUltimos60 || [];
-
-      const v60 = calcularVariacion(velas, 60);
-      const percentil = calcularPercentil(smis, datos.smiActual);
-
       items.push({
         ticker: p.ticker,
         nombre: empresasMap[p.ticker]?.nombre || p.ticker,
-        variacion60: v60,
-        percentil,
-        zona: datos.zona || null
+        variacion60: p.variacion60 ?? null,
+        percentil: p.percentil ?? null,
+        zona: p.zona || null
       });
 
-      const cambio = detectarCambioPendiente(smis);
-      if (cambio) {
-        cambiosZona.push({
-          ticker: p.ticker,
-          nombre: empresasMap[p.ticker]?.nombre || p.ticker,
-          categoriaAnterior: cambio.categoriaAnterior,
-          categoriaNueva: cambio.categoriaNueva
-        });
+      // Cambio de pendiente con los últimos 3 SMIs (columna ligera)
+      const smis3 = Array.isArray(p.smi_ultimos_3) ? p.smi_ultimos_3 : null;
+      if (smis3 && smis3.length === 3 && smis3.every((v) => v !== null && v !== undefined)) {
+        const [s2, s1, s0] = smis3;
+        const pendActual = s0 - s1;
+        const pendAnterior = s1 - s2;
+
+        if (pendAnterior <= 0 && pendActual > 0) {
+          cambiosZona.push({
+            ticker: p.ticker,
+            nombre: empresasMap[p.ticker]?.nombre || p.ticker,
+            categoriaAnterior: 'negativa',
+            categoriaNueva: 'positiva'
+          });
+        } else if (pendAnterior >= 0 && pendActual < 0) {
+          cambiosZona.push({
+            ticker: p.ticker,
+            nombre: empresasMap[p.ticker]?.nombre || p.ticker,
+            categoriaAnterior: 'positiva',
+            categoriaNueva: 'negativa'
+          });
+        }
       }
     }
 
@@ -484,7 +467,6 @@ export default async function PaginaEmpresa({ params }) {
       )}
 
       <div className="v3-ficha-grid">
-        {/* ───────── COLUMNA IZQUIERDA ───────── */}
         <div>
           <section className="v3-seccion" style={{ marginTop: '20px' }}>
             <div className="v3-card" style={{ padding: '20px' }}>
@@ -662,7 +644,6 @@ export default async function PaginaEmpresa({ params }) {
           </details>
         </div>
 
-        {/* ───────── COLUMNA DERECHA ───────── */}
         <div>
           <WatchlistZona>
             <ActividadFavoritos empresas={empresasParaActividad} modo="compacto" />
@@ -684,8 +665,6 @@ export default async function PaginaEmpresa({ params }) {
             extremosAltos={contexto.extremosAltos}
             extremosBajos={contexto.extremosBajos}
           />
-
-
 
           <ConsensoComunidad ticker={empresa.ticker} />
 
