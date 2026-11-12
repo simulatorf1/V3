@@ -97,9 +97,12 @@ export async function GET(request) {
     return Response.json({ error: 'Configuración incompleta' }, { status: 500 });
   }
 
+  // Solo leemos las páginas que ya tienen ultimo_movimiento_anterior (las que
+  // ya se inicializaron). Las que no, se inicializan abajo en un UPDATE masivo.
   const { data: paginas, error } = await supabaseAdmin
     .from('paginas')
-    .select('ticker, datos, ultimo_movimiento_anterior');
+    .select('ticker, datos, ultimo_movimiento_anterior')
+    .not('ultimo_movimiento_anterior', 'is', null);
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
@@ -185,6 +188,31 @@ export async function GET(request) {
       .from('paginas')
       .update({ ultimo_movimiento_anterior: movimientoActual })
       .eq('ticker', p.ticker);
+  }
+
+  // Inicializar las que no tienen ultimo_movimiento_anterior (solo la primera vez)
+  if (inicializados === 0) {
+    const { data: sinInicializar } = await supabaseAdmin
+      .from('paginas')
+      .select('ticker, datos')
+      .is('ultimo_movimiento_anterior', null)
+      .limit(100); // limitamos para no leer 400 JSONs de golpe
+
+    for (const p of sinInicializar || []) {
+      const datos = parseDatos(p.datos);
+      if (!datos) continue;
+      let senales = datos.senales;
+      if (typeof senales === 'string') {
+        try { senales = JSON.parse(senales); } catch (e) { senales = []; }
+      }
+      if (!Array.isArray(senales) || senales.length === 0) continue;
+      const movimientoActual = senales[senales.length - 1].tipo;
+      await supabaseAdmin
+        .from('paginas')
+        .update({ ultimo_movimiento_anterior: movimientoActual })
+        .eq('ticker', p.ticker);
+      inicializados++;
+    }
   }
 
   return Response.json({
