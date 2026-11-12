@@ -101,7 +101,7 @@ export async function GET(request) {
   // ya se inicializaron). Las que no, se inicializan abajo en un UPDATE masivo.
   const { data: paginas, error } = await supabaseAdmin
     .from('paginas')
-    .select('ticker, datos, ultimo_movimiento_anterior')
+    .select('ticker, smi_ultimos_3, ultimo_movimiento_anterior')
     .not('ultimo_movimiento_anterior', 'is', null);
 
   if (error) {
