@@ -9,7 +9,7 @@ import ActividadFavoritos from '../components/ActividadFavoritos';
 import WatchlistZona from '../components/WatchlistZona';
 import { supabase } from '../lib/supabase';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // 5 minutos
 
 function parseDatos(datos) {
   if (!datos) return null;
@@ -88,7 +88,7 @@ async function cargarDatos() {
         .from('paginas')
         .select('ticker, datos')
         .order('actualizado_at', { ascending: false })
-        .limit(500),
+        .limit(100),
       supabase.from('empresas').select('ticker, nombre, sector')
     ]);
 
