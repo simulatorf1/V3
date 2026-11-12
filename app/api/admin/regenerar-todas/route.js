@@ -5,7 +5,6 @@ import { generarAnalisis } from '../../../../lib/autogenerar';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// Helpers duplicados para no tener que exportarlos desde autogenerar
 function parseDatos(datos) {
   if (!datos) return null;
   if (typeof datos === 'string') {
@@ -44,8 +43,6 @@ function mergeAnalisisSimple(prev, next) {
 
   let smisFusionados = next.smisUltimos60;
   if (velasCambiaron && Array.isArray(next.smisUltimos60)) {
-    // Si cambió el número de velas, no podemos recalcular SMI aquí sin importar calcularSMI.
-    // Fallback: conservar los SMIs del anterior si existen y tienen la misma longitud.
     if (Array.isArray(prev.smisUltimos60) && prev.smisUltimos60.length >= velasFusionadas.length) {
       smisFusionados = prev.smisUltimos60.slice(-velasFusionadas.length);
     }
@@ -91,6 +88,16 @@ export async function POST(request) {
       return Response.json({ error: 'Faltan tickers' }, { status: 400 });
     }
 
+    if (tickers.length > 1) {
+      return Response.json(
+        {
+          error:
+            'Solo se permite regenerar 1 ticker por llamada. Para el resto, espera al caché de 6h o al cron diario.'
+        },
+        { status: 400 }
+      );
+    }
+
     const resultados = [];
 
     for (const ticker of tickers) {
@@ -110,7 +117,6 @@ export async function POST(request) {
       try {
         const analisis = await generarAnalisis(tickerUpper, empresa);
 
-        // Leer el anterior para merge y para movimientoAnterior
         let movimientoAnterior = null;
         let datosAntiguos = null;
         const { data: cacheAnterior } = await supabaseAdmin
@@ -132,7 +138,6 @@ export async function POST(request) {
           }
         }
 
-        // Merge: recupera velas perdidas por huecos de Yahoo
         const final = mergeAnalisisSimple(datosAntiguos, analisis);
 
         const slug = `${tickerUpper.toLowerCase()}__${empresa.nombre
