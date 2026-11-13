@@ -4,6 +4,12 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-04",
   "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "NEXT_CACHE_WORKERS_KV",
+      "id": "ae1b143fd3914524bbe331d47021d414"
+    }
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
