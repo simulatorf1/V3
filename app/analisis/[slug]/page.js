@@ -17,7 +17,7 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import WatchlistZona from '../../../components/WatchlistZona';
 import Comentarios from '../../../components/Comentarios';
 
-export const revalidate = 300;
+export const revalidate = 43000;
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
