@@ -15,7 +15,7 @@
     "@supabase/supabase-js": "2.45.4",
     "lightweight-charts": "4.2.0",
     "@next/third-parties": "14.2.15",
-    "@opennextjs/cloudflare": "1.17.0",
+    "@opennextjs/cloudflare": "1.17.2",
     "wrangler": "latest"
   }
 }
