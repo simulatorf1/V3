@@ -201,7 +201,7 @@ async function cargarContextoSector(tickerActual, sector) {
   }
 }
 
-export async function generateMetadata({ params }) {
+ async function generateMetadata({ params }) {
   const slug = params.slug;
   let ticker;
   if (slug.includes('__')) ticker = slug.split('__')[0].toUpperCase();
@@ -248,7 +248,7 @@ export async function generateMetadata({ params }) {
   }
 }
 
-export default async function PaginaEmpresa({ params }) {
+ default async function PaginaEmpresa({ params }) {
   const slug = params.slug;
 
   let ticker;
