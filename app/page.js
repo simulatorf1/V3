@@ -5,7 +5,6 @@ import ActividadFavoritos from '../components/ActividadFavoritos';
 import WatchlistZona from '../components/WatchlistZona';
 import { supabase } from '../lib/supabase';
 
-export const revalidate = 3600;
 
 async function cargarDatos() {
   const vacio = {
