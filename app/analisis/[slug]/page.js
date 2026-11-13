@@ -248,7 +248,7 @@ async function cargarContextoSector(tickerActual, sector) {
   }
 }
 
- default async function PaginaEmpresa({ params }) {
+ export default async function PaginaEmpresa({ params }) {
   const slug = params.slug;
 
   let ticker;
