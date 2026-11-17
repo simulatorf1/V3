@@ -1,6 +1,7 @@
 import '../app/globals.css';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
@@ -70,7 +71,7 @@ export default function RootLayout({ children }) {
         <div style={{ minHeight: '60vh' }}>{children}</div>
         <Pie />
 
-        {/* Consent Mode v2: todo denied por defecto -> GA sin cookies, sin banner */}
+        {/* Consent Mode v2 */}
         <Script id="consent-default" strategy="beforeInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
@@ -85,19 +86,10 @@ export default function RootLayout({ children }) {
           `}
         </Script>
 
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-LVV061GCPF"
-          strategy="afterInteractive"
-        />
-        <Script id="ga-config" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-LVV061GCPF');
-          `}
-        </Script>
-        <BannerAviso />          
+        {/* GA con el componente de Next.js (dispara page_view en cada navegación) */}
+        <GoogleAnalytics gaId="G-LVV061GCPF" />
+
+        <BannerAviso />
       </body>
     </html>
   );
