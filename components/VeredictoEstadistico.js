@@ -1,6 +1,16 @@
 // components/VeredictoEstadistico.js
+function renderizarNegritas(texto) {
+  if (!texto) return null;
+  const partes = texto.split(/(\*\*[^*]+\*\*)/g);
+  return partes.map((p, i) => {
+    if (p.startsWith('**') && p.endsWith('**')) return <strong key={i}>{p.slice(2, -2)}</strong>;
+    return <span key={i}>{p}</span>;
+  });
+}
+
 export default function VeredictoEstadistico({ veredicto }) {
   if (!veredicto) return null;
+  const texto = veredicto.parrafoCompleto || veredicto.texto;
 
   return (
     <div
@@ -29,32 +39,13 @@ export default function VeredictoEstadistico({ veredicto }) {
         }}
       />
       <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: '15px',
-            fontWeight: 800,
-            color: 'var(--v3-text)',
-            marginBottom: '2px'
-          }}
-        >
+        <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--v3-text)', marginBottom: '6px' }}>
           {veredicto.titulo}
         </div>
-        <div
-          style={{
-            fontSize: '13.5px',
-            lineHeight: 1.6,
-            color: 'var(--v3-text-soft)'
-          }}
-        >
-          {veredicto.texto}
+        <div style={{ fontSize: '13.5px', lineHeight: 1.65, color: 'var(--v3-text)' }}>
+          {renderizarNegritas(texto)}
         </div>
-        <div
-          style={{
-            fontSize: '11px',
-            color: 'var(--v3-text-mute)',
-            marginTop: '6px'
-          }}
-        >
+        <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '8px' }}>
           Basado en comportamiento histórico descriptivo. No es una recomendación de inversión.
         </div>
       </div>
