@@ -1,87 +1,94 @@
-// components/HistogramaRetornos.js
-// Histograma de distribución de retornos en SVG puro.
+'use client';
 
-const W = 700;
-const H = 280;
-const PAD = { top: 20, right: 20, bottom: 40, left: 40 };
+import { useState } from 'react';
+
+const W = 560;
+const H = 180;
+const PAD = { top: 14, right: 40, bottom: 28, left: 96 };
 const ANCHO = W - PAD.left - PAD.right;
 const ALTO = H - PAD.top - PAD.bottom;
 
-export default function HistogramaRetornos({ distribucion, horizonte = 'sesiones' }) {
+export default function HistogramaRetornos({ distribucion, horizonte = '10 sesiones' }) {
+  const [hover, setHover] = useState(null);
+
   if (!distribucion || distribucion.length === 0) return null;
 
-  const maxCount = Math.max(...distribucion.map((b) => b.count));
+  // Ordenar de mayor a menor retorno (arriba positivos, abajo negativos)
+  const bins = [...distribucion].sort((a, b) => b.desde - a.desde);
+
+  const maxCount = Math.max(...bins.map((b) => b.count));
   if (maxCount === 0) return null;
 
-  const anchoBarra = ANCHO / distribucion.length;
-  const separacion = Math.min(2, anchoBarra * 0.1);
+  const altoBarra = ALTO / bins.length;
+  const separacion = Math.min(2, altoBarra * 0.15);
+  const toX = (count) => PAD.left + (count / maxCount) * ANCHO;
 
-  const toY = (count) => PAD.top + ALTO - (count / maxCount) * ALTO;
+  // Ticks X (conteo)
+  const ticksX = [0, Math.round(maxCount / 2), maxCount].filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <div style={{ marginTop: '12px' }}>
+    <div style={{ maxWidth: `${W}px`, margin: '0 auto', position: 'relative' }}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         style={{ width: '100%', height: 'auto', display: 'block' }}
         role="img"
-        aria-label="Histograma de distribución de retornos históricos"
+        aria-label="Distribución horizontal de retornos históricos"
+        onMouseLeave={() => setHover(null)}
       >
-        {/* Rejilla horizontal */}
-        {Array.from({ length: 5 }, (_, i) => {
-          const count = (maxCount / 4) * i;
-          const y = toY(count);
+        {/* Rejilla vertical */}
+        {ticksX.map((t, i) => {
+          const x = toX(t);
           return (
             <g key={i}>
-              <line
-                x1={PAD.left}
-                x2={PAD.left + ANCHO}
-                y1={y}
-                y2={y}
-                stroke="#f0f0f0"
-                strokeWidth="1"
-              />
-              <text
-                x={PAD.left - 6}
-                y={y + 4}
-                fontSize="10"
-                fill="#888"
-                textAnchor="end"
-              >
-                {Math.round(count)}
-              </text>
+              <line x1={x} x2={x} y1={PAD.top} y2={PAD.top + ALTO} stroke="#f3f4f6" strokeWidth="1" />
+              <text x={x} y={H - 12} fontSize="9" fill="#9ca3af" textAnchor="middle">{t}</text>
             </g>
           );
         })}
 
-        {/* Barras */}
-        {distribucion.map((bin, i) => {
+        {/* Barras horizontales */}
+        {bins.map((bin, i) => {
           const centro = (bin.desde + bin.hasta) / 2;
           const esPositivo = centro >= 0;
-          const x = PAD.left + i * anchoBarra + separacion / 2;
-          const w = anchoBarra - separacion;
-          const y = toY(bin.count);
-          const h = PAD.top + ALTO - y;
+          const y = PAD.top + i * altoBarra + separacion / 2;
+          const h = altoBarra - separacion;
+          const w = toX(bin.count) - PAD.left;
           const color = esPositivo ? '#16a34a' : '#dc2626';
-          const opacity = bin.count === 0 ? 0.15 : 0.85;
+          const activo = hover === i;
+          const opacity = bin.count === 0 ? 0.12 : activo ? 1 : 0.75;
 
           return (
-            <g key={i}>
+            <g
+              key={i}
+              onMouseEnter={() => setHover(i)}
+              style={{ cursor: 'pointer' }}
+            >
               <rect
-                x={x}
+                x={PAD.left}
                 y={y}
-                width={w}
+                width={Math.max(w, 0)}
                 height={h}
                 fill={color}
                 opacity={opacity}
                 rx="2"
               />
+              {/* Etiqueta de rango a la izquierda */}
+              <text
+                x={PAD.left - 6}
+                y={y + h / 2 + 3}
+                fontSize="8.5"
+                fill="#6b7280"
+                textAnchor="end"
+              >
+                {bin.desde.toFixed(1)}% a {bin.hasta.toFixed(1)}%
+              </text>
+              {/* Conteo dentro/fuera de la barra */}
               {bin.count > 0 && (
                 <text
-                  x={x + w / 2}
-                  y={y - 4}
-                  fontSize="9"
-                  fill="#666"
-                  textAnchor="middle"
+                  x={toX(bin.count) + 4}
+                  y={y + h / 2 + 3}
+                  fontSize="8.5"
+                  fill="#6b7280"
                 >
                   {bin.count}
                 </text>
@@ -90,68 +97,48 @@ export default function HistogramaRetornos({ distribucion, horizonte = 'sesiones
           );
         })}
 
-        {/* Línea vertical en 0 */}
-        {(() => {
-          const idxCero = distribucion.findIndex(
-            (b) => b.desde <= 0 && b.hasta > 0
-          );
-          if (idxCero < 0) return null;
-          const x = PAD.left + idxCero * anchoBarra + anchoBarra / 2;
-          return (
-            <line
-              x1={x}
-              x2={x}
-              y1={PAD.top}
-              y2={PAD.top + ALTO}
-              stroke="#333"
-              strokeWidth="1.5"
-              strokeDasharray="3 3"
-            />
-          );
-        })()}
-
-        {/* Etiquetas X */}
-        {distribucion.map((bin, i) => {
-          if (distribucion.length > 12 && i % 2 !== 0) return null;
-          const centro = (bin.desde + bin.hasta) / 2;
-          const x = PAD.left + i * anchoBarra + anchoBarra / 2;
-          return (
-            <text
-              key={i}
-              x={x}
-              y={H - 14}
-              fontSize="9"
-              fill="#888"
-              textAnchor="middle"
-            >
-              {centro.toFixed(1)}%
-            </text>
-          );
-        })}
-
         {/* Etiqueta eje X */}
         <text
           x={PAD.left + ANCHO / 2}
           y={H - 2}
-          fontSize="10"
-          fill="#888"
+          fontSize="9"
+          fill="#9ca3af"
           textAnchor="middle"
         >
-          Retorno a {horizonte} (%)
+          Número de casos
         </text>
       </svg>
 
-      <p
-        style={{
-          fontSize: '11px',
-          color: 'var(--v3-text-mute)',
-          margin: '8px 0 0 0',
-          lineHeight: 1.5,
-          textAlign: 'center'
-        }}
-      >
-        Distribución de los retornos obtenidos en los casos históricos similares. Verde = subidas,
-        rojo = bajadas. La altura indica cuántos casos cayeron en cada rango.
+      {/* Tooltip */}
+      {hover !== null && (() => {
+        const bin = bins[hover];
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              top: '6px',
+              right: '6px',
+              background: 'rgba(17, 24, 39, 0.92)',
+              color: '#fff',
+              fontSize: '10.5px',
+              padding: '6px 9px',
+              borderRadius: '5px',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+              zIndex: 3,
+              lineHeight: 1.5
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: '2px' }}>
+              {bin.desde.toFixed(1)}% a {bin.hasta.toFixed(1)}%
+            </div>
+            <div>{bin.count} {bin.count === 1 ? 'caso' : 'casos'}</div>
+          </div>
+        );
+      })()}
+
+      <p style={{ fontSize: '10px', color: 'var(--v3-text-mute)', margin: '4px 0 0 0', lineHeight: 1.45, textAlign: 'center' }}>
+        Distribución de retornos a {horizonte}. Verde = subidas, rojo = bajadas.
       </p>
     </div>
   );
