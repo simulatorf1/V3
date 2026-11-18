@@ -376,11 +376,13 @@ export default async function PaginaEmpresa({ params }) {
 
   const proyeccionDiaria = calcularProyeccion(
     analisis.velasUltimas60,
-    analisis.smisUltimos60
+    analisis.smisUltimos60,
+    'diario'
   );
   const proyeccionSemanal = calcularProyeccion(
     analisis.velasSemanales,
-    analisis.smisSemanales
+    analisis.smisSemanales,
+    'semanal'
   );
 
   const veredicto = calcularVeredicto({
