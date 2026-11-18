@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 
-const W = 560;
-const H = 260;
-const PAD = { top: 16, right: 44, bottom: 34, left: 110 };
+const W = 800;
+const H = 380;
+const PAD = { top: 20, right: 60, bottom: 50, left: 150 };
 const ANCHO = W - PAD.left - PAD.right;
 const ALTO = H - PAD.top - PAD.bottom;
 
@@ -35,12 +35,12 @@ export default function HistogramaRetornos({ distribucion }) {
   const binsOrdenados = [...bins].reverse();
   const maxCount = Math.max(1, ...binsOrdenados.map((b) => b.count));
   const altoBarra = ALTO / binsOrdenados.length;
-  const sep = Math.min(2, altoBarra * 0.15);
+  const sep = Math.min(3, altoBarra * 0.15);
   const toX = (c) => PAD.left + (c / maxCount) * ANCHO;
 
   return (
     <div style={{ maxWidth: `${W}px`, margin: '0 auto', position: 'relative' }}>
-      <p style={{ fontSize: '12px', color: 'var(--v3-text-soft)', margin: '0 0 10px 0', lineHeight: 1.55 }}>
+      <p style={{ fontSize: '13px', color: 'var(--v3-text-soft)', margin: '0 0 12px 0', lineHeight: 1.55 }}>
         Distribución fija de los retornos obtenidos a 10 sesiones, agrupados en 10 tramos del 4%.
         Verde = ganancia, rojo = pérdida. Cada barra muestra cuántos casos cayeron en ese rango.
         No es una predicción: es la dispersión real de los resultados pasados.
@@ -54,7 +54,7 @@ export default function HistogramaRetornos({ distribucion }) {
         {[0, Math.round(maxCount / 2), maxCount].filter((v, i, a) => a.indexOf(v) === i).map((t, i) => (
           <g key={i}>
             <line x1={toX(t)} x2={toX(t)} y1={PAD.top} y2={PAD.top + ALTO} stroke="#f3f4f6" />
-            <text x={toX(t)} y={H - 14} fontSize="10" fill="#6b7280" textAnchor="middle">{t}</text>
+            <text x={toX(t)} y={H - 22} fontSize="14" fill="#4b5563" textAnchor="middle">{t}</text>
           </g>
         ))}
 
@@ -66,16 +66,16 @@ export default function HistogramaRetornos({ distribucion }) {
           const w = toX(bin.count) - PAD.left;
           const color = positivo ? '#16a34a' : '#dc2626';
           const activo = hover === i;
-          const op = bin.count === 0 ? 0.15 : activo ? 1 : 0.82;
+          const op = bin.count === 0 ? 0.15 : activo ? 1 : 0.85;
 
           return (
             <g key={i} onMouseEnter={() => setHover(i)} style={{ cursor: 'pointer' }}>
-              <rect x={PAD.left} y={y} width={Math.max(w, 0)} height={h} fill={color} opacity={op} rx="2" />
-              <text x={PAD.left - 6} y={y + h / 2 + 4} fontSize="10.5" fill="#6b7280" textAnchor="end">
+              <rect x={PAD.left} y={y} width={Math.max(w, 0)} height={h} fill={color} opacity={op} rx="3" />
+              <text x={PAD.left - 8} y={y + h / 2 + 5} fontSize="14" fill="#4b5563" textAnchor="end">
                 {bin.desde >= 0 ? '+' : ''}{bin.desde.toFixed(0)}% a {bin.hasta >= 0 ? '+' : ''}{bin.hasta.toFixed(0)}%
               </text>
               {bin.count > 0 && (
-                <text x={toX(bin.count) + 4} y={y + h / 2 + 4} fontSize="10.5" fill="#6b7280">
+                <text x={toX(bin.count) + 6} y={y + h / 2 + 5} fontSize="14" fill="#4b5563" fontWeight="600">
                   {bin.count}
                 </text>
               )}
@@ -83,7 +83,7 @@ export default function HistogramaRetornos({ distribucion }) {
           );
         })}
 
-        <text x={PAD.left + ANCHO / 2} y={H - 2} fontSize="10" fill="#6b7280" textAnchor="middle">
+        <text x={PAD.left + ANCHO / 2} y={H - 4} fontSize="14" fill="#4b5563" textAnchor="middle">
           Número de casos
         </text>
       </svg>
@@ -98,15 +98,15 @@ export default function HistogramaRetornos({ distribucion }) {
               right: '6px',
               background: 'rgba(17, 24, 39, 0.92)',
               color: '#fff',
-              fontSize: '11.5px',
-              padding: '6px 9px',
-              borderRadius: '5px',
+              fontSize: '13px',
+              padding: '8px 12px',
+              borderRadius: '6px',
               pointerEvents: 'none',
               zIndex: 3,
               lineHeight: 1.5
             }}
           >
-            <div style={{ fontWeight: 700 }}>
+            <div style={{ fontWeight: 700, marginBottom: '2px' }}>
               {bin.desde >= 0 ? '+' : ''}{bin.desde.toFixed(0)}% a {bin.hasta >= 0 ? '+' : ''}{bin.hasta.toFixed(0)}%
             </div>
             <div>{bin.count} {bin.count === 1 ? 'caso' : 'casos'} ({totalOriginal > 0 ? Math.round((bin.count / totalOriginal) * 100) : 0}%)</div>
