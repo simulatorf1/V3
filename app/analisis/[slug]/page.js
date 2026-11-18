@@ -11,7 +11,6 @@ import WatchlistBoton from '../../../components/WatchlistBoton';
 import ContextoSector from '../../../components/ContextoSector';
 import BarraIndicadorVisual from '../../../components/BarraIndicadorVisual';
 import ActividadFavoritos from '../../../components/ActividadFavoritos';
-import { generarTextoProyeccion } from '../../../lib/textoSituacion';
 import { calcularProyeccion } from '../../../lib/proyeccion';
 import { calcularVeredicto } from '../../../lib/veredicto';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
@@ -384,13 +383,11 @@ export default async function PaginaEmpresa({ params }) {
     analisis.smisSemanales
   );
 
-  const veredicto = calcularVeredicto({ proyeccionDiaria, proyeccionSemanal });
-
-  const textoProyeccion = generarTextoProyeccion({
-    nombre: empresa.nombre,
-    precioActual: analisis.precioActual,
+  const veredicto = calcularVeredicto({
     proyeccionDiaria,
-    proyeccionSemanal
+    proyeccionSemanal,
+    nombreEmpresa: empresa.nombre,
+    precioActual: analisis.precioActual
   });
 
   const contexto = await cargarContextoSector(empresa.ticker, empresa.sector);
@@ -457,7 +454,7 @@ export default async function PaginaEmpresa({ params }) {
         {desdeCache && ' · desde caché'}
       </p>
 
-      {/* VEREDICTO ESTADÍSTICO */}
+      {/* VEREDICTO ESTADÍSTICO — párrafo completo unificado */}
       <VeredictoEstadistico veredicto={veredicto} />
 
       {/* TARJETAS CLAVE */}
@@ -473,65 +470,75 @@ export default async function PaginaEmpresa({ params }) {
         mercado={empresa.mercado}
       />
 
-      {textoProyeccion && (
-        <p
+      {/* ANÁLISIS GRÁFICO — grid horizontal de 3 gráficos */}
+      <section className="v3-seccion" style={{ marginTop: '16px' }}>
+        <h2 className="v3-seccion-titulo">Análisis gráfico histórico</h2>
+        <div
           style={{
-            marginTop: '8px',
-            marginBottom: '16px',
-            fontSize: '15px',
-            lineHeight: 1.7,
-            color: 'var(--v3-text)'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px'
           }}
         >
-          {renderizarNegritas(textoProyeccion)}
-        </p>
-      )}
+          {/* Cono corto plazo */}
+          {proyeccionDiaria?.bandas?.length > 1 && (
+            <div className="v3-card" style={{ padding: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
+                Cono de probabilidad · corto plazo (10 sesiones)
+              </div>
+              <FanChart
+                bandas={proyeccionDiaria.bandas}
+                casos={proyeccionDiaria.casos}
+                precioHoy={proyeccionDiaria.precioHoy}
+                fechaHoy={proyeccionDiaria.fechaHoy}
+                horizonte="sesiones"
+                intro={`Trayectorias de los ${proyeccionDiaria.total} casos históricos similares, todas partiendo del precio actual de ${proyeccionDiaria.precioHoy.toFixed(2)} €. La línea azul discontinua es la mediana de todos ellos día a día. Cada línea fina es un caso real: pulsa su fecha para ver los precios que alcanzó. No es una predicción.`}
+              />
+            </div>
+          )}
 
-      {/* FAN CHART — cono de probabilidad */}
-      {proyeccionDiaria?.bandas?.length > 1 && (
-        <section className="v3-seccion" style={{ marginTop: '16px' }}>
-          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica · corto plazo (10 sesiones)</h2>
-          <div className="v3-card" style={{ padding: '12px' }}>
-            <FanChart
-              bandas={proyeccionDiaria.bandas}
-              casos={proyeccionDiaria.casos}
-              precioHoy={proyeccionDiaria.precioHoy}
-              fechaHoy={proyeccionDiaria.fechaHoy}
-              horizonte="sesiones"
-            />
-          </div>
-        </section>
-      )}
-      
-      {proyeccionSemanal?.bandas?.length > 1 && (
-        <section className="v3-seccion" style={{ marginTop: '16px' }}>
-          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica · largo plazo (10 semanas)</h2>
-          <div className="v3-card" style={{ padding: '12px' }}>
-            <FanChart
-              bandas={proyeccionSemanal.bandas}
-              casos={proyeccionSemanal.casos}
-              precioHoy={proyeccionSemanal.precioHoy}
-              fechaHoy={proyeccionSemanal.fechaHoy}
-              horizonte="semanas"
-            />
-          </div>
-        </section>
-      )}
-      
-      {proyeccionDiaria?.distribucion?.length > 0 && (
-        <section className="v3-seccion" style={{ marginTop: '16px' }}>
-          <h2 className="v3-seccion-titulo">Distribución de retornos · corto plazo (10 sesiones)</h2>
-          <div className="v3-card" style={{ padding: '12px' }}>
-            <HistogramaRetornos distribucion={proyeccionDiaria.distribucion} />
-          </div>
-        </section>
-      )}
+          {/* Cono largo plazo */}
+          {proyeccionSemanal?.bandas?.length > 1 && (
+            <div className="v3-card" style={{ padding: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
+                Cono de probabilidad · largo plazo (10 semanas)
+              </div>
+              <FanChart
+                bandas={proyeccionSemanal.bandas}
+                casos={proyeccionSemanal.casos}
+                precioHoy={proyeccionSemanal.precioHoy}
+                fechaHoy={proyeccionSemanal.fechaHoy}
+                horizonte="semanas"
+                intro={`Las mismas ${proyeccionSemanal.total} situaciones similares, pero mirando lo que ocurrió 10 semanas después. Todas parten del precio actual (${proyeccionSemanal.precioHoy.toFixed(2)} €). No es una predicción.`}
+              />
+            </div>
+          )}
 
-
+          {/* Histograma */}
+          {proyeccionDiaria?.distribucion?.length > 0 && (
+            <div className="v3-card" style={{ padding: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
+                Distribución de retornos · corto plazo
+              </div>
+              <HistogramaRetornos distribucion={proyeccionDiaria.distribucion} />
+            </div>
+          )}
+        </div>
+      </section>
 
       <div className="v3-ficha-grid">
         <div>
-
+          <section className="v3-seccion" style={{ marginTop: '20px' }}>
+            <div className="v3-card" style={{ padding: '20px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginBottom: '8px' }}>
+                Indicador Equaty · valor {analisis.smiActual?.toFixed(0) ?? '—'}
+              </div>
+              <BarraIndicadorVisual valor={analisis.smiActual} />
+              <p style={{ margin: '12px 0 0 0', fontSize: '11.5px', color: 'var(--v3-text-mute)' }}>
+                Datos históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
+              </p>
+            </div>
+          </section>
 
           <section className="v3-seccion">
             <h2 className="v3-seccion-titulo">Evolución del precio y del indicador Equaty</h2>
