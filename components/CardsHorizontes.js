@@ -10,7 +10,7 @@ const cardStyle = {
   background: '#fff'
 };
 const tituloStyle = {
-  fontSize: '11px',
+  fontSize: '12px',
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.4px',
@@ -98,14 +98,36 @@ function CardHorizonte({ titulo, proyeccion, horizonte }) {
           de {lado} ({veces} de {proyeccion.total})
         </div>
       </div>
-      <div style={{ fontSize: '12.5px', color: 'var(--v3-text-soft)' }}>
+      <div style={{ fontSize: '12.5px', color: 'var(--v3-text-soft)', marginBottom: '8px' }}>
         Retorno medio: <strong>{retornoTxt}</strong> a {horizonte}.
       </div>
+
+      {proyeccion.precioFinalMediano !== null && proyeccion.precioFinalMediano !== undefined && (
+        <div
+          style={{
+            padding: '10px 12px',
+            background: 'var(--v3-bg-soft)',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            fontSize: '12.5px',
+            lineHeight: 1.55
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '2px' }}>
+            El {formatFecha(proyeccion.fechaHorizonte)} estaría en{' '}
+            <span style={{ color: 'var(--v3-text)', fontSize: '15px' }}>
+              {proyeccion.precioFinalMediano.toFixed(2)} €
+            </span>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)' }}>
+            Mediana de los casos. Media: {proyeccion.precioFinalMedio?.toFixed(2)} €.
+          </div>
+        </div>
+      )}
 
       <button
         onClick={() => setAbierto(!abierto)}
         style={{
-          marginTop: '10px',
           padding: '5px 10px',
           fontSize: '11.5px',
           fontWeight: 600,
@@ -120,6 +142,18 @@ function CardHorizonte({ titulo, proyeccion, horizonte }) {
       </button>
 
       {abierto && <CasosLista casos={proyeccion.casos} />}
+
+      <p
+        style={{
+          margin: '10px 0 0 0',
+          fontSize: '10.5px',
+          color: 'var(--v3-text-mute)',
+          lineHeight: 1.45
+        }}
+      >
+        No es una señal de compra o venta. Es la proyección estadística de lo que ocurrió de media
+        en situaciones similares del pasado.
+      </p>
     </div>
   );
 }
