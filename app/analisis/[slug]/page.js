@@ -19,7 +19,6 @@ import WatchlistZona from '../../../components/WatchlistZona';
 import Comentarios from '../../../components/Comentarios';
 import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
-import EspejoPasado from '../../../components/EspejoPasado';
 import FanChart from '../../../components/FanChart';
 import HistogramaRetornos from '../../../components/HistogramaRetornos';
 
@@ -468,6 +467,10 @@ export default async function PaginaEmpresa({ params }) {
         percentil={percentil}
         zona={analisis.zona}
         smiActual={analisis.smiActual}
+        precioActual={precioActual}
+        variacion5={variacion5}
+        variacion60={variacion60}
+        mercado={empresa.mercado}
       />
 
       {textoProyeccion && (
@@ -487,11 +490,8 @@ export default async function PaginaEmpresa({ params }) {
       {/* FAN CHART — cono de probabilidad */}
       {proyeccionDiaria?.bandas?.length > 1 && (
         <section className="v3-seccion" style={{ marginTop: '16px' }}>
-          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica (corto plazo)</h2>
-          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-            Trayectorias que siguió el precio en los {proyeccionDiaria.total} casos históricos similares.
-          </p>
-          <div className="v3-card" style={{ padding: '10px' }}>
+          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica · corto plazo (10 sesiones)</h2>
+          <div className="v3-card" style={{ padding: '12px' }}>
             <FanChart
               bandas={proyeccionDiaria.bandas}
               casos={proyeccionDiaria.casos}
@@ -502,109 +502,36 @@ export default async function PaginaEmpresa({ params }) {
           </div>
         </section>
       )}
-
+      
       {proyeccionSemanal?.bandas?.length > 1 && (
         <section className="v3-seccion" style={{ marginTop: '16px' }}>
-          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica (largo plazo)</h2>
-          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13.5px', marginTop: '-4px' }}>
-            Mismas trayectorias, pero a 10 semanas vista, en los {proyeccionSemanal.total} casos
-            históricos similares.
-          </p>
+          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica · largo plazo (10 semanas)</h2>
           <div className="v3-card" style={{ padding: '12px' }}>
-            <FanChart bandas={proyeccionSemanal.bandas} horizonte="semanas" />
+            <FanChart
+              bandas={proyeccionSemanal.bandas}
+              casos={proyeccionSemanal.casos}
+              precioHoy={proyeccionSemanal.precioHoy}
+              fechaHoy={proyeccionSemanal.fechaHoy}
+              horizonte="semanas"
+            />
           </div>
         </section>
       )}
-
-      {/* HISTOGRAMA DE RETORNOS */}
+      
       {proyeccionDiaria?.distribucion?.length > 0 && (
         <section className="v3-seccion" style={{ marginTop: '16px' }}>
-          <h2 className="v3-seccion-titulo">Distribución de retornos (corto plazo)</h2>
-          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
-            ¿Cuánto se ganó o perdió realmente en los casos anteriores a 10 sesiones?
-          </p>
-          <div className="v3-card" style={{ padding: '10px' }}>
-            <HistogramaRetornos distribucion={proyeccionDiaria.distribucion} horizonte="10 sesiones" />
+          <h2 className="v3-seccion-titulo">Distribución de retornos · corto plazo (10 sesiones)</h2>
+          <div className="v3-card" style={{ padding: '12px' }}>
+            <HistogramaRetornos distribucion={proyeccionDiaria.distribucion} />
           </div>
         </section>
       )}
 
-      {/* ESPEJO DEL PASADO */}
-      <EspejoPasado
-        proyeccionDiaria={proyeccionDiaria}
-        proyeccionSemanal={proyeccionSemanal}
-      />
+
 
       <div className="v3-ficha-grid">
         <div>
-          <section className="v3-seccion" style={{ marginTop: '20px' }}>
-            <div className="v3-card" style={{ padding: '20px' }}>
-              <div style={{ fontSize: '30px', fontWeight: 800, marginBottom: '4px' }}>
-                {precioActual?.toFixed(2) ?? '—'} €
-              </div>
-              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--v3-text-soft)' }}>
-                Precio actual · {empresa.mercado || ''}
-              </p>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                  gap: '12px',
-                  marginBottom: '12px'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    Variación 5 sesiones
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700 }}>
-                    {variacion5 >= 0 ? '+' : ''}{variacion5.toFixed(2)}%
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    Variación 60 sesiones
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700 }}>
-                    {variacion60 >= 0 ? '+' : ''}{variacion60.toFixed(2)}%
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    Situación actual
-                  </div>
-                  <div style={{ fontSize: '14px', fontWeight: 700 }}>{situacionActual}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    Percentil 60
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700 }}>{percentil}</div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '12px', marginBottom: '8px' }}>
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--v3-text-mute)',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.4px',
-                    marginBottom: '4px'
-                  }}
-                >
-                  Indicador Equaty · valor {analisis.smiActual?.toFixed(0) ?? '—'}
-                </div>
-                <BarraIndicadorVisual valor={analisis.smiActual} />
-              </div>
-
-              <p style={{ margin: '8px 0 0 0', fontSize: '11.5px', color: 'var(--v3-text-mute)' }}>
-                Datos históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
-              </p>
-            </div>
-          </section>
 
           <section className="v3-seccion">
             <h2 className="v3-seccion-titulo">Evolución del precio y del indicador Equaty</h2>
