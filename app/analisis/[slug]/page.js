@@ -488,12 +488,17 @@ export default async function PaginaEmpresa({ params }) {
       {proyeccionDiaria?.bandas?.length > 1 && (
         <section className="v3-seccion" style={{ marginTop: '16px' }}>
           <h2 className="v3-seccion-titulo">Cono de probabilidad histórica (corto plazo)</h2>
-          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13.5px', marginTop: '-4px' }}>
-            Trayectorias que siguió el precio en los {proyeccionDiaria.total} casos históricos
-            similares, normalizadas al punto de partida.
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
+            Trayectorias que siguió el precio en los {proyeccionDiaria.total} casos históricos similares.
           </p>
-          <div className="v3-card" style={{ padding: '12px' }}>
-            <FanChart bandas={proyeccionDiaria.bandas} horizonte="sesiones" />
+          <div className="v3-card" style={{ padding: '10px' }}>
+            <FanChart
+              bandas={proyeccionDiaria.bandas}
+              casos={proyeccionDiaria.casos}
+              precioHoy={proyeccionDiaria.precioHoy}
+              fechaHoy={proyeccionDiaria.fechaHoy}
+              horizonte="sesiones"
+            />
           </div>
         </section>
       )}
@@ -515,10 +520,10 @@ export default async function PaginaEmpresa({ params }) {
       {proyeccionDiaria?.distribucion?.length > 0 && (
         <section className="v3-seccion" style={{ marginTop: '16px' }}>
           <h2 className="v3-seccion-titulo">Distribución de retornos (corto plazo)</h2>
-          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13.5px', marginTop: '-4px' }}>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px', marginTop: '-4px' }}>
             ¿Cuánto se ganó o perdió realmente en los casos anteriores a 10 sesiones?
           </p>
-          <div className="v3-card" style={{ padding: '12px' }}>
+          <div className="v3-card" style={{ padding: '10px' }}>
             <HistogramaRetornos distribucion={proyeccionDiaria.distribucion} horizonte="10 sesiones" />
           </div>
         </section>
