@@ -21,7 +21,7 @@ import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
 import EspejoPasado from '../../../components/EspejoPasado';
 
-export const revalidate = 43000;
+export const revalidate = 10;
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
