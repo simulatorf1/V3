@@ -13,9 +13,13 @@ import BarraIndicadorVisual from '../../../components/BarraIndicadorVisual';
 import ActividadFavoritos from '../../../components/ActividadFavoritos';
 import { generarTextoProyeccion } from '../../../lib/textoSituacion';
 import { calcularProyeccion } from '../../../lib/proyeccion';
+import { calcularVeredicto } from '../../../lib/veredicto';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import WatchlistZona from '../../../components/WatchlistZona';
 import Comentarios from '../../../components/Comentarios';
+import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
+import CardsHorizontes from '../../../components/CardsHorizontes';
+import EspejoPasado from '../../../components/EspejoPasado';
 
 export const revalidate = 43000;
 export const maxDuration = 60;
@@ -135,7 +139,6 @@ async function cargarContextoSector(tickerActual, sector) {
     const empresasMap = {};
     for (const e of empresasSector) empresasMap[e.ticker] = e;
 
-    // Leemos solo columnas ligeras, no el JSON `datos`
     const { data: paginas } = await supabaseAdmin
       .from('paginas')
       .select('ticker, smi_ultimos_3, variacion60, percentil, zona')
@@ -154,7 +157,6 @@ async function cargarContextoSector(tickerActual, sector) {
         zona: p.zona || null
       });
 
-      // Cambio de pendiente con los últimos 3 SMIs (columna ligera)
       const smis3 = Array.isArray(p.smi_ultimos_3) ? p.smi_ultimos_3 : null;
       if (smis3 && smis3.length === 3 && smis3.every((v) => v !== null && v !== undefined)) {
         const [s2, s1, s0] = smis3;
@@ -201,7 +203,7 @@ async function cargarContextoSector(tickerActual, sector) {
   }
 }
 
- async function generateMetadata({ params }) {
+async function generateMetadata({ params }) {
   const slug = params.slug;
   let ticker;
   if (slug.includes('__')) ticker = slug.split('__')[0].toUpperCase();
@@ -248,7 +250,7 @@ async function cargarContextoSector(tickerActual, sector) {
   }
 }
 
- export default async function PaginaEmpresa({ params }) {
+export default async function PaginaEmpresa({ params }) {
   const slug = params.slug;
 
   let ticker;
@@ -381,6 +383,8 @@ async function cargarContextoSector(tickerActual, sector) {
     analisis.smisSemanales
   );
 
+  const veredicto = calcularVeredicto({ proyeccionDiaria, proyeccionSemanal });
+
   const textoProyeccion = generarTextoProyeccion({
     nombre: empresa.nombre,
     precioActual: analisis.precioActual,
@@ -452,10 +456,22 @@ async function cargarContextoSector(tickerActual, sector) {
         {desdeCache && ' · desde caché'}
       </p>
 
+      {/* VEREDICTO ESTADÍSTICO — cabecera orientada a decisión */}
+      <VeredictoEstadistico veredicto={veredicto} />
+
+      {/* TARJETAS CLAVE — horizontes y situación actual */}
+      <CardsHorizontes
+        proyeccionDiaria={proyeccionDiaria}
+        proyeccionSemanal={proyeccionSemanal}
+        percentil={percentil}
+        zona={analisis.zona}
+        smiActual={analisis.smiActual}
+      />
+
       {textoProyeccion && (
         <p
           style={{
-            marginTop: '16px',
+            marginTop: '8px',
             marginBottom: '16px',
             fontSize: '15px',
             lineHeight: 1.7,
@@ -465,6 +481,12 @@ async function cargarContextoSector(tickerActual, sector) {
           {renderizarNegritas(textoProyeccion)}
         </p>
       )}
+
+      {/* ESPEJO DEL PASADO — historial de casos */}
+      <EspejoPasado
+        proyeccionDiaria={proyeccionDiaria}
+        proyeccionSemanal={proyeccionSemanal}
+      />
 
       <div className="v3-ficha-grid">
         <div>
@@ -530,48 +552,6 @@ async function cargarContextoSector(tickerActual, sector) {
                 </div>
                 <BarraIndicadorVisual valor={analisis.smiActual} />
               </div>
-
-              {(proyeccionDiaria || proyeccionSemanal) && (
-                <div
-                  style={{
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: '1px solid var(--v3-border)',
-                    fontSize: '12.5px',
-                    lineHeight: 1.7
-                  }}
-                >
-                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>
-                    Proyección histórica
-                  </div>
-                  {proyeccionDiaria && (
-                    <div>
-                      <strong>Diario:</strong> {proyeccionDiaria.total} casos ·{' '}
-                      <strong>{proyeccionDiaria.subidas} subidas</strong>
-                      {proyeccionDiaria.bajadas > 0 && (
-                        <>
-                          {' / '}
-                          <strong>{proyeccionDiaria.bajadas} bajadas</strong>
-                        </>
-                      )}{' '}
-                      · <strong>{proyeccionDiaria.pctSubidas}%</strong> de subidas.
-                    </div>
-                  )}
-                  {proyeccionSemanal && (
-                    <div>
-                      <strong>Semanal:</strong> {proyeccionSemanal.total} casos ·{' '}
-                      <strong>{proyeccionSemanal.subidas} subidas</strong>
-                      {proyeccionSemanal.bajadas > 0 && (
-                        <>
-                          {' / '}
-                          <strong>{proyeccionSemanal.bajadas} bajadas</strong>
-                        </>
-                      )}{' '}
-                      · <strong>{proyeccionSemanal.pctSubidas}%</strong> de subidas.
-                    </div>
-                  )}
-                </div>
-              )}
 
               <p style={{ margin: '8px 0 0 0', fontSize: '11.5px', color: 'var(--v3-text-mute)' }}>
                 Datos históricos descriptivos. No predictivos. No constituyen recomendación de inversión.
