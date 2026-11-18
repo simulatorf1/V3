@@ -3,8 +3,8 @@
 import { useState } from 'react';
 
 const W = 560;
-const H = 240;
-const PAD = { top: 28, right: 12, bottom: 34, left: 52 };
+const H = 260;
+const PAD = { top: 40, right: 12, bottom: 46, left: 56 };
 const ANCHO = W - PAD.left - PAD.right;
 const ALTO = H - PAD.top - PAD.bottom;
 
@@ -20,9 +20,7 @@ function formatFecha(fechaISO) {
 }
 
 function pathLinea(puntos) {
-  return puntos
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
-    .join(' ');
+  return puntos.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 }
 
 function pathArea(sup, inf) {
@@ -32,19 +30,15 @@ function pathArea(sup, inf) {
 }
 
 export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte = 'sesiones' }) {
+  const [casoActivo, setCasoActivo] = useState(null); // null = caso medio
   const [hoverCaso, setHoverCaso] = useState(null);
-  const [hoverDia, setHoverDia] = useState(null);
 
   if (!bandas || bandas.length < 2 || !casos || casos.length === 0) return null;
 
-  // Rango Y: incluye bandas y todas las trayectorias
-  const todosPrecios = [];
+  // Y rango
+  const todosPrecios = [precioHoy];
   for (const b of bandas) todosPrecios.push(b.p10, b.p90);
-  for (const c of casos) {
-    for (const p of c.precios) todosPrecios.push(p.valor);
-  }
-  todosPrecios.push(precioHoy);
-
+  for (const c of casos) for (const p of c.precios) todosPrecios.push(p.valor);
   const yMin = Math.min(...todosPrecios);
   const yMax = Math.max(...todosPrecios);
   const margen = (yMax - yMin) * 0.08 || 1;
@@ -54,26 +48,25 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
   const toX = (d) => PAD.left + (d / (bandas.length - 1)) * ANCHO;
   const toY = (v) => PAD.top + ALTO - ((v - y0) / (y1 - y0)) * ALTO;
 
-  // Ticks Y (5)
+  // Ticks Y
   const ticksY = [];
   for (let i = 0; i <= 4; i++) {
     const v = y0 + ((y1 - y0) / 4) * i;
     ticksY.push({ v, y: toY(v) });
   }
 
-  // Ticks X (fechas cada 2 días para no saturar)
-  const ticksX = bandas.filter((b) => b.d % 2 === 0 || b.d === bandas.length - 1);
-
-  // Trayectorias individuales
+  // Todas las trayectorias (con día 0 = precioHoy)
   const trayectorias = casos.map((c, idx) => {
-    const puntos = c.precios.map((p) => ({
-      x: toX(p.d),
-      y: toY(p.valor),
-      d: p.d,
-      valor: p.valor,
-      fecha: p.fecha
-    }));
-    return { idx, puntos, fechaInicio: c.fecha, variacion: c.variacion };
+    const puntos = [
+      { d: 0, valor: precioHoy, fecha: fechaHoy },
+      ...c.precios.slice(1).map((p) => ({ d: p.d, valor: p.valor, fecha: p.fecha }))
+    ];
+    return {
+      idx,
+      fechaInicio: c.fecha,
+      variacion: c.variacion,
+      puntos: puntos.map((p) => ({ x: toX(p.d), y: toY(p.valor), d: p.d, valor: p.valor, fecha: p.fecha }))
+    };
   });
 
   const bandaSup80 = bandas.map((b) => ({ x: toX(b.d), y: toY(b.p90) }));
@@ -82,18 +75,63 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
   const bandaInf50 = bandas.map((b) => ({ x: toX(b.d), y: toY(b.p25) }));
   const mediana = bandas.map((b) => ({ x: toX(b.d), y: toY(b.p50) }));
 
-  const diaHover = hoverDia !== null ? bandas.find((b) => b.d === hoverDia) : null;
+  const casoResaltado = hoverCaso !== null ? hoverCaso : casoActivo;
+  const casoData = casoResaltado !== null ? trayectorias[casoResaltado] : null;
 
   return (
-    <div style={{ maxWidth: `${W}px`, margin: '0 auto', position: 'relative' }}>
+    <div style={{ maxWidth: `${W}px`, margin: '0 auto' }}>
+      {/* Botones de selección de caso */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '4px',
+          flexWrap: 'wrap',
+          marginBottom: '8px',
+          justifyContent: 'center'
+        }}
+      >
+        <button
+          onClick={() => setCasoActivo(null)}
+          style={{
+            padding: '3px 8px',
+            fontSize: '10.5px',
+            fontWeight: 600,
+            borderRadius: '999px',
+            border: `1px solid ${casoActivo === null ? '#1e40af' : 'var(--v3-border)'}`,
+            background: casoActivo === null ? '#dbeafe' : '#fff',
+            color: '#1e40af',
+            cursor: 'pointer'
+          }}
+        >
+          Caso medio
+        </button>
+        {casos.map((c, i) => (
+          <button
+            key={i}
+            onClick={() => setCasoActivo(i)}
+            title={`${formatFecha(c.fecha)} · ${c.variacion >= 0 ? '+' : ''}${c.variacion.toFixed(2)}%`}
+            style={{
+              padding: '3px 8px',
+              fontSize: '10.5px',
+              fontWeight: 600,
+              borderRadius: '999px',
+              border: `1px solid ${casoActivo === i ? '#1e40af' : 'var(--v3-border)'}`,
+              background: casoActivo === i ? '#dbeafe' : '#fff',
+              color: casoActivo === i ? '#1e40af' : 'var(--v3-text)',
+              cursor: 'pointer'
+            }}
+          >
+            Caso {i + 1}
+          </button>
+        ))}
+      </div>
+
       <svg
         viewBox={`0 0 ${W} ${H}`}
         style={{ width: '100%', height: 'auto', display: 'block' }}
-        role="img"
-        aria-label="Cono de probabilidad histórica"
-        onMouseLeave={() => { setHoverCaso(null); setHoverDia(null); }}
+        onMouseLeave={() => setHoverCaso(null)}
       >
-        {/* Rejilla Y + etiquetas precio */}
+        {/* Rejilla + etiquetas Y */}
         {ticksY.map((t, i) => (
           <g key={i}>
             <line x1={PAD.left} x2={PAD.left + ANCHO} y1={t.y} y2={t.y} stroke="#f3f4f6" strokeWidth="1" />
@@ -103,154 +141,100 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
           </g>
         ))}
 
-        {/* Bandas */}
-        <path d={pathArea(bandaSup80, bandaInf80)} fill="rgba(37, 99, 235, 0.10)" />
-        <path d={pathArea(bandaSup50, bandaInf50)} fill="rgba(37, 99, 235, 0.22)" />
+        {/* Bandas (solo si caso medio activo o nada) */}
+        {casoResaltado === null && (
+          <>
+            <path d={pathArea(bandaSup80, bandaInf80)} fill="rgba(37, 99, 235, 0.10)" />
+            <path d={pathArea(bandaSup50, bandaInf50)} fill="rgba(37, 99, 235, 0.22)" />
+          </>
+        )}
 
-        {/* Trayectorias individuales */}
+        {/* Trayectorias */}
         {trayectorias.map((t) => {
-          const activa = hoverCaso === t.idx;
+          const activa = casoResaltado === t.idx;
+          const tenue = casoResaltado !== null && !activa;
           return (
             <path
               key={t.idx}
               d={pathLinea(t.puntos)}
               fill="none"
-              stroke={activa ? '#2563eb' : '#cbd5e1'}
-              strokeWidth={activa ? 1.8 : 0.6}
-              opacity={hoverCaso === null ? 0.55 : activa ? 1 : 0.15}
-              style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
+              stroke={activa ? '#1e40af' : '#cbd5e1'}
+              strokeWidth={activa ? 2 : 0.6}
+              opacity={tenue ? 0.15 : activa ? 1 : 0.55}
+              style={{ cursor: 'pointer' }}
               onMouseEnter={() => setHoverCaso(t.idx)}
             />
           );
         })}
 
-        {/* Mediana */}
-        <path d={pathLinea(mediana)} fill="none" stroke="#1e40af" strokeWidth="1.6" strokeLinecap="round" />
+        {/* Mediana (si caso medio) */}
+        {casoResaltado === null && (
+          <path d={pathLinea(mediana)} fill="none" stroke="#1e40af" strokeWidth="1.6" strokeLinecap="round" />
+        )}
 
-        {/* Línea vertical "hoy" */}
+        {/* Línea vertical hoy */}
         <line x1={toX(0)} x2={toX(0)} y1={PAD.top} y2={PAD.top + ALTO} stroke="#6b7280" strokeWidth="1" strokeDasharray="3 3" />
         <text x={toX(0) + 3} y={PAD.top - 6} fontSize="8.5" fill="#6b7280">hoy</text>
 
-        {/* Punto de partida (precioHoy) */}
+        {/* Punto de partida */}
         <circle cx={toX(0)} cy={toY(precioHoy)} r="3" fill="#1e40af" />
 
-        {/* Eje X: fechas */}
-        {ticksX.map((b, i) => {
+        {/* Eje X: todos los días */}
+        {bandas.map((b, i) => {
           const x = toX(b.d);
+          const step = bandas.length > 6 ? 1 : 1;
+          if (i % step !== 0) return null;
           return (
             <g key={i}>
               <line x1={x} x2={x} y1={PAD.top + ALTO} y2={PAD.top + ALTO + 3} stroke="#d1d5db" strokeWidth="1" />
-              <text x={x} y={H - 18} fontSize="8.5" fill="#9ca3af" textAnchor="middle">
+              <text x={x} y={H - 22} fontSize="8" fill="#9ca3af" textAnchor="middle">
                 {formatFecha(b.fecha)}
               </text>
             </g>
           );
         })}
 
-        {/* Zonas hover por día (para tooltip del día) */}
-        {bandas.map((b) => {
-          const x = toX(b.d);
-          const w = ANCHO / (bandas.length - 1);
-          return (
-            <rect
-              key={b.d}
-              x={x - w / 2}
-              y={PAD.top}
-              width={w}
-              height={ALTO}
-              fill="transparent"
-              onMouseEnter={() => setHoverDia(b.d)}
-            />
-          );
-        })}
+        {/* Si hay caso activo, mostrar puntos con precio */}
+        {casoData && casoData.puntos.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="2" fill="#1e40af" />
+            <text x={p.x} y={p.y - 6} fontSize="7.5" fill="#1e40af" textAnchor="middle" fontWeight="600">
+              {p.valor.toFixed(1)}
+            </text>
+          </g>
+        ))}
       </svg>
 
-      {/* Tooltip del día */}
-      {diaHover && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '30px',
-            left: `calc(${(toX(diaHover.d) / W) * 100}% + 8px)`,
-            background: 'rgba(17, 24, 39, 0.92)',
-            color: '#fff',
-            fontSize: '10.5px',
-            padding: '6px 9px',
-            borderRadius: '5px',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-            zIndex: 3,
-            lineHeight: 1.5
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: '2px' }}>{formatFecha(diaHover.fecha)}</div>
-          <div>Mediana: {diaHover.p50.toFixed(2)} €</div>
-          <div>50%: {diaHover.p25.toFixed(2)} – {diaHover.p75.toFixed(2)} €</div>
-          <div>80%: {diaHover.p10.toFixed(2)} – {diaHover.p90.toFixed(2)} €</div>
-        </div>
-      )}
-
-      {/* Tooltip de trayectoria individual */}
-      {hoverCaso !== null && !diaHover && (() => {
-        const t = trayectorias[hoverCaso];
-        return (
-          <div
-            style={{
-              position: 'absolute',
-              top: '30px',
-              left: '8px',
-              background: 'rgba(37, 99, 235, 0.95)',
-              color: '#fff',
-              fontSize: '10.5px',
-              padding: '6px 9px',
-              borderRadius: '5px',
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-              zIndex: 3,
-              lineHeight: 1.5
-            }}
-          >
-            <div style={{ fontWeight: 700, marginBottom: '2px' }}>Caso {formatFecha(t.fechaInicio)}</div>
-            <div>Retorno: {t.variacion >= 0 ? '+' : ''}{t.variacion.toFixed(2)}%</div>
-          </div>
-        );
-      })()}
-
-      {/* Pie */}
+      {/* Footer con info */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: '10px',
+          fontSize: '10.5px',
           color: 'var(--v3-text-mute)',
-          marginTop: '4px',
+          marginTop: '6px',
           flexWrap: 'wrap',
           gap: '6px'
         }}
       >
         <span>
-          Precio actual: <strong style={{ color: 'var(--v3-text)' }}>{precioHoy?.toFixed(2)} €</strong>
-          {' · '}{casos.length} casos similares
+          Inicio: <strong style={{ color: 'var(--v3-text)' }}>{precioHoy?.toFixed(2)} €</strong>
+          {casoData ? (
+            <> · Caso {casoData.idx + 1} · {formatFecha(casoData.fechaInicio)} · <strong style={{ color: casoData.variacion >= 0 ? '#166534' : '#991b1b' }}>{casoData.variacion >= 0 ? '+' : ''}{casoData.variacion.toFixed(2)}%</strong></>
+          ) : (
+            <> · {casos.length} casos · mediana</>
+          )}
         </span>
-        <span style={{ display: 'inline-flex', gap: '10px', alignItems: 'center' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '10px', height: '8px', background: 'rgba(37, 99, 235, 0.22)', borderRadius: '2px' }} />
-            50%
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '10px', height: '8px', background: 'rgba(37, 99, 235, 0.10)', borderRadius: '2px' }} />
-            80%
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '12px', height: '1.6px', background: '#1e40af' }} />
-            Mediana
-          </span>
+        <span style={{ display: 'inline-flex', gap: '8px' }}>
+          <span><span style={{ display: 'inline-block', width: '10px', height: '8px', background: 'rgba(37, 99, 235, 0.22)', borderRadius: '2px' }} /> 50%</span>
+          <span><span style={{ display: 'inline-block', width: '10px', height: '8px', background: 'rgba(37, 99, 235, 0.10)', borderRadius: '2px' }} /> 80%</span>
+          <span><span style={{ display: 'inline-block', width: '12px', height: '1.6px', background: '#1e40af' }} /> mediana</span>
         </span>
       </div>
 
-      <p style={{ fontSize: '10px', color: 'var(--v3-text-mute)', margin: '4px 0 0 0', lineHeight: 1.45, textAlign: 'center' }}>
-        Cada línea gris es un caso histórico. Pasa el cursor para resaltarlo. No es una predicción.
+      <p style={{ fontSize: '10.5px', color: 'var(--v3-text-mute)', margin: '8px 0 0 0', lineHeight: 1.5 }}>
+        Cada línea gris es un caso histórico. Pulsa "Caso 1…N" o pasa el cursor para ver su trayectoria y precios día a día. "Caso medio" muestra la mediana y las bandas 50/80. <strong>No es una predicción</strong>: describe lo que ocurrió en situaciones similares del pasado.
       </p>
     </div>
   );
