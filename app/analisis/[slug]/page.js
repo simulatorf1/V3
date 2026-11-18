@@ -20,8 +20,10 @@ import Comentarios from '../../../components/Comentarios';
 import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
 import EspejoPasado from '../../../components/EspejoPasado';
+import FanChart from '../../../components/FanChart';
+import HistogramaRetornos from '../../../components/HistogramaRetornos';
 
-export const revalidate = 10;
+export const revalidate = 43000;
 export const maxDuration = 60;
 
 const BASE_URL = 'https://equaty.es';
@@ -456,10 +458,10 @@ export default async function PaginaEmpresa({ params }) {
         {desdeCache && ' · desde caché'}
       </p>
 
-      {/* VEREDICTO ESTADÍSTICO — cabecera orientada a decisión */}
+      {/* VEREDICTO ESTADÍSTICO */}
       <VeredictoEstadistico veredicto={veredicto} />
 
-      {/* TARJETAS CLAVE — horizontes y situación actual */}
+      {/* TARJETAS CLAVE */}
       <CardsHorizontes
         proyeccionDiaria={proyeccionDiaria}
         proyeccionSemanal={proyeccionSemanal}
@@ -482,7 +484,47 @@ export default async function PaginaEmpresa({ params }) {
         </p>
       )}
 
-      {/* ESPEJO DEL PASADO — historial de casos */}
+      {/* FAN CHART — cono de probabilidad */}
+      {proyeccionDiaria?.bandas?.length > 1 && (
+        <section className="v3-seccion" style={{ marginTop: '16px' }}>
+          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica (corto plazo)</h2>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13.5px', marginTop: '-4px' }}>
+            Trayectorias que siguió el precio en los {proyeccionDiaria.total} casos históricos
+            similares, normalizadas al punto de partida.
+          </p>
+          <div className="v3-card" style={{ padding: '12px' }}>
+            <FanChart bandas={proyeccionDiaria.bandas} horizonte="sesiones" />
+          </div>
+        </section>
+      )}
+
+      {proyeccionSemanal?.bandas?.length > 1 && (
+        <section className="v3-seccion" style={{ marginTop: '16px' }}>
+          <h2 className="v3-seccion-titulo">Cono de probabilidad histórica (largo plazo)</h2>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13.5px', marginTop: '-4px' }}>
+            Mismas trayectorias, pero a 10 semanas vista, en los {proyeccionSemanal.total} casos
+            históricos similares.
+          </p>
+          <div className="v3-card" style={{ padding: '12px' }}>
+            <FanChart bandas={proyeccionSemanal.bandas} horizonte="semanas" />
+          </div>
+        </section>
+      )}
+
+      {/* HISTOGRAMA DE RETORNOS */}
+      {proyeccionDiaria?.distribucion?.length > 0 && (
+        <section className="v3-seccion" style={{ marginTop: '16px' }}>
+          <h2 className="v3-seccion-titulo">Distribución de retornos (corto plazo)</h2>
+          <p style={{ color: 'var(--v3-text-soft)', fontSize: '13.5px', marginTop: '-4px' }}>
+            ¿Cuánto se ganó o perdió realmente en los casos anteriores a 10 sesiones?
+          </p>
+          <div className="v3-card" style={{ padding: '12px' }}>
+            <HistogramaRetornos distribucion={proyeccionDiaria.distribucion} horizonte="10 sesiones" />
+          </div>
+        </section>
+      )}
+
+      {/* ESPEJO DEL PASADO */}
       <EspejoPasado
         proyeccionDiaria={proyeccionDiaria}
         proyeccionSemanal={proyeccionSemanal}
