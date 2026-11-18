@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const W = 560;
 const H = 260;
-const PAD = { top: 30, right: 12, bottom: 46, left: 56 };
+const PAD = { top: 30, right: 12, bottom: 50, left: 64 };
 const ANCHO = W - PAD.left - PAD.right;
 const ALTO = H - PAD.top - PAD.bottom;
 
@@ -29,7 +29,6 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
 
   if (!bandas || bandas.length < 2 || !casos || casos.length === 0) return null;
 
-  // Y rango: incluye todos los precios normalizados de todos los casos
   const todosPrecios = [precioHoy];
   for (const c of casos) for (const p of c.precios) todosPrecios.push(p.valor);
   const yMin = Math.min(...todosPrecios);
@@ -47,7 +46,6 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
     ticksY.push({ v, y: toY(v) });
   }
 
-  // Todas las trayectorias ya parten de precioHoy (viene de proyeccion.js)
   const trayectorias = casos.map((c, idx) => ({
     idx,
     fechaInicio: c.fecha,
@@ -61,7 +59,6 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
     }))
   }));
 
-  // Mediana desde precioHoy
   const mediana = bandas.map((b, i) => ({
     x: toX(b.d),
     y: toY(i === 0 ? precioHoy : b.p50)
@@ -73,18 +70,17 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
   return (
     <div style={{ maxWidth: `${W}px`, margin: '0 auto' }}>
       {intro && (
-        <p style={{ fontSize: '11.5px', color: 'var(--v3-text-soft)', margin: '0 0 10px 0', lineHeight: 1.55 }}>
+        <p style={{ fontSize: '12px', color: 'var(--v3-text-soft)', margin: '0 0 10px 0', lineHeight: 1.55 }}>
           {intro}
         </p>
       )}
 
-      {/* Botones con fecha */}
       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
         <button
           onClick={() => setCasoActivo(null)}
           style={{
             padding: '3px 8px',
-            fontSize: '10px',
+            fontSize: '11px',
             fontWeight: 600,
             borderRadius: '999px',
             border: `1px solid ${casoActivo === null ? '#1e40af' : 'var(--v3-border)'}`,
@@ -102,7 +98,7 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
             title={`${formatFecha(c.fecha)} · ${c.variacion >= 0 ? '+' : ''}${c.variacion.toFixed(2)}%`}
             style={{
               padding: '3px 7px',
-              fontSize: '9.5px',
+              fontSize: '10.5px',
               fontWeight: 600,
               borderRadius: '999px',
               border: `1px solid ${casoActivo === i ? '#1e40af' : 'var(--v3-border)'}`,
@@ -120,13 +116,12 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
         {ticksY.map((t, i) => (
           <g key={i}>
             <line x1={PAD.left} x2={PAD.left + ANCHO} y1={t.y} y2={t.y} stroke="#f3f4f6" />
-            <text x={PAD.left - 6} y={t.y + 3} fontSize="9" fill="#9ca3af" textAnchor="end">
+            <text x={PAD.left - 6} y={t.y + 4} fontSize="11" fill="#6b7280" textAnchor="end">
               {t.v.toFixed(2)} €
             </text>
           </g>
         ))}
 
-        {/* Trayectorias individuales */}
         {trayectorias.map((t) => {
           const activa = casoResaltado === t.idx;
           const tenue = casoResaltado !== null && !activa;
@@ -135,28 +130,27 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
               <path
                 d={pathLinea(t.puntos)}
                 fill="none"
-                stroke={activa ? '#1e40af' : '#93c5fd'}
-                strokeWidth={activa ? 2 : 0.7}
-                opacity={tenue ? 0.12 : activa ? 1 : 0.45}
+                stroke={activa ? '#dc2626' : '#2563eb'}
+                strokeWidth={activa ? 2.2 : 1}
+                opacity={tenue ? 0.2 : activa ? 1 : 0.75}
               />
             </g>
           );
         })}
 
-        {/* Mediana única */}
-        <path d={pathLinea(mediana)} fill="none" stroke="#1e40af" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="5 3" />
+        <path d={pathLinea(mediana)} fill="none" stroke="#111827" strokeWidth="3" strokeLinecap="round" />
 
         <line x1={toX(0)} x2={toX(0)} y1={PAD.top} y2={PAD.top + ALTO} stroke="#6b7280" strokeWidth="1" strokeDasharray="3 3" />
-        <text x={toX(0) + 3} y={PAD.top - 6} fontSize="8.5" fill="#6b7280">hoy</text>
+        <text x={toX(0) + 3} y={PAD.top - 6} fontSize="10" fill="#6b7280">hoy</text>
 
-        <circle cx={toX(0)} cy={toY(precioHoy)} r="3" fill="#1e40af" />
+        <circle cx={toX(0)} cy={toY(precioHoy)} r="3.5" fill="#111827" />
 
         {bandas.map((b, i) => {
           const x = toX(b.d);
           return (
             <g key={i}>
               <line x1={x} x2={x} y1={PAD.top + ALTO} y2={PAD.top + ALTO + 3} stroke="#d1d5db" />
-              <text x={x} y={H - 22} fontSize="7.5" fill="#9ca3af" textAnchor="middle">
+              <text x={x} y={H - 24} fontSize="10" fill="#6b7280" textAnchor="middle">
                 {formatFecha(b.fecha)}
               </text>
             </g>
@@ -165,15 +159,15 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
 
         {casoData && casoData.puntos.map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r="2" fill="#1e40af" />
-            <text x={p.x} y={p.y - 6} fontSize="7.5" fill="#1e40af" textAnchor="middle" fontWeight="600">
-              {p.valor.toFixed(1)}
+            <circle cx={p.x} cy={p.y} r="2.5" fill="#dc2626" />
+            <text x={p.x} y={p.y - 7} fontSize="10" fill="#dc2626" textAnchor="middle" fontWeight="700">
+              {p.valor.toFixed(2)}
             </text>
           </g>
         ))}
       </svg>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--v3-text-mute)', marginTop: '6px', flexWrap: 'wrap', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--v3-text-soft)', marginTop: '6px', flexWrap: 'wrap', gap: '6px' }}>
         <span>
           Inicio: <strong style={{ color: 'var(--v3-text)' }}>{precioHoy?.toFixed(2)} €</strong>
           {casoData ? (
@@ -182,9 +176,9 @@ export default function FanChart({ bandas, casos, precioHoy, fechaHoy, horizonte
             <> · mediana de {casos.length} casos</>
           )}
         </span>
-        <span style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
-          <span><span style={{ display: 'inline-block', width: '12px', height: '1.5px', background: '#93c5fd' }} /> casos</span>
-          <span><span style={{ display: 'inline-block', width: '12px', height: '2.2px', background: '#1e40af' }} /> mediana</span>
+        <span style={{ display: 'inline-flex', gap: '10px', alignItems: 'center' }}>
+          <span><span style={{ display: 'inline-block', width: '14px', height: '1.5px', background: '#2563eb' }} /> casos</span>
+          <span><span style={{ display: 'inline-block', width: '14px', height: '3px', background: '#111827' }} /> mediana</span>
         </span>
       </div>
     </div>
