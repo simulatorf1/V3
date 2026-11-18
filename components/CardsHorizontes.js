@@ -9,7 +9,6 @@ const cardStyle = {
   borderRadius: 'var(--v3-radius-sm, 8px)',
   background: '#fff'
 };
-
 const tituloStyle = {
   fontSize: '11px',
   fontWeight: 700,
@@ -43,18 +42,22 @@ function CasosLista({ casos }) {
         <div
           key={i}
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '11.5px',
+            fontSize: '11px',
             color: 'var(--v3-text-soft)',
-            padding: '3px 0',
-            borderBottom: '1px dashed var(--v3-border)'
+            padding: '5px 0',
+            borderBottom: '1px dashed var(--v3-border)',
+            lineHeight: 1.5
           }}
         >
-          <span>{formatFecha(c.fecha)} → {formatFecha(c.fechaFin)}</span>
-          <strong style={{ color: c.variacion >= 0 ? '#166534' : '#991b1b' }}>
-            {formatVar(c.variacion)}
-          </strong>
+          <div>{formatFecha(c.fecha)} → {formatFecha(c.fechaFin)}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+            <span>
+              {c.precioInicioReal?.toFixed(2)} € → {c.precioFinReal?.toFixed(2)} €
+            </span>
+            <strong style={{ color: c.variacion >= 0 ? '#166534' : '#991b1b' }}>
+              {formatVar(c.variacion)}
+            </strong>
+          </div>
         </div>
       ))}
     </div>
@@ -163,15 +166,8 @@ function CardSituacion({ precioActual, variacion5, variacion60, percentil, zona,
 }
 
 export default function CardsHorizontes({
-  proyeccionDiaria,
-  proyeccionSemanal,
-  percentil,
-  zona,
-  smiActual,
-  precioActual,
-  variacion5,
-  variacion60,
-  mercado
+  proyeccionDiaria, proyeccionSemanal, percentil, zona, smiActual,
+  precioActual, variacion5, variacion60, mercado
 }) {
   return (
     <div
@@ -182,16 +178,8 @@ export default function CardsHorizontes({
         marginBottom: '16px'
       }}
     >
-      <CardHorizonte
-        titulo="Corto plazo (10 sesiones)"
-        proyeccion={proyeccionDiaria}
-        horizonte="10 sesiones"
-      />
-      <CardHorizonte
-        titulo="Largo plazo (10 semanas)"
-        proyeccion={proyeccionSemanal}
-        horizonte="10 semanas"
-      />
+      <CardHorizonte titulo="Corto plazo (10 sesiones)" proyeccion={proyeccionDiaria} horizonte="10 sesiones" />
+      <CardHorizonte titulo="Largo plazo (10 semanas)" proyeccion={proyeccionSemanal} horizonte="10 semanas" />
       <CardSituacion
         precioActual={precioActual}
         variacion5={variacion5}
