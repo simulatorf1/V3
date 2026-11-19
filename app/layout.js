@@ -20,7 +20,7 @@ export const metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
     default: 'Equaty — Análisis bursátil estadístico',
-    template: '%s'
+    template: '%s | Equaty'
   },
   description:
     'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
