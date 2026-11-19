@@ -211,10 +211,12 @@ async function generateMetadata({ params }) {
 
   try {
     const empresa = await obtenerOCrearEmpresa(ticker);
-    if (!empresa) return { title: 'Empresa — Equaty' };
+    if (!empresa) {
+      return { title: `${ticker} — Ficha estadística` };
+    }
 
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
-    const titulo = `${empresa.nombre} (${empresa.ticker}) — Precio, evolución y rango | Equaty`;
+    const titulo = `${empresa.nombre} (${empresa.ticker}) — Precio, evolución y rango`;
     const descripcion = `Ficha estadística descriptiva de ${empresa.nombre} (${empresa.ticker}) actualizada el ${fecha}: precio actual, variación en 60 sesiones, comparación sectorial e indicador Equaty. Información histórica, no recomendación de inversión.`;
     const canonical = `${BASE_URL}/analisis/${slug}`;
 
@@ -223,7 +225,7 @@ async function generateMetadata({ params }) {
       description: descripcion,
       alternates: { canonical },
       openGraph: {
-        title: titulo,
+        title: `${titulo} | Equaty`,
         description: descripcion,
         url: canonical,
         siteName: 'Equaty',
@@ -240,13 +242,13 @@ async function generateMetadata({ params }) {
       },
       twitter: {
         card: 'summary_large_image',
-        title: titulo,
+        title: `${titulo} | Equaty`,
         description: descripcion,
         images: [`${BASE_URL}/og-image.png`]
       }
     };
   } catch (e) {
-    return { title: 'Empresa — Equaty' };
+    return { title: `${ticker} — Ficha estadística` };
   }
 }
 
