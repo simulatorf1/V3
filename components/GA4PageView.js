@@ -14,21 +14,28 @@ export default function GA4PageView() {
 
     let cancelado = false;
     let intentos = 0;
-    const maxIntentos = 10; // 10 × 50ms = 500ms máximo
+    const maxIntentos = 10;
 
     const enviar = () => {
       if (cancelado) return;
+
+      // Intentar leer el título del <h1> (que viene del servidor y es correcto)
+      const h1 = document.querySelector('h1');
+      const tituloH1 = h1 ? h1.textContent.trim() : '';
+      
+      // Si hay un <h1> con contenido, usarlo para actualizar el título
+      if (tituloH1 && tituloH1.length > 0 && !tituloH1.includes('Cargando')) {
+        const tituloCompleto = `${tituloH1} | Equaty`;
+        if (document.title !== tituloCompleto) {
+          document.title = tituloCompleto;
+        }
+      }
 
       const pagePath = window.location.pathname + window.location.search;
       const pageLocation = window.location.href;
       const pageTitle = document.title || '';
 
-      // Si el título no ha cambiado desde el anterior y aún no hemos agotado intentos,
-      // esperamos un poco más (Next.js puede tardar en aplicar el nuevo title).
-      if (
-        pageTitle === tituloAnterior.current &&
-        intentos < maxIntentos
-      ) {
+      if (pageTitle === tituloAnterior.current && intentos < maxIntentos) {
         intentos++;
         setTimeout(enviar, 50);
         return;
@@ -36,15 +43,12 @@ export default function GA4PageView() {
 
       tituloAnterior.current = pageTitle;
 
-      // Forzar a GA4 a actualizar su page_location interno
-      // para que eventos automáticos (form_start, scroll, etc.) usen la URL correcta
       window.gtag('set', {
         page_path: pagePath,
         page_location: pageLocation,
         page_title: pageTitle
       });
 
-      // Enviar el page_view
       window.gtag('event', 'page_view', {
         page_path: pagePath,
         page_location: pageLocation,
@@ -52,8 +56,7 @@ export default function GA4PageView() {
       });
     };
 
-    // Pequeño delay inicial para dar tiempo a que Next.js aplique el título
-    const timer = setTimeout(enviar, 50);
+    const timer = setTimeout(enviar, 100);
 
     return () => {
       cancelado = true;
