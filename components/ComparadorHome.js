@@ -8,12 +8,18 @@ function formatPct(v) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 }
 
+function formatNum(v, dec = 2) {
+  if (v === null || v === undefined) return '—';
+  return Number(v).toFixed(dec);
+}
+
 export default function ComparadorHome() {
   const [seleccionados, setSeleccionados] = useState([]);
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const [datos, setDatos] = useState([]);
+  const [noEncontrados, setNoEncontrados] = useState([]);
   const [cargando, setCargando] = useState(false);
 
   async function buscar(texto) {
@@ -33,7 +39,7 @@ export default function ComparadorHome() {
   }
 
   function añadir(empresa) {
-    if (seleccionados.length >= 4) return;
+    if (seleccionados.length >= 3) return; // tu API limita a 3
     if (seleccionados.find((s) => s.ticker === empresa.ticker)) return;
     const nuevos = [...seleccionados, empresa];
     setSeleccionados(nuevos);
@@ -49,28 +55,32 @@ export default function ComparadorHome() {
       cargarDatos(nuevos.map((s) => s.ticker));
     } else {
       setDatos([]);
+      setNoEncontrados([]);
     }
   }
 
   async function cargarDatos(tickers) {
     if (tickers.length === 0) {
       setDatos([]);
+      setNoEncontrados([]);
       return;
     }
     setCargando(true);
     try {
       const res = await fetch(`/api/comparar?tickers=${tickers.join(',')}`);
       const json = await res.json();
-      setDatos(json.filas || []);
+      setDatos(json.empresas || []);
+      setNoEncontrados(json.noEncontrados || []);
     } catch (e) {
       setDatos([]);
+      setNoEncontrados([]);
     }
     setCargando(false);
   }
 
   return (
     <div>
-      {/* Empresas seleccionadas */}
+      {/* Seleccionados */}
       {seleccionados.length > 0 && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {seleccionados.map((s) => (
@@ -101,7 +111,7 @@ export default function ComparadorHome() {
       )}
 
       {/* Buscador */}
-      {seleccionados.length < 4 && (
+      {seleccionados.length < 3 && (
         <div style={{ position: 'relative' }}>
           <input
             type="text"
@@ -156,9 +166,16 @@ export default function ComparadorHome() {
         </div>
       )}
 
-      {/* Tabla comparativa */}
+      {/* No encontrados */}
+      {noEncontrados.length > 0 && (
+        <p style={{ fontSize: '12px', color: 'var(--v3-text-mute)', marginTop: '8px' }}>
+          Sin datos para: {noEncontrados.join(', ')}
+        </p>
+      )}
+
       {cargando && <p style={{ fontSize: '13px', color: 'var(--v3-text-mute)', marginTop: '12px' }}>Cargando comparación...</p>}
 
+      {/* Tabla comparativa con todas las métricas de tu API */}
       {datos.length > 0 && !cargando && (
         <div style={{ overflowX: 'auto', marginTop: '16px' }}>
           <table
@@ -176,7 +193,7 @@ export default function ComparadorHome() {
                 <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid var(--v3-border)' }}>Métrica</th>
                 {datos.map((f) => (
                   <th key={f.ticker} style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid var(--v3-border)' }}>
-                    <Link href={`/analisis/${f.slug}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                    <Link href={`/analisis/${f.ticker.toLowerCase()}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
                       {f.nombre}
                     </Link>
                   </th>
@@ -185,45 +202,69 @@ export default function ComparadorHome() {
             </thead>
             <tbody>
               <tr>
-                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Percentil 60</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.percentil ?? '—'}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Precio</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.precio !== null ? `${formatNum(f.precio)} €` : '—'}</td>)}
               </tr>
               <tr>
                 <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Zona</td>
                 {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.zona || '—'}</td>)}
               </tr>
               <tr>
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Indicador Equaty</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.smiActual !== null ? formatNum(f.smiActual, 0) : '—'}</td>)}
+              </tr>
+              <tr>
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Percentil</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.percentil ?? '—'}</td>)}
+              </tr>
+              <tr>
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Var. 5 sesiones</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{formatPct(f.variacion5)}</td>)}
+              </tr>
+              <tr>
                 <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Var. 60 sesiones</td>
                 {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{formatPct(f.variacion60)}</td>)}
               </tr>
               <tr>
-                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Casos diario</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.casos_diario ?? '—'}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Posición en rango</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.posicionRango !== null ? `${formatNum(f.posicionRango, 1)}%` : '—'}</td>)}
               </tr>
               <tr>
-                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>% subidas diario</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.pct_subidas_diario !== null ? `${f.pct_subidas_diario}%` : '—'}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Amplitud rango</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.amplitudRango !== null ? `${formatNum(f.amplitudRango, 1)}%` : '—'}</td>)}
               </tr>
               <tr>
-                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Retorno medio diario</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{formatPct(f.retorno_medio_diario)}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Volatilidad diaria</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.volatilidad !== null ? `${formatNum(f.volatilidad, 2)}%` : '—'}</td>)}
               </tr>
               <tr>
-                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Casos semanal</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.casos_semanal ?? '—'}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Volatilidad semanal</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.volatilidadSemanal !== null ? `${formatNum(f.volatilidadSemanal, 2)}%` : '—'}</td>)}
               </tr>
               <tr>
-                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>% subidas semanal</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.pct_subidas_semanal !== null ? `${f.pct_subidas_semanal}%` : '—'}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Ratio alcistas</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.ratioAlcistas !== null ? `${formatNum(f.ratioAlcistas, 1)}%` : '—'}</td>)}
               </tr>
               <tr>
-                <td style={{ padding: '10px', fontWeight: 600 }}>Retorno medio semanal</td>
-                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px' }}>{formatPct(f.retorno_medio_semanal)}</td>)}
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Racha actual</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{f.racha > 0 ? `${f.racha} ${f.direccionRacha}` : '—'}</td>)}
+              </tr>
+              <tr>
+                <td style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)', fontWeight: 600 }}>Pendiente indicador</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px', borderBottom: '1px solid var(--v3-border)' }}>{formatPct(f.pendienteIndicador)}</td>)}
+              </tr>
+              <tr>
+                <td style={{ padding: '10px', fontWeight: 600 }}>Cambios de zona (60)</td>
+                {datos.map((f) => <td key={f.ticker} style={{ padding: '10px' }}>{f.cambiosZona60 ?? '—'}</td>)}
               </tr>
             </tbody>
           </table>
         </div>
       )}
+
+      <p style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '12px', lineHeight: 1.5 }}>
+        Datos históricos descriptivos. No es una predicción ni una recomendación de inversión.
+      </p>
     </div>
   );
 }
