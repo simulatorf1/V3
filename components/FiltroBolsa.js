@@ -3,42 +3,44 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BOLSAS } from '../lib/bolsas';
 
-export default function FiltroBolsa({ valorActual = 'mc' }) {
+export default function FiltroBolsa({ valorActual = 'mc', dark = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   function cambiar(e) {
     const nueva = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
-    if (nueva === 'mc') {
-      params.delete('bolsa'); // Madrid es el default, no lo ponemos en la URL
-    } else {
-      params.set('bolsa', nueva);
-    }
+    if (nueva === 'mc') params.delete('bolsa');
+    else params.set('bolsa', nueva);
     router.push(`?${params.toString()}`);
   }
 
+  const estilos = dark
+    ? { label: '#a3a3a3', selectBg: '#141414', selectBorder: '#333', selectColor: '#f5f5f5' }
+    : { label: 'var(--v3-text-mute)', selectBg: '#fff', selectBorder: 'var(--v3-border)', selectColor: 'var(--v3-text)' };
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--v3-text-mute)' }}>
-        Bolsa:
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <label style={{ fontSize: '12px', fontWeight: 600, color: estilos.label, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        Bolsa
       </label>
       <select
         value={valorActual}
         onChange={cambiar}
         style={{
-          padding: '6px 10px',
+          padding: '8px 12px',
           fontSize: '13px',
-          border: '1px solid var(--v3-border)',
+          fontWeight: 600,
+          border: `1px solid ${estilos.selectBorder}`,
           borderRadius: '6px',
-          background: '#fff',
-          cursor: 'pointer'
+          background: estilos.selectBg,
+          color: estilos.selectColor,
+          cursor: 'pointer',
+          outline: 'none'
         }}
       >
         {BOLSAS.map((b) => (
-          <option key={b.codigo} value={b.codigo}>
-            {b.nombre}
-          </option>
+          <option key={b.codigo} value={b.codigo}>{b.nombre}</option>
         ))}
       </select>
     </div>
