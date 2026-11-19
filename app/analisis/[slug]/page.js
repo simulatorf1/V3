@@ -20,7 +20,7 @@ import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
 import FanChart from '../../../components/FanChart';
 import HistogramaRetornos from '../../../components/HistogramaRetornos';
-import TituloDinamicoClient from '../../../components/TituloDinamicoClient';
+import TituloDinamico from '../../../components/TituloDinamico';
 
 export const revalidate = 43000;
 export const maxDuration = 60;
