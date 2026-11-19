@@ -20,7 +20,12 @@ import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
 import FanChart from '../../../components/FanChart';
 import HistogramaRetornos from '../../../components/HistogramaRetornos';
-import TituloDinamico from '../../../components/TituloDinamico';
+import dynamic from 'next/dynamic';
+
+const TituloDinamico = dynamic(
+  () => import('../../../components/TituloDinamico'),
+  { ssr: false }
+);
 
 export const revalidate = 43000;
 export const maxDuration = 60;
