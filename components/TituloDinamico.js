@@ -1,13 +1,19 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function TituloDinamico({ titulo }) {
+  const [montado, setMontado] = useState(false);
+
   useEffect(() => {
-    if (titulo && typeof document !== 'undefined') {
+    setMontado(true);
+  }, []);
+
+  useEffect(() => {
+    if (montado && titulo && typeof document !== 'undefined') {
       document.title = titulo;
     }
-  }, [titulo]);
+  }, [titulo, montado]);
 
   return null;
 }
