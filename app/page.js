@@ -23,7 +23,7 @@ function formatPct(v) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 }
 
-function TablaTop({ titulo, items, color, tipo }) {
+function TablaTop({ titulo, items, color }) {
   if (!items || items.length === 0) return null;
   return (
     <div className="v3-card" style={{ padding: '16px' }}>
@@ -43,7 +43,7 @@ function TablaTop({ titulo, items, color, tipo }) {
         {items.map((e, i) => (
           <Link
             key={e.ticker}
-            href={`/analisis/${e.slug || e.ticker.toLowerCase()}`}
+            href={`/analisis/${e.slug}`}
             style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -63,7 +63,7 @@ function TablaTop({ titulo, items, color, tipo }) {
               </span>
               <span>{e.nombre}</span>
             </span>
-            <strong style={{ color }}>{formatPct(e.valor)}</strong>
+            <strong style={{ color }}>{e.pct_subidas_diario}%</strong>
           </Link>
         ))}
       </div>
@@ -72,17 +72,18 @@ function TablaTop({ titulo, items, color, tipo }) {
 }
 
 async function cargarHome() {
-  // Una sola consulta ligera a paginas para todos los rankings
+  // Una sola consulta ligera a paginas
   const { data: paginas } = await supabaseAdmin
     .from('paginas')
-    .select('ticker, percentil, zona, variacion60, pct_subidas_diario, pct_subidas_semanal, retorno_medio_diario, retorno_medio_semanal, casos_diario, casos_semanal')
+    .select('ticker, slug, percentil, zona, variacion60, pct_subidas_diario, pct_subidas_semanal, retorno_medio_diario, retorno_medio_semanal, casos_diario, casos_semanal')
+    .not('pct_subidas_diario', 'is', null)
     .order('percentil', { ascending: true });
 
   if (!paginas || paginas.length === 0) {
-    return { topSubida: [], topBajada: [], contexto: null };
+    return { topSubida: [], topBajada: [], contexto: null, empresasFavoritos: [] };
   }
 
-  // Necesitamos nombres. Una sola consulta ligera a empresas.
+  // Una sola consulta ligera a empresas para nombres
   const tickers = paginas.map((p) => p.ticker);
   const { data: empresas } = await supabaseAdmin
     .from('empresas')
@@ -96,43 +97,45 @@ async function cargarHome() {
     ...p,
     nombre: mapaEmpresas[p.ticker]?.nombre || p.ticker,
     sector: mapaEmpresas[p.ticker]?.sector || null,
-    mercado: mapaEmpresas[p.ticker]?.mercado || null,
-    slug: (mapaEmpresas[p.ticker]?.nombre || p.ticker)
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
+    mercado: mapaEmpresas[p.ticker]?.mercado || null
   }));
 
-  // Top 10 probabilidad de subida: percentil bajo + pct_subidas_diario alto
+  // Top 10 subida: percentil bajo + pct_subidas_diario alto
   const topSubida = enriquecidas
-    .filter((e) => e.percentil !== null && e.percentil <= 30 && e.pct_subidas_diario !== null)
+    .filter((e) => e.percentil !== null && e.percentil <= 30)
     .sort((a, b) => b.pct_subidas_diario - a.pct_subidas_diario)
-    .slice(0, 10)
-    .map((e) => ({ ...e, valor: e.pct_subidas_diario }));
+    .slice(0, 10);
 
-  // Top 10 probabilidad de bajada: percentil alto + pct_subidas_diario bajo
+  // Top 10 bajada: percentil alto + pct_subidas_diario bajo
   const topBajada = enriquecidas
-    .filter((e) => e.percentil !== null && e.percentil >= 70 && e.pct_subidas_diario !== null)
+    .filter((e) => e.percentil !== null && e.percentil >= 70)
     .sort((a, b) => a.pct_subidas_diario - b.pct_subidas_diario)
-    .slice(0, 10)
-    .map((e) => ({ ...e, valor: e.pct_subidas_diario }));
+    .slice(0, 10);
 
-  // Contexto de mercado: cuántas en zona alta/baja
+  // Contexto de mercado
   const zonaBaja = enriquecidas.filter((e) => e.zona === 'baja').length;
   const zonaAlta = enriquecidas.filter((e) => e.zona === 'alta').length;
   const zonaMedia = enriquecidas.filter((e) => e.zona === 'media').length;
 
+  // Lista de empresas para que ActividadFavoritos pueda cruzar con la watchlist
+  const empresasFavoritos = enriquecidas.map((e) => ({
+    ticker: e.ticker,
+    nombre: e.nombre,
+    sector: e.sector,
+    zona: e.zona,
+    variacion60: e.variacion60
+  }));
+
   return {
     topSubida,
     topBajada,
-    contexto: { zonaBaja, zonaAlta, zonaMedia, total: enriquecidas.length }
+    contexto: { zonaBaja, zonaAlta, zonaMedia, total: enriquecidas.length },
+    empresasFavoritos
   };
 }
 
 export default async function Home() {
-  const { topSubida, topBajada, contexto } = await cargarHome();
+  const { topSubida, topBajada, contexto, empresasFavoritos } = await cargarHome();
 
   return (
     <div className="v3-container">
@@ -150,7 +153,7 @@ export default async function Home() {
       </div>
 
       <WatchlistZona>
-        <ActividadFavoritos modo="compacto" />
+        <ActividadFavoritos empresas={empresasFavoritos} modo="compacto" />
       </WatchlistZona>
 
       {contexto && (
@@ -204,13 +207,11 @@ export default async function Home() {
             titulo="Top 10 · mayor probabilidad histórica de subida"
             items={topSubida}
             color="#16a34a"
-            tipo="subida"
           />
           <TablaTop
             titulo="Top 10 · mayor probabilidad histórica de bajada"
             items={topBajada}
             color="#dc2626"
-            tipo="bajada"
           />
         </div>
         <p style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '10px', lineHeight: 1.5 }}>
@@ -220,10 +221,66 @@ export default async function Home() {
       </section>
 
       <section className="v3-seccion" style={{ marginTop: '24px' }}>
-        <h2 className="v3-seccion-titulo">Explorar por sector</h2>
-        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
-          <Link href="/sectores" style={{ color: '#2563eb' }}>Ver todos los sectores →</Link>
-        </p>
+        <h2 className="v3-seccion-titulo">Herramientas</h2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '12px'
+          }}
+        >
+          <Link
+            href="/comparar"
+            style={{
+              display: 'block',
+              padding: '16px',
+              background: '#fff',
+              border: '1px solid var(--v3-border)',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              color: 'var(--v3-text)'
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Comparador</div>
+            <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>
+              Compara hasta 4 empresas por su situación estadística.
+            </div>
+          </Link>
+          <Link
+            href="/radar"
+            style={{
+              display: 'block',
+              padding: '16px',
+              background: '#fff',
+              border: '1px solid var(--v3-border)',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              color: 'var(--v3-text)'
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Radar de coincidencias</div>
+            <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>
+              Filtra empresas por percentil, zona y probabilidad histórica.
+            </div>
+          </Link>
+          <Link
+            href="/sectores"
+            style={{
+              display: 'block',
+              padding: '16px',
+              background: '#fff',
+              border: '1px solid var(--v3-border)',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              color: 'var(--v3-text)'
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Sectores</div>
+            <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>
+              Explora las empresas agrupadas por sector.
+            </div>
+          </Link>
+        </div>
       </section>
     </div>
   );
