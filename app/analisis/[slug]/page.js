@@ -20,6 +20,7 @@ import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
 import FanChart from '../../../components/FanChart';
 import HistogramaRetornos from '../../../components/HistogramaRetornos';
+import TituloDinamico from '../../../components/TituloDinamico';
 
 export const revalidate = 43000;
 export const maxDuration = 60;
@@ -420,8 +421,11 @@ export default async function PaginaEmpresa({ params }) {
     listStyle: 'none'
   };
 
+  const tituloPagina = `${empresa.nombre} (${empresa.ticker}) — Precio, evolución y rango | Equaty`;
+
   return (
     <div className="v3-container">
+      <TituloDinamico titulo={tituloPagina} />
       <link rel="canonical" href={canonical} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
@@ -458,10 +462,8 @@ export default async function PaginaEmpresa({ params }) {
         {desdeCache && ' · desde caché'}
       </p>
 
-      {/* VEREDICTO ESTADÍSTICO — párrafo completo unificado */}
       <VeredictoEstadistico veredicto={veredicto} />
 
-      {/* TARJETAS CLAVE */}
       <CardsHorizontes
         proyeccionDiaria={proyeccionDiaria}
         proyeccionSemanal={proyeccionSemanal}
@@ -474,7 +476,6 @@ export default async function PaginaEmpresa({ params }) {
         mercado={empresa.mercado}
       />
 
-      {/* ANÁLISIS GRÁFICO — grid horizontal de 3 gráficos */}
       <section className="v3-seccion" style={{ marginTop: '16px' }}>
         <h2 className="v3-seccion-titulo">Análisis gráfico histórico</h2>
         <div
@@ -484,7 +485,6 @@ export default async function PaginaEmpresa({ params }) {
             gap: '16px'
           }}
         >
-          {/* Cono corto plazo */}
           {proyeccionDiaria?.bandas?.length > 1 && (
             <div className="v3-card" style={{ padding: '12px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
@@ -501,7 +501,6 @@ export default async function PaginaEmpresa({ params }) {
             </div>
           )}
 
-          {/* Cono largo plazo */}
           {proyeccionSemanal?.bandas?.length > 1 && (
             <div className="v3-card" style={{ padding: '12px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
@@ -518,7 +517,6 @@ export default async function PaginaEmpresa({ params }) {
             </div>
           )}
 
-          {/* Histograma */}
           {proyeccionDiaria?.distribucion?.length > 0 && (
             <div className="v3-card" style={{ padding: '12px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
