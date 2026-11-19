@@ -4,15 +4,13 @@ import Buscador from '../components/Buscador';
 import WatchlistZona from '../components/WatchlistZona';
 import ActividadFavoritos from '../components/ActividadFavoritos';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
+import FiltroBolsa from '../components/FiltroBolsa';
+import ComparadorHome from '../components/ComparadorHome';
+import { bolsaDesdeTicker } from '../lib/bolsas';
 
 export const revalidate = 3600;
 
 const BASE_URL = 'https://equaty.es';
-
-function formatPct(v) {
-  if (v === null || v === undefined) return '—';
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
-}
 
 function TablaTop({ titulo, items, color }) {
   if (!items || items.length === 0) {
@@ -22,7 +20,7 @@ function TablaTop({ titulo, items, color }) {
           {titulo}
         </div>
         <p style={{ fontSize: '13px', color: 'var(--v3-text-mute)', margin: 0 }}>
-          Aún no hay suficientes datos. Vuelve en unos minutos.
+          Sin datos para esta bolsa todavía.
         </p>
       </div>
     );
@@ -64,7 +62,6 @@ function TablaTop({ titulo, items, color }) {
 
 function MiniRadar({ empresas }) {
   if (!empresas || empresas.length === 0) return null;
-  // Mostrar las 5 con percentil más bajo (zona de posible rebote)
   const seleccionadas = empresas
     .filter((e) => e.percentil !== null && e.percentil <= 20)
     .sort((a, b) => a.percentil - b.percentil)
@@ -76,7 +73,7 @@ function MiniRadar({ empresas }) {
     <section className="v3-seccion" style={{ marginTop: '24px' }}>
       <h2 className="v3-seccion-titulo">Radar de coincidencias</h2>
       <p style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '-4px', marginBottom: '12px' }}>
-        Empresas con el indicador Equaty en zona baja (percentil ≤ 20). Históricamente, estas situaciones han precedido rebotes con más frecuencia que las zonas altas.
+        Empresas con el indicador Equaty en zona baja (percentil ≤ 20).
       </p>
       <div style={{ display: 'grid', gap: '6px' }}>
         {seleccionadas.map((e) => (
@@ -104,21 +101,16 @@ function MiniRadar({ empresas }) {
           </Link>
         ))}
       </div>
-      <div style={{ marginTop: '10px' }}>
-        <Link href="/radar" style={{ fontSize: '13px', color: '#2563eb', fontWeight: 600 }}>
-          Ver radar completo →
-        </Link>
-      </div>
     </section>
   );
 }
 
-async function cargarHome() {
+async function cargarHome(bolsa) {
+  // 1 consulta ligera a paginas (sin filtrar por bolsa en SQL, filtramos en JS)
   const { data: paginas } = await supabaseAdmin
     .from('paginas')
     .select('ticker, slug, percentil, zona, variacion60, pct_subidas_diario, pct_subidas_semanal, retorno_medio_diario, retorno_medio_semanal, casos_diario, casos_semanal')
-    .not('pct_subidas_diario', 'is', null)
-    .order('percentil', { ascending: true });
+    .not('pct_subidas_diario', 'is', null);
 
   if (!paginas || paginas.length === 0) {
     return { topSubida: [], topBajada: [], contexto: null, empresasFavoritos: [], todas: [] };
@@ -133,28 +125,32 @@ async function cargarHome() {
   const mapaEmpresas = {};
   for (const e of empresas || []) mapaEmpresas[e.ticker] = e;
 
-  const enriquecidas = paginas.map((p) => ({
-    ...p,
-    nombre: mapaEmpresas[p.ticker]?.nombre || p.ticker,
-    sector: mapaEmpresas[p.ticker]?.sector || null,
-    mercado: mapaEmpresas[p.ticker]?.mercado || null
-  }));
+  // Enriquecer y filtrar por bolsa en JS (no en SQL, para no añadir consultas)
+  const todas = paginas
+    .map((p) => ({
+      ...p,
+      nombre: mapaEmpresas[p.ticker]?.nombre || p.ticker,
+      sector: mapaEmpresas[p.ticker]?.sector || null,
+      mercado: mapaEmpresas[p.ticker]?.mercado || null,
+      bolsa: bolsaDesdeTicker(p.ticker)
+    }))
+    .filter((e) => e.bolsa === bolsa);
 
-  const topSubida = enriquecidas
+  const topSubida = todas
     .filter((e) => e.percentil !== null && e.percentil <= 30)
     .sort((a, b) => b.pct_subidas_diario - a.pct_subidas_diario)
     .slice(0, 10);
 
-  const topBajada = enriquecidas
+  const topBajada = todas
     .filter((e) => e.percentil !== null && e.percentil >= 70)
     .sort((a, b) => a.pct_subidas_diario - b.pct_subidas_diario)
     .slice(0, 10);
 
-  const zonaBaja = enriquecidas.filter((e) => e.zona === 'baja').length;
-  const zonaAlta = enriquecidas.filter((e) => e.zona === 'alta').length;
-  const zonaMedia = enriquecidas.filter((e) => e.zona === 'media').length;
+  const zonaBaja = todas.filter((e) => e.zona === 'baja').length;
+  const zonaAlta = todas.filter((e) => e.zona === 'alta').length;
+  const zonaMedia = todas.filter((e) => e.zona === 'media').length;
 
-  const empresasFavoritos = enriquecidas.map((e) => ({
+  const empresasFavoritos = todas.map((e) => ({
     ticker: e.ticker,
     nombre: e.nombre,
     sector: e.sector,
@@ -165,14 +161,15 @@ async function cargarHome() {
   return {
     topSubida,
     topBajada,
-    contexto: { zonaBaja, zonaAlta, zonaMedia, total: enriquecidas.length },
+    contexto: { zonaBaja, zonaAlta, zonaMedia, total: todas.length },
     empresasFavoritos,
-    todas: enriquecidas
+    todas
   };
 }
 
-export default async function Home() {
-  const { topSubida, topBajada, contexto, empresasFavoritos, todas } = await cargarHome();
+export default async function Home({ searchParams }) {
+  const bolsa = searchParams?.bolsa || 'mc';
+  const { topSubida, topBajada, contexto, empresasFavoritos, todas } = await cargarHome(bolsa);
 
   return (
     <div className="v3-container">
@@ -193,10 +190,26 @@ export default async function Home() {
         <ActividadFavoritos empresas={empresasFavoritos} modo="compacto" />
       </WatchlistZona>
 
-      {contexto && contexto.total > 0 && (
-        <section className="v3-seccion" style={{ marginTop: '24px' }}>
-          <h2 className="v3-seccion-titulo">Contexto de mercado</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+      {/* Comparador integrado en la home */}
+      <section className="v3-seccion" style={{ marginTop: '24px' }}>
+        <h2 className="v3-seccion-titulo">Comparador de empresas</h2>
+        <p style={{ fontSize: '13px', color: 'var(--v3-text-soft)', marginTop: '-4px', marginBottom: '12px' }}>
+          Compara hasta 4 empresas por su situación estadística. Busca por nombre y añádelas.
+        </p>
+        <ComparadorHome />
+      </section>
+
+      {/* Filtro de bolsa */}
+      <section className="v3-seccion" style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <h2 className="v3-seccion-titulo" style={{ margin: 0 }}>
+            Rankings y radar · {todas.length} empresas
+          </h2>
+          <FiltroBolsa valorActual={bolsa} />
+        </div>
+
+        {contexto && contexto.total > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginTop: '16px' }}>
             <div className="v3-card" style={{ padding: '14px' }}>
               <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase' }}>En zona baja</div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: '#16a34a' }}>{contexto.zonaBaja}</div>
@@ -214,36 +227,30 @@ export default async function Home() {
               <div style={{ fontSize: '24px', fontWeight: 800 }}>{contexto.total}</div>
             </div>
           </div>
-        </section>
-      )}
+        )}
 
-      <section className="v3-seccion" style={{ marginTop: '24px' }}>
-        <h2 className="v3-seccion-titulo">Rankings estadísticos</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginTop: '16px' }}>
           <TablaTop titulo="Top 10 · mayor probabilidad histórica de subida" items={topSubida} color="#16a34a" />
           <TablaTop titulo="Top 10 · mayor probabilidad histórica de bajada" items={topBajada} color="#dc2626" />
         </div>
+
         <p style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '10px', lineHeight: 1.5 }}>
           Ranking calculado sobre el porcentaje de subidas en casos históricos similares. No es una predicción ni una recomendación de inversión.
         </p>
+
+        <MiniRadar empresas={todas} />
       </section>
 
-      <MiniRadar empresas={todas} />
-
       <section className="v3-seccion" style={{ marginTop: '24px' }}>
-        <h2 className="v3-seccion-titulo">Herramientas</h2>
+        <h2 className="v3-seccion-titulo">Más herramientas</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-          <Link href="/comparar" style={{ display: 'block', padding: '16px', background: '#fff', border: '1px solid var(--v3-border)', borderRadius: '8px', textDecoration: 'none', color: 'var(--v3-text)' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Comparador</div>
-            <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>Compara hasta 4 empresas por su situación estadística.</div>
+          <Link href="/sectores" style={{ display: 'block', padding: '16px', background: '#fff', border: '1px solid var(--v3-border)', borderRadius: '8px', textDecoration: 'none', color: 'var(--v3-text)' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Sectores</div>
+            <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>Explora las empresas agrupadas por sector.</div>
           </Link>
           <Link href="/radar" style={{ display: 'block', padding: '16px', background: '#fff', border: '1px solid var(--v3-border)', borderRadius: '8px', textDecoration: 'none', color: 'var(--v3-text)' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Radar completo</div>
             <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>Filtra por percentil, zona y probabilidad histórica.</div>
-          </Link>
-          <Link href="/sectores" style={{ display: 'block', padding: '16px', background: '#fff', border: '1px solid var(--v3-border)', borderRadius: '8px', textDecoration: 'none', color: 'var(--v3-text)' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Sectores</div>
-            <div style={{ fontSize: '12px', color: 'var(--v3-text-soft)' }}>Explora las empresas agrupadas por sector.</div>
           </Link>
         </div>
       </section>
