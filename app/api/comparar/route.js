@@ -175,7 +175,7 @@ export async function GET(request) {
   try {
     const { data: paginas } = await supabaseAdmin
       .from('paginas')
-      .select('ticker, datos')
+      .select('ticker, datos, pct_subidas_diario, pct_subidas_semanal, retorno_medio_diario, retorno_medio_semanal, casos_diario, casos_semanal')
       .in('ticker', tickers);
 
     const { data: empresasData } = await supabaseAdmin
@@ -206,6 +206,13 @@ export async function GET(request) {
         zona: datos.zona || null,
         smiActual: datos.smiActual ?? null,
         variacionSector60: datos.sectorInfo?.variacionSector60 ?? null,
+        // Nuevas probabilidades
+        pctSubidasDiario: p.pct_subidas_diario ?? null,
+        pctSubidasSemanal: p.pct_subidas_semanal ?? null,
+        retornoMedioDiario: p.retorno_medio_diario ?? null,
+        retornoMedioSemanal: p.retorno_medio_semanal ?? null,
+        casosDiario: p.casos_diario ?? null,
+        casosSemanal: p.casos_semanal ?? null,
         ...indicadores
       });
       encontrados.add(p.ticker);
