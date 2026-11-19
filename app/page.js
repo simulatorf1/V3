@@ -1,138 +1,230 @@
+import Link from 'next/link';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 import Buscador from '../components/Buscador';
-import RankingTabla from '../components/RankingTabla';
-import WatchlistBloque from '../components/WatchlistBloque';
-import ActividadFavoritos from '../components/ActividadFavoritos';
 import WatchlistZona from '../components/WatchlistZona';
-import { supabase } from '../lib/supabase';
+import ActividadFavoritos from '../components/ActividadFavoritos';
+import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
 
+export const revalidate = 3600;
 
-async function cargarDatos() {
-  const vacio = {
-    ranking: [],
-    totalRanking: 0,
-    empresas: []
-  };
+const BASE_URL = 'https://equaty.es';
 
-  try {
-    const [paginasRes, empresasRes] = await Promise.all([
-      supabase
-        .from('paginas')
-        .select('ticker, precio_actual, zona, variacion60, percentil, smi_actual, smi_ultimos_3')
-        .order('actualizado_at', { ascending: false })
-        .limit(100),
-      supabase.from('empresas').select('ticker, nombre, sector')
-    ]);
+function slugSector(s) {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
-    const paginas = paginasRes?.data || [];
-    const empresas = empresasRes?.data || [];
+function formatPct(v) {
+  if (v === null || v === undefined) return '—';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+}
 
-    const empresasMap = {};
-    for (const e of empresas) {
-      if (e && e.ticker) empresasMap[e.ticker] = e;
-    }
+function TablaTop({ titulo, items, color, tipo }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="v3-card" style={{ padding: '16px' }}>
+      <div
+        style={{
+          fontSize: '12px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.4px',
+          color: 'var(--v3-text-mute)',
+          marginBottom: '10px'
+        }}
+      >
+        {titulo}
+      </div>
+      <div style={{ display: 'grid', gap: '4px' }}>
+        {items.map((e, i) => (
+          <Link
+            key={e.ticker}
+            href={`/analisis/${e.slug || e.ticker.toLowerCase()}`}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px 10px',
+              borderRadius: '6px',
+              border: '1px solid var(--v3-border)',
+              background: '#fff',
+              textDecoration: 'none',
+              color: 'var(--v3-text)',
+              fontSize: '13px'
+            }}
+          >
+            <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600 }}>
+                {i + 1}
+              </span>
+              <span>{e.nombre}</span>
+            </span>
+            <strong style={{ color }}>{formatPct(e.valor)}</strong>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-    const ranking = [];
-    const empresasLigeras = [];
+async function cargarHome() {
+  // Una sola consulta ligera a paginas para todos los rankings
+  const { data: paginas } = await supabaseAdmin
+    .from('paginas')
+    .select('ticker, percentil, zona, variacion60, pct_subidas_diario, pct_subidas_semanal, retorno_medio_diario, retorno_medio_semanal, casos_diario, casos_semanal')
+    .order('percentil', { ascending: true });
 
-    for (const p of paginas) {
-      const emp = empresasMap[p.ticker];
-      if (!emp) continue;
-
-      const item = {
-        ticker: p.ticker,
-        nombre: emp.nombre,
-        sector: emp.sector,
-        precio: p.precio_actual,
-        zona: p.zona,
-        variacion60: p.variacion60,
-        percentil: p.percentil
-      };
-
-      ranking.push(item);
-
-      empresasLigeras.push({
-        ticker: p.ticker,
-        nombre: emp.nombre,
-        sector: emp.sector,
-        precio: p.precio_actual,
-        zona: p.zona,
-        variacion60: p.variacion60
-      });
-    }
-
-    const rankingOrdenado = ranking
-      .filter((i) => i.variacion60 !== null && i.variacion60 !== undefined)
-      .sort((a, b) => b.variacion60 - a.variacion60);
-
-    return {
-      ranking: rankingOrdenado.slice(0, 15),
-      totalRanking: rankingOrdenado.length,
-      empresas: empresasLigeras
-    };
-  } catch (e) {
-    console.error('[home] Error cargando datos:', e.message);
-    return vacio;
+  if (!paginas || paginas.length === 0) {
+    return { topSubida: [], topBajada: [], contexto: null };
   }
+
+  // Necesitamos nombres. Una sola consulta ligera a empresas.
+  const tickers = paginas.map((p) => p.ticker);
+  const { data: empresas } = await supabaseAdmin
+    .from('empresas')
+    .select('ticker, nombre, sector, mercado')
+    .in('ticker', tickers);
+
+  const mapaEmpresas = {};
+  for (const e of empresas || []) mapaEmpresas[e.ticker] = e;
+
+  const enriquecidas = paginas.map((p) => ({
+    ...p,
+    nombre: mapaEmpresas[p.ticker]?.nombre || p.ticker,
+    sector: mapaEmpresas[p.ticker]?.sector || null,
+    mercado: mapaEmpresas[p.ticker]?.mercado || null,
+    slug: (mapaEmpresas[p.ticker]?.nombre || p.ticker)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }));
+
+  // Top 10 probabilidad de subida: percentil bajo + pct_subidas_diario alto
+  const topSubida = enriquecidas
+    .filter((e) => e.percentil !== null && e.percentil <= 30 && e.pct_subidas_diario !== null)
+    .sort((a, b) => b.pct_subidas_diario - a.pct_subidas_diario)
+    .slice(0, 10)
+    .map((e) => ({ ...e, valor: e.pct_subidas_diario }));
+
+  // Top 10 probabilidad de bajada: percentil alto + pct_subidas_diario bajo
+  const topBajada = enriquecidas
+    .filter((e) => e.percentil !== null && e.percentil >= 70 && e.pct_subidas_diario !== null)
+    .sort((a, b) => a.pct_subidas_diario - b.pct_subidas_diario)
+    .slice(0, 10)
+    .map((e) => ({ ...e, valor: e.pct_subidas_diario }));
+
+  // Contexto de mercado: cuántas en zona alta/baja
+  const zonaBaja = enriquecidas.filter((e) => e.zona === 'baja').length;
+  const zonaAlta = enriquecidas.filter((e) => e.zona === 'alta').length;
+  const zonaMedia = enriquecidas.filter((e) => e.zona === 'media').length;
+
+  return {
+    topSubida,
+    topBajada,
+    contexto: { zonaBaja, zonaAlta, zonaMedia, total: enriquecidas.length }
+  };
 }
 
 export default async function Home() {
-  const datos = await cargarDatos();
-
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'Equaty',
-    alternateName: 'Equaty.es',
-    url: 'https://equaty.es/'
-  };
+  const { topSubida, topBajada, contexto } = await cargarHome();
 
   return (
-    <main className="v3-container">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c')
-        }}
-      />
+    <div className="v3-container">
+      <RegistrarVisitaGlobal />
 
-      <section className="v3-hero">
-        <h1>Equaty — Análisis bursátil estadístico</h1>
-        <p>
-          Informes estadísticos sobre empresas cotizadas. Busca cualquier valor por nombre o
-          ticker.
+      <h1 style={{ fontSize: '28px', marginBottom: '8px', textAlign: 'center' }}>
+        Equaty — Análisis bursátil estadístico
+      </h1>
+      <p style={{ textAlign: 'center', color: 'var(--v3-text-soft)', fontSize: '14px', marginBottom: '24px' }}>
+        Estadística histórica de empresas cotizadas. No es recomendación de inversión.
+      </p>
+
+      <div style={{ marginBottom: '24px' }}>
+        <Buscador />
+      </div>
+
+      <WatchlistZona>
+        <ActividadFavoritos modo="compacto" />
+      </WatchlistZona>
+
+      {contexto && (
+        <section className="v3-seccion" style={{ marginTop: '24px' }}>
+          <h2 className="v3-seccion-titulo">Contexto de mercado</h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '12px'
+            }}
+          >
+            <div className="v3-card" style={{ padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase' }}>
+                En zona baja
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#16a34a' }}>{contexto.zonaBaja}</div>
+            </div>
+            <div className="v3-card" style={{ padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase' }}>
+                En zona media
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800 }}>{contexto.zonaMedia}</div>
+            </div>
+            <div className="v3-card" style={{ padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase' }}>
+                En zona alta
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#dc2626' }}>{contexto.zonaAlta}</div>
+            </div>
+            <div className="v3-card" style={{ padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', fontWeight: 600, textTransform: 'uppercase' }}>
+                Total analizadas
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800 }}>{contexto.total}</div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="v3-seccion" style={{ marginTop: '24px' }}>
+        <h2 className="v3-seccion-titulo">Rankings estadísticos</h2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '16px'
+          }}
+        >
+          <TablaTop
+            titulo="Top 10 · mayor probabilidad histórica de subida"
+            items={topSubida}
+            color="#16a34a"
+            tipo="subida"
+          />
+          <TablaTop
+            titulo="Top 10 · mayor probabilidad histórica de bajada"
+            items={topBajada}
+            color="#dc2626"
+            tipo="bajada"
+          />
+        </div>
+        <p style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '10px', lineHeight: 1.5 }}>
+          Ranking calculado sobre el porcentaje de subidas en casos históricos similares. No es una
+          predicción ni una recomendación de inversión. Los datos se actualizan cada hora.
         </p>
       </section>
 
-      <Buscador />
-
-      <WatchlistZona>
-        <div className="v3-home-grid" style={{ marginTop: '16px' }}>
-          <div className="v3-span-2">
-            <ActividadFavoritos empresas={datos.empresas} modo="completo" />
-          </div>
-
-          <div className="v3-span-2">
-            <WatchlistBloque empresas={datos.empresas} />
-          </div>
-
-          <div className="v3-span-2">
-            <RankingTabla
-              items={datos.ranking}
-              tipo="variacion60"
-              titulo="Top 15 por variación en 60 sesiones"
-              total={datos.totalRanking}
-              colapsable={true}
-              verTodasHref="/empresas"
-              filasIniciales={6}
-            />
-          </div>
-        </div>
-      </WatchlistZona>
-
-      <p className="v3-aviso" style={{ marginTop: '60px' }}>
-        Este contenido es un registro estadístico elaborado por el equipo de Equaty. No es una
-        recomendación de inversión.
-      </p>
-    </main>
+      <section className="v3-seccion" style={{ marginTop: '24px' }}>
+        <h2 className="v3-seccion-titulo">Explorar por sector</h2>
+        <p style={{ color: 'var(--v3-text-soft)', fontSize: '13px' }}>
+          <Link href="/sectores" style={{ color: '#2563eb' }}>Ver todos los sectores →</Link>
+        </p>
+      </section>
+    </div>
   );
 }
