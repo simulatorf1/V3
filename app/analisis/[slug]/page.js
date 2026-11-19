@@ -20,7 +20,6 @@ import VeredictoEstadistico from '../../../components/VeredictoEstadistico';
 import CardsHorizontes from '../../../components/CardsHorizontes';
 import FanChart from '../../../components/FanChart';
 import HistogramaRetornos from '../../../components/HistogramaRetornos';
-import TituloDinamico from '../../../components/TituloDinamico';
 
 export const revalidate = 43000;
 export const maxDuration = 60;
@@ -421,11 +420,10 @@ export default async function PaginaEmpresa({ params }) {
     listStyle: 'none'
   };
 
-  const tituloPagina = `${empresa.nombre} (${empresa.ticker}) — Precio, evolución y rango | Equaty`;
 
   return (
     <div className="v3-container">
-      <TituloDinamico titulo={tituloPagina} />
+      
       <link rel="canonical" href={canonical} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
