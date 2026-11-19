@@ -44,13 +44,27 @@ function CasosLista({ casos }) {
           style={{
             fontSize: '11px',
             color: 'var(--v3-text-soft)',
-            padding: '5px 0',
+            padding: '6px 0',
             borderBottom: '1px dashed var(--v3-border)',
             lineHeight: 1.5
           }}
         >
-          <div>{formatFecha(c.fecha)} → {formatFecha(c.fechaFin)}</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{formatFecha(c.fecha)} → {formatFecha(c.fechaFin)}</span>
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                padding: '1px 6px',
+                borderRadius: '999px',
+                background: c.similitud >= 80 ? '#dcfce7' : c.similitud >= 50 ? '#fef3c7' : '#fee2e2',
+                color: c.similitud >= 80 ? '#166534' : c.similitud >= 50 ? '#92400e' : '#991b1b'
+              }}
+            >
+              {c.similitud}% similitud
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
             <span>
               {c.precioInicioReal?.toFixed(2)} € → {c.precioFinReal?.toFixed(2)} €
             </span>
@@ -85,8 +99,12 @@ function CardHorizonte({ titulo, proyeccion, horizonte }) {
   const veces = lado === 'subidas' ? proyeccion.subidas : proyeccion.bajadas;
   const color = lado === 'subidas' ? '#16a34a' : '#dc2626';
   const retornoTxt =
-    proyeccion.retornoMedio !== undefined && proyeccion.retornoMedio !== null
-      ? `${proyeccion.retornoMedio >= 0 ? '+' : ''}${proyeccion.retornoMedio}%`
+    proyeccion.retornoMedioPonderado !== undefined && proyeccion.retornoMedioPonderado !== null
+      ? `${proyeccion.retornoMedioPonderado >= 0 ? '+' : ''}${proyeccion.retornoMedioPonderado}%`
+      : '—';
+  const retornoSimpleTxt =
+    proyeccion.retornoMedioSimple !== undefined && proyeccion.retornoMedioSimple !== null
+      ? `${proyeccion.retornoMedioSimple >= 0 ? '+' : ''}${proyeccion.retornoMedioSimple}%`
       : '—';
 
   return (
@@ -99,10 +117,13 @@ function CardHorizonte({ titulo, proyeccion, horizonte }) {
         </div>
       </div>
       <div style={{ fontSize: '12.5px', color: 'var(--v3-text-soft)', marginBottom: '8px' }}>
-        Retorno medio: <strong>{retornoTxt}</strong> a {horizonte}.
+        Retorno medio ponderado: <strong>{retornoTxt}</strong> a {horizonte}.
+        <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)', marginTop: '2px' }}>
+          Media simple: {retornoSimpleTxt}
+        </div>
       </div>
 
-      {proyeccion.precioFinalMediano !== null && proyeccion.precioFinalMediano !== undefined && (
+      {proyeccion.precioFinalMedioPonderado !== null && proyeccion.precioFinalMedioPonderado !== undefined && (
         <div
           style={{
             padding: '10px 12px',
@@ -116,11 +137,12 @@ function CardHorizonte({ titulo, proyeccion, horizonte }) {
           <div style={{ fontWeight: 700, marginBottom: '2px' }}>
             El {formatFecha(proyeccion.fechaHorizonte)} estaría en{' '}
             <span style={{ color: 'var(--v3-text)', fontSize: '15px' }}>
-              {proyeccion.precioFinalMediano.toFixed(2)} €
+              {proyeccion.precioFinalMedioPonderado.toFixed(2)} €
             </span>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--v3-text-mute)' }}>
-            Mediana de los casos. Media: {proyeccion.precioFinalMedio?.toFixed(2)} €.
+            Media ponderada por similitud. Media simple: {proyeccion.precioFinalMedioSimple?.toFixed(2)} €.
+            Mediana: {proyeccion.precioFinalMediano?.toFixed(2)} €.
           </div>
         </div>
       )}
@@ -151,8 +173,9 @@ function CardHorizonte({ titulo, proyeccion, horizonte }) {
           lineHeight: 1.45
         }}
       >
-        No es una señal de compra o venta. Es la proyección estadística de lo que ocurrió de media
-        en situaciones similares del pasado.
+        Los casos se ponderan según su similitud con la situación actual (distancia del indicador
+        Equaty). Los más parecidos pesan más en la media. No es una señal de compra o venta: es
+        la proyección estadística de lo que ocurrió en situaciones similares del pasado.
       </p>
     </div>
   );
