@@ -1,4 +1,5 @@
 import '../app/globals.css';
+import { Suspense } from 'react';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import { GoogleAnalytics } from '@next/third-parties/google';
@@ -6,6 +7,7 @@ import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
 import BannerAviso from '../components/BannerAviso';
+import GA4PageView from '../components/GA4PageView';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -86,8 +88,13 @@ export default function RootLayout({ children }) {
           `}
         </Script>
 
-        {/* GA con el componente de Next.js (dispara page_view en cada navegación) */}
+        {/* GA con el componente de Next.js (carga gtag.js) */}
         <GoogleAnalytics gaId="G-LVV061GCPF" />
+
+        {/* page_view manual en cada cambio de ruta */}
+        <Suspense fallback={null}>
+          <GA4PageView />
+        </Suspense>
 
         <BannerAviso />
       </body>
