@@ -24,9 +24,7 @@ export const metadata = {
   },
   description:
     'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
-  alternates: {
-    canonical: '/'
-  },
+
   openGraph: {
     title: 'Equaty — Análisis bursátil estadístico',
     description:
