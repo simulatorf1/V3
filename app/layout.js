@@ -2,7 +2,6 @@ import '../app/globals.css';
 import { Suspense } from 'react';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
-import { GoogleAnalytics } from '@next/third-parties/google';
 import Cabecera from '../components/Cabecera';
 import Pie from '../components/Pie';
 import RegistrarVisitaGlobal from '../components/RegistrarVisitaGlobal';
@@ -24,7 +23,6 @@ export const metadata = {
   },
   description:
     'Análisis estadístico de empresas cotizadas elaborado por el equipo de Equaty. No es recomendación de inversión.',
-
   openGraph: {
     title: 'Equaty — Análisis bursátil estadístico',
     description:
@@ -86,10 +84,23 @@ export default function RootLayout({ children }) {
           `}
         </Script>
 
-        {/* GA con el componente de Next.js (carga gtag.js) */}
-        <GoogleAnalytics gaId="G-LVV061GCPF" />
+        {/* GA4 manual: send_page_view: false para que no dispare page_view automático */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-LVV061GCPF"
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-config" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-LVV061GCPF', {
+              send_page_view: false
+            });
+          `}
+        </Script>
 
-        {/* page_view manual en cada cambio de ruta */}
+        {/* page_view manual en cada cambio de ruta (incluida la carga inicial) */}
         <Suspense fallback={null}>
           <GA4PageView />
         </Suspense>
